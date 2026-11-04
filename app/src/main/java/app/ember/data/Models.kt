@@ -18,7 +18,8 @@ data class Character(
     val replyWords: Int = 300,
     val personaId: String? = null,
     val useBackup: Boolean = false,
-    val tags: String = "",
+    /** Tags as "Category::Name"; unlimited. */
+    val tags: List<String> = emptyList(),
     val tint: Int? = null,
     val favourite: Boolean = false,
     val archived: Boolean = false,
@@ -72,6 +73,9 @@ data class Rule(
     val text: String,
     val enabled: Boolean = true,
 )
+
+/** A saved character concept from the Ideas tab. */
+data class Idea(val id: String = newId(), val text: String, val tags: List<String> = emptyList(), val createdAt: Long = System.currentTimeMillis())
 
 /** A named bundle of rules you switch on per chat. */
 data class Preset(val id: String = newId(), val name: String, val rules: List<String>)

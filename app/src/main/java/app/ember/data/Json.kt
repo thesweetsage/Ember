@@ -27,7 +27,7 @@ object Json {
         .put("openings", JSONArray(c.openings)).put("example", c.example)
         .put("avatar", nul(c.avatar)).put("chatBg", nul(c.chatBg))
         .put("replyWords", c.replyWords).put("personaId", nul(c.personaId)).put("useBackup", c.useBackup)
-        .put("tags", c.tags).put("tint", nul(c.tint))
+        .put("tags", JSONArray(c.tags)).put("tint", nul(c.tint))
         .put("favourite", c.favourite).put("archived", c.archived).put("createdAt", c.createdAt)
 
     fun character(o: JSONObject): Character {
@@ -38,7 +38,8 @@ object Json {
             openings = openings, example = o.str("example"),
             avatar = o.strOrNull("avatar"), chatBg = o.strOrNull("chatBg"),
             replyWords = o.optInt("replyWords", 300), personaId = o.strOrNull("personaId"),
-            useBackup = o.optBoolean("useBackup", false), tags = o.str("tags"),
+            useBackup = o.optBoolean("useBackup", false),
+            tags = if (o.optJSONArray("tags") != null) o.strings("tags") else Tags.fromLegacy(o.str("tags")),
             tint = if (o.has("tint") && !o.isNull("tint")) o.optInt("tint") else null,
             favourite = o.optBoolean("favourite", false), archived = o.optBoolean("archived", false),
             createdAt = o.optLong("createdAt", System.currentTimeMillis()),
@@ -105,6 +106,9 @@ object Json {
     fun persona(p: Persona): JSONObject = JSONObject()
         .put("id", p.id).put("name", p.name).put("description", p.description).put("avatar", nul(p.avatar))
     fun persona(o: JSONObject) = Persona(o.str("id"), o.str("name"), o.str("description"), o.strOrNull("avatar"))
+
+    fun idea(i: Idea): JSONObject = JSONObject().put("id", i.id).put("text", i.text).put("tags", JSONArray(i.tags)).put("createdAt", i.createdAt)
+    fun idea(o: JSONObject) = Idea(o.str("id"), o.str("text"), o.strings("tags"), o.optLong("createdAt", 0L))
 
     fun ground(g: GroundRule): JSONObject = JSONObject().put("title", g.title).put("text", g.text)
     fun ground(o: JSONObject) = GroundRule(o.str("title"), o.str("text"))

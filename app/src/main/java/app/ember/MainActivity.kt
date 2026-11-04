@@ -15,6 +15,11 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import app.ember.data.Store
 import app.ember.ui.ArchivesScreen
+import app.ember.ui.BottomNav
+import app.ember.ui.BuilderScreen
+import app.ember.ui.EmberBottomBar
+import app.ember.ui.IdeasScreen
+import app.ember.ui.Section
 import app.ember.ui.ChatScreen
 import app.ember.ui.ChatSettingsScreen
 import app.ember.ui.ChatsScreen
@@ -38,6 +43,15 @@ class MainActivity : ComponentActivity() {
                 Box(Modifier.fillMaxSize().background(EmberColors.Bg)) {
                     val nav = rememberNavController()
                     val idArg = listOf(navArgument("id") { type = NavType.StringType })
+                    fun tab(route: String) = nav.navigate(route) { popUpTo("library"); launchSingleTop = true }
+                    val bottom = BottomNav(
+                        characters = { nav.popBackStack("library", inclusive = false) },
+                        chats = { tab("chats") },
+                        ideas = { tab("ideas") },
+                        personas = { tab("personas") },
+                        createManual = { Store.editorDraft = null; nav.navigate("edit/new") },
+                        createWithAi = { nav.navigate("builder") },
+                    )
                     NavHost(navController = nav, startDestination = "library") {
                         composable("library") {
                             LibraryScreen(
@@ -45,18 +59,23 @@ class MainActivity : ComponentActivity() {
                                 editCharacter = { nav.navigate("edit/$it") },
                                 openRules = { nav.navigate("rules") },
                                 openSettings = { nav.navigate("settings") },
-                                openPersonas = { nav.navigate("personas") },
-                                openChats = { nav.navigate("chats") { popUpTo("library"); launchSingleTop = true } },
+                                bottomBar = { EmberBottomBar(Section.Characters, bottom) },
                             )
                         }
                         composable("chats") {
                             ChatsScreen(
                                 openChat = { nav.navigate("chat/$it") },
-                                openCharacters = { nav.popBackStack("library", inclusive = false) },
-                                create = { nav.navigate("edit/new") },
-                                openPersonas = { nav.navigate("personas") },
-                                openRules = { nav.navigate("rules") },
+                                bottomBar = { EmberBottomBar(Section.Chats, bottom) },
                             )
+                        }
+                        composable("ideas") {
+                            IdeasScreen(
+                                buildFrom = { idea -> Store.builderSeed = idea; nav.navigate("builder") },
+                                bottomBar = { EmberBottomBar(Section.Ideas, bottom) },
+                            )
+                        }
+                        composable("builder") {
+                            BuilderScreen(onBack = { nav.popBackStack() }, openEditor = { nav.navigate("edit/new") })
                         }
                         composable("edit/{id}", arguments = idArg) { entry ->
                             val id = entry.arguments?.getString("id") ?: "new"
@@ -106,7 +125,9 @@ class MainActivity : ComponentActivity() {
                             val id = entry.arguments?.getString("id") ?: ""
                             SearchScreen(id, onBack = { nav.popBackStack("chat/$id", inclusive = false) || nav.popBackStack() })
                         }
-                        composable("personas") { PersonasScreen(onBack = { nav.popBackStack() }) }
+                        composable("personas") {
+                            PersonasScreen(onBack = { nav.popBackStack() }, bottomBar = { EmberBottomBar(Section.Personas, bottom) })
+                        }
                         composable("rules") { RulesScreen(onBack = { nav.popBackStack() }) }
                         composable("settings") {
                             SettingsScreen(onBack = { nav.popBackStack() }, openPersonas = { nav.navigate("personas") })

@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Rule
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Sell
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -62,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.ember.data.Character
 import app.ember.data.Store
+import app.ember.data.Tags
 import coil.compose.AsyncImage
 import java.io.File
 
@@ -73,13 +75,14 @@ fun LibraryScreen(
     editCharacter: (String) -> Unit,
     openRules: () -> Unit,
     openSettings: () -> Unit,
-    openPersonas: () -> Unit,
-    openChats: () -> Unit,
+    bottomBar: @Composable () -> Unit,
 ) {
     var tab by rememberSaveable { mutableStateOf(Tab.All) }
     var confirmDelete by remember { mutableStateOf<Character?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
     var searching by rememberSaveable { mutableStateOf(false) }
+    var tagFilter by remember { mutableStateOf(listOf<String>()) }
+    var pickTags by remember { mutableStateOf(false) }
 
     val all = Store.characters.filter { !it.archived }
     val q = query.trim().lowercase()
@@ -88,16 +91,15 @@ fun LibraryScreen(
         Tab.Favourites -> all.filter { it.favourite }.sortedBy { it.name.lowercase() }
         Tab.Recent -> all.sortedByDescending { maxOf(Store.lastActivity(it.id), it.createdAt) }
         Tab.Archived -> Store.characters.filter { it.archived }.sortedBy { it.name.lowercase() }
-    }.filter { q.isEmpty() || it.name.lowercase().contains(q) || it.tags.lowercase().contains(q) }
+    }.filter { c -> q.isEmpty() || c.name.lowercase().contains(q) || c.tags.any { Tags.name(it).lowercase().contains(q) } }
+        .filter { c -> tagFilter.all { it in c.tags } }
     val pinned = Store.character(Store.settings.pinnedCharacterId ?: "")?.takeIf { !it.archived }
-    val showBanner = pinned != null && tab == Tab.All && q.isEmpty()
+    val showBanner = pinned != null && tab == Tab.All && q.isEmpty() && tagFilter.isEmpty()
     val gridItems = if (showBanner) shown.filter { it.id != pinned?.id } else shown
 
     Scaffold(
         containerColor = EmberColors.Bg,
-        bottomBar = {
-            EmberBottomBar(Section.Characters, {}, openChats, { editCharacter("new") }, openPersonas, openRules)
-        },
+        bottomBar = bottomBar,
     ) { pad ->
         Column(Modifier.fillMaxSize().padding(pad)) {
             Row(
@@ -107,6 +109,10 @@ fun LibraryScreen(
                 Text("Ember", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = EmberColors.Text)
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = { searching = !searching; if (!searching) query = "" }) { Icon(Icons.Outlined.Search, "Search", tint = EmberColors.Text) }
+                IconButton(onClick = { pickTags = true }) {
+                    Icon(Icons.Outlined.Sell, "Filter by tags", tint = if (tagFilter.isEmpty()) EmberColors.Text else EmberColors.RedSoft)
+                }
+                IconButton(onClick = openRules) { Icon(Icons.Outlined.Rule, "Rules", tint = EmberColors.Text) }
                 IconButton(onClick = openSettings) { Icon(Icons.Outlined.Settings, "Settings", tint = EmberColors.Text) }
             }
             if (!Store.hasApiKey) {
@@ -130,6 +136,15 @@ fun LibraryScreen(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                     colors = fieldColors(), shape = RoundedCornerShape(24.dp),
                 )
+            }
+            if (tagFilter.isNotEmpty()) {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    items(tagFilter) { t -> TagChip(Tags.name(t) + "  ✕", on = true) { tagFilter = tagFilter - t } }
+                    item { TagChip("Clear", on = false) { tagFilter = emptyList() } }
+                }
             }
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
@@ -160,7 +175,7 @@ fun LibraryScreen(
                 ) {
                     Text(
                         when {
-                            q.isNotEmpty() -> "No matches."
+                            q.isNotEmpty() || tagFilter.isNotEmpty() -> "No matches."
                             tab == Tab.Favourites -> "No favourites yet."
                             tab == Tab.Archived -> "Nothing archived."
                             else -> "No characters yet."
@@ -204,6 +219,13 @@ fun LibraryScreen(
                 }
             }
         }
+    }
+
+    if (pickTags) {
+        TagPickerSheet(
+            title = "Show characters with these tags", initial = tagFilter, doneLabel = "Show",
+            onDone = { tagFilter = it; pickTags = false }, onDismiss = { pickTags = false },
+        )
     }
 
     confirmDelete?.let { c ->

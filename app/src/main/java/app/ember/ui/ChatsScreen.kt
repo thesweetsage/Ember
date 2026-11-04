@@ -57,51 +57,6 @@ import app.ember.data.Store
 import java.text.DateFormat
 import java.util.Date
 
-enum class Section { Characters, Chats }
-
-/** Bottom navigation shared by the Characters and Chats sections. */
-@Composable
-fun EmberBottomBar(
-    current: Section,
-    openCharacters: () -> Unit,
-    openChats: () -> Unit,
-    create: () -> Unit,
-    openPersonas: () -> Unit,
-    openRules: () -> Unit,
-) {
-    val colors = NavigationBarItemDefaults.colors(
-        selectedIconColor = EmberColors.Text, selectedTextColor = EmberColors.Text,
-        unselectedIconColor = EmberColors.Dim, unselectedTextColor = EmberColors.Dim,
-        indicatorColor = EmberColors.Field,
-    )
-    NavigationBar(containerColor = EmberColors.BgDeep) {
-        NavigationBarItem(
-            selected = current == Section.Characters, onClick = openCharacters, colors = colors,
-            icon = { Icon(Icons.Outlined.GridView, null) }, label = { Text("Characters", fontSize = 11.sp) },
-        )
-        NavigationBarItem(
-            selected = current == Section.Chats, onClick = openChats, colors = colors,
-            icon = { Icon(Icons.AutoMirrored.Outlined.Chat, null) }, label = { Text("Chats", fontSize = 11.sp) },
-        )
-        NavigationBarItem(
-            selected = false, onClick = create, colors = colors,
-            icon = {
-                Box(Modifier.size(44.dp).background(EmberColors.Red, RoundedCornerShape(22.dp)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.Add, "Create character", tint = Color.White)
-                }
-            },
-        )
-        NavigationBarItem(
-            selected = false, onClick = openPersonas, colors = colors,
-            icon = { Icon(Icons.Outlined.Person, null) }, label = { Text("Personas", fontSize = 11.sp) },
-        )
-        NavigationBarItem(
-            selected = false, onClick = openRules, colors = colors,
-            icon = { Icon(Icons.AutoMirrored.Outlined.Rule, null) }, label = { Text("Rules", fontSize = 11.sp) },
-        )
-    }
-}
-
 private fun shortDate(t: Long): String {
     if (t <= 0) return ""
     val now = System.currentTimeMillis()
@@ -120,10 +75,7 @@ private fun chatNumber(c: Chat): Int =
 @Composable
 fun ChatsScreen(
     openChat: (String) -> Unit,
-    openCharacters: () -> Unit,
-    create: () -> Unit,
-    openPersonas: () -> Unit,
-    openRules: () -> Unit,
+    bottomBar: @Composable () -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var searching by rememberSaveable { mutableStateOf(false) }
@@ -138,9 +90,7 @@ fun ChatsScreen(
 
     Scaffold(
         containerColor = EmberColors.Bg,
-        bottomBar = {
-            EmberBottomBar(Section.Chats, openCharacters, {}, create, openPersonas, openRules)
-        },
+        bottomBar = bottomBar,
     ) { pad ->
         Column(Modifier.fillMaxSize().padding(pad)) {
             Row(

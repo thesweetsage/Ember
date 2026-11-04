@@ -38,6 +38,14 @@ object Store {
         private set
     var personas by mutableStateOf(listOf<Persona>())
         private set
+    var ideas by mutableStateOf(listOf<Idea>())
+        private set
+
+    /** A concept handed from the Ideas tab to the AI character builder. */
+    var builderSeed by mutableStateOf<Idea?>(null)
+
+    /** A character drafted by the AI builder, waiting to be reviewed in the editor. */
+    var editorDraft by mutableStateOf<Character?>(null)
     var groundRules by mutableStateOf(DEFAULT_GROUND_RULES)
         private set
     var settings by mutableStateOf(Settings())
@@ -65,8 +73,10 @@ object Store {
         rules = read("rules.json")?.let { Json.parseList(it) { o -> Json.rule(o) } } ?: emptyList()
         presets = read("presets.json")?.let { Json.parseList(it) { o -> Json.preset(o) } } ?: emptyList()
         personas = read("personas.json")?.let { Json.parseList(it) { o -> Json.persona(o) } } ?: emptyList()
+        ideas = read("ideas.json")?.let { Json.parseList(it) { o -> Json.idea(o) } } ?: emptyList()
         groundRules = read("ground.json")?.let { Json.parseList(it) { o -> Json.ground(o) } }
             ?.takeIf { it.isNotEmpty() }?.let { withNewGroundRules(it) } ?: DEFAULT_GROUND_RULES
+        markGroundSeen()
         settings = read("settings.json")?.let { runCatching { Json.settings(JSONObject(it)) }.getOrNull() } ?: Settings()
         chats = chatDir.listFiles().orEmpty().filter { it.name.endsWith(".json") }.mapNotNull { f ->
             runCatching { Json.chat(JSONObject(f.readText())) }.getOrNull()
@@ -81,11 +91,18 @@ object Store {
 
     /** Adds built-in ground rules introduced after you edited your copy, at their usual position. */
     private fun withNewGroundRules(saved: List<GroundRule>): List<GroundRule> {
+        // Only built-in rules you've never had are added, so renamed or deleted ones don't come back.
+        val seen = prefs.getStringSet("groundSeen", null)
         val out = saved.toMutableList()
         DEFAULT_GROUND_RULES.forEachIndexed { i, d ->
-            if (out.none { it.title == d.title }) out.add(i.coerceAtMost(out.size), d)
+            val isNew = if (seen != null) d.title !in seen else out.none { it.title == d.title }
+            if (isNew && out.none { it.title == d.title }) out.add(i.coerceAtMost(out.size), d)
         }
         return out
+    }
+
+    private fun markGroundSeen() {
+        prefs.edit().putStringSet("groundSeen", DEFAULT_GROUND_RULES.map { it.title }.toSet()).apply()
     }
 
     /** Older builds had one "your character" in Settings; it becomes your first persona. */
@@ -145,6 +162,14 @@ object Store {
     private fun saveRules() = write(File(dir, "rules.json"), Json.list(rules) { Json.rule(it) })
     private fun savePresets() = write(File(dir, "presets.json"), Json.list(presets) { Json.preset(it) })
     private fun savePersonas() = write(File(dir, "personas.json"), Json.list(personas) { Json.persona(it) })
+    private fun saveIdeas() = write(File(dir, "ideas.json"), Json.list(ideas) { Json.idea(it) })
+
+    fun saveIdea(i: Idea) { if (ideas.none { it.id == i.id }) { ideas = listOf(i) + ideas; saveIdeas() } }
+    fun deleteIdea(id: String) { ideas = ideas.filter { it.id != id }; saveIdeas() }
+
+    /** Every tag used by any character, for the library's tag filter. */
+    val allTags: List<String> get() = characters.flatMap { it.tags }.distinct()
+
     private fun saveGround() = write(File(dir, "ground.json"), Json.list(groundRules) { Json.ground(it) })
     private fun saveSettings() = write(File(dir, "settings.json"), Json.settings(settings).toString())
 

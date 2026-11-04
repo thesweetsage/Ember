@@ -23,7 +23,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -83,11 +85,11 @@ fun RulesScreen(onBack: () -> Unit) {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text("Ground rules", fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.weight(1f))
-                    Text("Built in · every reply", fontSize = 13.sp, color = EmberColors.Dim)
+                    Text("Always on · every chat", fontSize = 13.sp, color = EmberColors.Dim)
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Sent first with every reply from every character. Tap one to change its wording.",
+                    "Sent first with every reply from every character. Tap any rule to reword it, rename it or delete it.",
                     fontSize = 13.sp, color = EmberColors.Muted,
                 )
             }
@@ -96,21 +98,20 @@ fun RulesScreen(onBack: () -> Unit) {
                     Modifier.fillMaxWidth().background(EmberColors.Surface, RoundedCornerShape(14.dp))
                         .clickable { editGround = i }.padding(14.dp),
                 ) {
-                    Icon(
-                        Icons.Outlined.Lock, null, tint = EmberColors.RedSoft,
-                        modifier = Modifier.size(16.dp).padding(top = 2.dp),
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Column {
+                    Column(Modifier.weight(1f)) {
                         Text(g.title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.height(2.dp))
                         Text(g.text, fontSize = 13.5.sp, color = EmberColors.Muted, lineHeight = 19.sp)
                     }
+                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Outlined.Edit, "Edit", tint = EmberColors.RedSoft, modifier = Modifier.size(18.dp))
                 }
             }
             item {
-                TextButton(onClick = { confirmReset = true }) {
-                    Text("Reset ground rules to the original wording", color = EmberColors.RedSoft)
+                Row {
+                    TextButton(onClick = { editGround = -1 }) { Text("+ Add ground rule", color = EmberColors.RedSoft) }
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = { confirmReset = true }) { Text("Reset to original", color = EmberColors.Muted) }
                 }
             }
 
@@ -172,33 +173,46 @@ fun RulesScreen(onBack: () -> Unit) {
     }
 
     editGround?.let { i ->
-        val g = Store.groundRules.getOrNull(i)
+        val g = if (i < 0) GroundRule("", "") else Store.groundRules.getOrNull(i)
         if (g != null) {
+            var title by remember(i) { mutableStateOf(g.title) }
             var text by remember(i) { mutableStateOf(g.text) }
             AlertDialog(
                 onDismissRequest = { editGround = null },
-                title = { Text(g.title) },
+                title = { Text(if (i < 0) "New ground rule" else "Edit ground rule") },
                 text = {
-                    Column {
-                        Text("Exact wording sent to the model. {{char}} and {{user}} become the names.",
-                            fontSize = 13.sp, color = EmberColors.Muted)
-                        Spacer(Modifier.height(10.dp))
-                        androidx.compose.material3.TextField(
-                            value = text, onValueChange = { text = it },
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 140.dp),
-                            colors = fieldColors(), shape = RoundedCornerShape(12.dp),
+                    Column(
+                        Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        EmberField("Title", title, { title = it }, singleLine = true, placeholder = "e.g. Novel style")
+                        EmberField(
+                            "Rule", text, { text = it }, minLines = 5, maxLines = 12,
+                            placeholder = "The exact wording sent to the model. {{char}} and {{user}} become the names.",
                         )
                     }
                 },
                 confirmButton = {
                     TextButton(onClick = {
                         if (text.isNotBlank()) {
-                            Store.updateGroundRules(Store.groundRules.mapIndexed { j, x -> if (j == i) GroundRule(x.title, text.trim()) else x })
+                            val updated = GroundRule(title.trim().ifBlank { text.trim().take(30) }, text.trim())
+                            Store.updateGroundRules(
+                                if (i < 0) Store.groundRules + updated
+                                else Store.groundRules.mapIndexed { j, x -> if (j == i) updated else x }
+                            )
                         }
                         editGround = null
                     }) { Text("Save") }
                 },
-                dismissButton = { TextButton(onClick = { editGround = null }) { Text("Cancel") } },
+                dismissButton = {
+                    Row {
+                        if (i >= 0) TextButton(onClick = {
+                            Store.updateGroundRules(Store.groundRules.filterIndexed { j, _ -> j != i })
+                            editGround = null
+                        }) { Text("Delete", color = EmberColors.RedSoft) }
+                        TextButton(onClick = { editGround = null }) { Text("Cancel") }
+                    }
+                },
                 containerColor = EmberColors.Surface,
             )
         }
@@ -244,7 +258,7 @@ fun RulesScreen(onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { confirmReset = false },
             title = { Text("Reset ground rules?") },
-            text = { Text("Any wording you changed in the ground rules goes back to the original. Your own rules are not touched.") },
+            text = { Text("The ground rules go back to the original 17, with their original wording. Ground rules you added or deleted are lost or restored. Your own rules are not touched.") },
             confirmButton = { TextButton(onClick = { Store.resetGroundRules(); confirmReset = false }) { Text("Reset") } },
             dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Cancel") } },
             containerColor = EmberColors.Surface,

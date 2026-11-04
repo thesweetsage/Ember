@@ -52,12 +52,13 @@ import coil.compose.AsyncImage
 import java.io.File
 
 @Composable
-fun PersonasScreen(onBack: () -> Unit) {
+fun PersonasScreen(onBack: () -> Unit, bottomBar: @Composable () -> Unit = {}) {
     var editing by remember { mutableStateOf<Persona?>(null) }
 
     Scaffold(
         containerColor = EmberColors.Bg,
         topBar = { EmberTopBar("Your personas", onBack) },
+        bottomBar = bottomBar,
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { editing = Persona(name = "") },

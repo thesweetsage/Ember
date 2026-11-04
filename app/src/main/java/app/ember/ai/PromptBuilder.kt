@@ -63,6 +63,7 @@ object PromptBuilder {
         if (c.personality.isNotBlank()) append("Personality:\n${fill(c.personality.trim())}\n\n")
         if (c.background.isNotBlank()) append("Background:\n${fill(c.background.trim())}\n\n")
         if (c.example.isNotBlank()) append("Example of how ${c.name} writes and speaks:\n${fill(c.example.trim())}\n\n")
+        if (c.tags.isNotEmpty()) append("Tags: ${app.ember.data.Tags.describe(c.tags)}\n\n")
     }
 
     private fun StringBuilder.storySections(chat: Chat, fill: (String) -> String) {

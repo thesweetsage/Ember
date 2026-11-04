@@ -58,14 +58,16 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
     val context = LocalContext.current
     val existing = remember(characterId) { Store.character(characterId) }
     val isNew = existing == null
-    val base = existing ?: Character()
+    val draft = remember(characterId) { if (characterId == "new") Store.editorDraft else null }
+    val base = existing ?: draft ?: Character()
 
     var name by rememberSaveable { mutableStateOf(base.name) }
     var description by rememberSaveable { mutableStateOf(base.description) }
     var personality by rememberSaveable { mutableStateOf(base.personality) }
     var background by rememberSaveable { mutableStateOf(base.background) }
     var openings by remember { mutableStateOf(base.openings.ifEmpty { listOf("") }) }
-    var tags by rememberSaveable { mutableStateOf(base.tags) }
+    var tags by remember { mutableStateOf(base.tags) }
+    var pickTags by remember { mutableStateOf(false) }
     var personaId by rememberSaveable { mutableStateOf(base.personaId) }
     var useBackup by rememberSaveable { mutableStateOf(base.useBackup) }
     var pickPersona by remember { mutableStateOf(false) }
@@ -90,10 +92,11 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
             name = name.trim(), description = description, personality = personality,
             background = background, openings = openings.ifEmpty { listOf("") }, example = example,
             avatar = avatar, chatBg = chatBg, replyWords = words,
-            tags = tags.trim(), personaId = personaId, useBackup = useBackup,
+            tags = tags, personaId = personaId, useBackup = useBackup,
             tint = if (avatar != base.avatar || chatBg != base.chatBg || base.tint == null) Store.computeTint(chatBg ?: avatar) else base.tint,
         )
         Store.saveCharacter(c)
+        Store.editorDraft = null
         if (isNew) onCreated(c.id) else onBack()
     }
 
@@ -101,7 +104,7 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
         containerColor = EmberColors.Bg,
         topBar = {
             TopAppBar(
-                title = { Text(if (isNew) "New character" else "Edit ${base.name}", fontWeight = FontWeight.SemiBold) },
+                title = { Text(if (isNew) (if (draft != null) "Review your character" else "New character") else "Edit ${base.name}", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                 },
@@ -148,20 +151,20 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
             EmberField("Name", name, { name = it; error = null }, required = true,
                 placeholder = "Character name", singleLine = true)
             EmberField("Short description", description, { description = it },
-                placeholder = "One or two lines, shown at the top of the chat.", minLines = 2)
+                placeholder = "One or two lines, shown at the top of the chat.", minLines = 2, maxLines = 4)
             EmberField("Personality", personality, { personality = it },
                 placeholder = "Temperament, how they talk, what they want, what they hide, habits.",
-                minLines = 5, trailingInfo = "No limit")
+                minLines = 5, maxLines = 8, trailingInfo = "No limit")
             EmberField("Background", background, { background = it },
                 placeholder = "Appearance, history, world, relationships, the setup between them and your character. Paste as much as you like.",
-                minLines = 7,
+                minLines = 7, maxLines = 9,
                 trailingInfo = "${wordCount(background)} words · ~${background.length / 4} tokens")
             openings.forEachIndexed { i, text ->
                 EmberField(
                     if (i == 0) "Opening message" else "Alternate opening $i", text,
                     { v -> openings = openings.toMutableList().also { it[i] = v } },
                     placeholder = "Write the opening scene like a novel: third person, \"quotes\" for dialogue, actions as full sentences.",
-                    minLines = 5, trailingInfo = if (i == 0) "Swipe between openings in chat" else null,
+                    minLines = 5, maxLines = 8, trailingInfo = if (i == 0) "Swipe between openings in chat" else null,
                 )
                 if (i > 0) {
                     TextButton(onClick = { openings = openings.toMutableList().also { it.removeAt(i) } }) {
@@ -174,9 +177,22 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
                 modifier = Modifier.border(1.dp, EmberColors.Outline, RoundedCornerShape(20.dp)),
             ) { Text("+ Add alternate opening", color = EmberColors.TextSoft) }
             EmberField("Example dialogue", example, { example = it },
-                placeholder = "Optional. A few lines in their voice so the model copies the style.", minLines = 3)
-            EmberField("Tags", tags, { tags = it }, singleLine = true,
-                placeholder = "e.g. fantasy, slow burn, enemies to lovers")
+                placeholder = "Optional. A few lines in their voice so the model copies the style.", minLines = 3, maxLines = 6)
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Tags", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    Text("${tags.size} · no limit", fontSize = 12.sp, color = EmberColors.Dim)
+                }
+                Spacer(Modifier.height(8.dp))
+                if (tags.isNotEmpty()) {
+                    TagSummary(tags)
+                    Spacer(Modifier.height(10.dp))
+                }
+                TextButton(
+                    onClick = { pickTags = true },
+                    modifier = Modifier.border(1.dp, EmberColors.Outline, RoundedCornerShape(20.dp)),
+                ) { Text(if (tags.isEmpty()) "+ Add tags" else "Edit tags", color = EmberColors.TextSoft) }
+            }
 
             Column {
                 SectionLabel("Defaults for new chats")
@@ -194,6 +210,13 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
             error?.let { Text(it, color = EmberColors.RedSoft) }
             Spacer(Modifier.height(8.dp))
         }
+    }
+
+    if (pickTags) {
+        TagPickerSheet(
+            title = "Tags for ${name.ifBlank { "this character" }}", initial = tags,
+            onDone = { tags = it; pickTags = false }, onDismiss = { pickTags = false },
+        )
     }
 
     if (pickPersona) {

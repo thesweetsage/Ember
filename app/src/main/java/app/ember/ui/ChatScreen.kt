@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.outlined.AutoFixHigh
 import androidx.compose.material.icons.outlined.Draw
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Lightbulb
@@ -399,6 +400,7 @@ private fun MessageItem(m: Message, isLast: Boolean, streaming: Boolean, vm: Cha
     var editing by remember { mutableStateOf(false) }
     var confirmRewind by remember { mutableStateOf(false) }
     var pinning by remember { mutableStateOf(false) }
+    var rewriting by remember { mutableStateOf(false) }
     val clipboard = LocalClipboardManager.current
     val busy = vm.busy
 
@@ -416,6 +418,7 @@ private fun MessageItem(m: Message, isLast: Boolean, streaming: Boolean, vm: Cha
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(text = { Text("Edit") }, onClick = { menu = false; editing = true })
+                if (!m.fromUser && isLast) DropdownMenuItem(text = { Text("Rewrite with notes…") }, onClick = { menu = false; rewriting = true })
                 DropdownMenuItem(text = { Text("Copy") }, onClick = { menu = false; clipboard.setText(AnnotatedString(m.text)) })
                 DropdownMenuItem(text = { Text("Pin to memory") }, onClick = { menu = false; pinning = true })
                 if (!isLast) DropdownMenuItem(text = { Text("Rewind to here") }, onClick = { menu = false; confirmRewind = true })
@@ -430,6 +433,7 @@ private fun MessageItem(m: Message, isLast: Boolean, streaming: Boolean, vm: Cha
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (showActions) {
                     RoundAction(Icons.Filled.Refresh, "Regenerate") { vm.regenerate() }
+                    RoundAction(Icons.Outlined.AutoFixHigh, "Rewrite with notes") { rewriting = true }
                     RoundAction(Icons.Outlined.Edit, "Edit reply") { editing = true }
                     RoundAction(Icons.AutoMirrored.Filled.ArrowForward, "Continue reply") { vm.continueLast() }
                     RoundAction(Icons.Filled.PushPin, "Pin to memory") { pinning = true }
@@ -453,6 +457,41 @@ private fun MessageItem(m: Message, isLast: Boolean, streaming: Boolean, vm: Cha
         TextDialog(
             title = "Edit message", initial = m.text,
             onSave = { vm.editMessage(m.id, it); editing = false }, onDismiss = { editing = false },
+        )
+    }
+    if (rewriting) {
+        var note by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { rewriting = false },
+            title = { Text("Rewrite with notes") },
+            text = {
+                Column {
+                    Text(
+                        "Say what to change, e.g. \"don't mention the scar\", \"he shouldn't leave the room\", \"have him say he missed her\". " +
+                            "The old version stays; swipe to compare.",
+                        fontSize = 13.sp, color = EmberColors.Muted,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    TextField(
+                        value = note, onValueChange = { note = it },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 110.dp, max = 260.dp),
+                        colors = fieldColors(), shape = RoundedCornerShape(12.dp),
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    TextButton(
+                        onClick = { vm.rewriteLast(note, fromScratch = false); rewriting = false },
+                        enabled = note.isNotBlank(), modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Rewrite this reply with these changes", color = EmberColors.RedSoft) }
+                    TextButton(
+                        onClick = { vm.rewriteLast(note, fromScratch = true); rewriting = false },
+                        enabled = note.isNotBlank(), modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Start over with this in mind", color = EmberColors.RedSoft) }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { rewriting = false }) { Text("Cancel") } },
+            containerColor = EmberColors.Surface,
         )
     }
     if (pinning) {

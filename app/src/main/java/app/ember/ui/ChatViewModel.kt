@@ -129,6 +129,27 @@ class ChatViewModel : ViewModel() {
         runReply(last.id, idx, ch.messages.dropLast(1), base = "", extra = null)
     }
 
+    /**
+     * Writes a new version of the last reply guided by your note: either revising the current
+     * version, or starting it over from scratch with the note in mind. Old versions stay swipeable.
+     */
+    fun rewriteLast(note: String, fromScratch: Boolean) {
+        if (busy || note.isBlank()) return
+        val ch = chat ?: return
+        val last = ch.messages.lastOrNull() ?: return
+        if (last.fromUser) return
+        val extra = if (fromScratch) {
+            "Write this reply from scratch, keeping this direction from the user in mind: ${note.trim()}"
+        } else {
+            "Here is the current version of this reply:\n${last.text}\n\n" +
+                "Rewrite it with these changes from the user: ${note.trim()}\n" +
+                "Keep everything else as close to the current version as you can, unless the changes say otherwise."
+        }
+        val idx = last.versions.size
+        Store.updateMessage(ch.id, last.id, persist = false) { it.copy(versions = it.versions + "", sel = idx) }
+        runReply(last.id, idx, ch.messages.dropLast(1), base = "", extra = extra)
+    }
+
     /** Asks the character to keep writing the last reply from where it stopped. */
     fun continueLast() {
         if (busy) return
