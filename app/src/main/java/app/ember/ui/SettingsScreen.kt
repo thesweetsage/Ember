@@ -61,6 +61,10 @@ fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit) {
     var backupUrl by rememberSaveable { mutableStateOf(s.backupBaseUrl) }
     var backupModel by rememberSaveable { mutableStateOf(s.backupModel) }
     var newBackupKey by rememberSaveable { mutableStateOf("") }
+    var voiceUrl by rememberSaveable { mutableStateOf(s.voiceBaseUrl) }
+    var voiceModel by rememberSaveable { mutableStateOf(s.voiceModel) }
+    var voiceLang by rememberSaveable { mutableStateOf(s.voiceLanguage) }
+    var newVoiceKey by rememberSaveable { mutableStateOf("") }
     var temperature by rememberSaveable { mutableStateOf(s.temperature.toFloat()) }
     var autoSwitch by rememberSaveable { mutableStateOf(s.autoSwitchDefault) }
     var wfmWords by rememberSaveable { mutableStateOf(s.writeForMeWords.toString()) }
@@ -80,6 +84,9 @@ fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit) {
                 model = model.trim().ifBlank { "deepseek-chat" },
                 backupBaseUrl = backupUrl.trim(),
                 backupModel = backupModel.trim(),
+                voiceBaseUrl = voiceUrl.trim().ifBlank { "https://api.groq.com/openai/v1" },
+                voiceModel = voiceModel.trim().ifBlank { "whisper-large-v3-turbo" },
+                voiceLanguage = voiceLang.trim().lowercase(),
                 temperature = (temperature * 10).roundToInt() / 10.0,
                 autoSwitchDefault = autoSwitch,
                 writeForMeWords = wfmWords.toIntOrNull()?.let { if (it <= 0) 0 else it.coerceIn(20, 2000) } ?: 0,
@@ -89,6 +96,7 @@ fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit) {
         )
         if (newKey.isNotBlank()) { Store.setApiKey(newKey); newKey = "" }
         if (newBackupKey.isNotBlank()) { Store.setBackupKey(newBackupKey); newBackupKey = "" }
+        if (newVoiceKey.isNotBlank()) { Store.setVoiceKey(newVoiceKey); newVoiceKey = "" }
     }
 
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
@@ -182,6 +190,33 @@ fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit) {
                 if (Store.hasBackupKey) TextButton(onClick = { Store.setBackupKey(""); backupStatus = "Backup key removed." }) { Text("Remove key", color = EmberColors.RedSoft) }
             }
             backupStatus?.let { Text(it, color = EmberColors.TextSoft, fontSize = 14.sp) }
+            SectionLabel("Voice transcription (optional)")
+            Text(
+                "For accurate dictation with the mic buttons. Works with Groq (Whisper, set up below by default) or any provider " +
+                    "with the same audio API, such as OpenAI. Without a key, the phone's own voice typing is used.",
+                fontSize = 13.sp, color = EmberColors.Muted,
+            )
+            EmberField(
+                "API key", newVoiceKey, { newVoiceKey = it }, singleLine = true,
+                placeholder = if (Store.hasVoiceKey) "Saved. Type a new one to replace it." else "Paste your Groq key (gsk_…)",
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                trailingInfo = if (Store.hasVoiceKey) "Saved, encrypted" else "Not set",
+            )
+            EmberField("Provider address", voiceUrl, { voiceUrl = it }, singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, capitalization = KeyboardCapitalization.None))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                EmberField("Model name", voiceModel, { voiceModel = it }, singleLine = true, modifier = Modifier.weight(2f),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None))
+                EmberField("Language", voiceLang, { voiceLang = it }, singleLine = true, modifier = Modifier.weight(1f),
+                    placeholder = "en",
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None))
+            }
+            Text("Language is a two-letter code (en, pt…). Leave it empty to detect automatically.", fontSize = 12.5.sp, color = EmberColors.Muted)
+            if (Store.hasVoiceKey) {
+                TextButton(onClick = { Store.setVoiceKey("") }) { Text("Remove voice key", color = EmberColors.RedSoft) }
+            }
+
             SettingsGroup("Defaults for new chats") {
                 ToggleRow("Switch to backup on refusal", autoSwitch, divider = true) { autoSwitch = it }
                 Column(Modifier.padding(vertical = 12.dp)) {

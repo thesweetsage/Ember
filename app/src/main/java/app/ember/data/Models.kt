@@ -115,6 +115,10 @@ data class Settings(
     val defaultPersonaId: String? = null,
     /** The character shown as a wide banner at the top of the library. */
     val pinnedCharacterId: String? = null,
+    /** Voice transcription (Whisper-style API). Empty key means the phone's own voice typing is used. */
+    val voiceBaseUrl: String = "https://api.groq.com/openai/v1",
+    val voiceModel: String = "whisper-large-v3-turbo",
+    val voiceLanguage: String = "en",
     /** Optional prices per million tokens, in euros, for the cost counter. */
     val priceIn: Double = 0.0,
     val priceOut: Double = 0.0,

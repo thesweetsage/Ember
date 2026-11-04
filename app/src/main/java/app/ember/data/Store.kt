@@ -59,6 +59,8 @@ object Store {
         private set
     var hasBackupKey by mutableStateOf(false)
         private set
+    var hasVoiceKey by mutableStateOf(false)
+        private set
     private var activeChats by mutableStateOf(mapOf<String, String>())
 
     /** A message to scroll to when a chat opens (set by search). */
@@ -91,6 +93,7 @@ object Store {
             .mapKeys { it.key.removePrefix("active_") }.mapValues { it.value.toString() }
         hasApiKey = prefs.contains("apiKey")
         hasBackupKey = prefs.contains("backupKey")
+        hasVoiceKey = prefs.contains("voiceKey")
         migrateLegacyUser()
         addStarterPresets()
     }
@@ -237,6 +240,17 @@ object Store {
         else prefs.edit().putString("backupKey", KeyVault.encrypt(key.trim())).apply()
         hasBackupKey = key.isNotBlank()
     }
+
+    fun voiceKey(): String = prefs.getString("voiceKey", null)?.let { KeyVault.decrypt(it) }.orEmpty()
+
+    fun setVoiceKey(key: String) {
+        if (key.isBlank()) prefs.edit().remove("voiceKey").apply()
+        else prefs.edit().putString("voiceKey", KeyVault.encrypt(key.trim())).apply()
+        hasVoiceKey = key.isNotBlank()
+    }
+
+    val voiceReady: Boolean
+        get() = hasVoiceKey && settings.voiceBaseUrl.isNotBlank() && settings.voiceModel.isNotBlank()
 
     val backupReady: Boolean
         get() = hasBackupKey && settings.backupBaseUrl.isNotBlank() && settings.backupModel.isNotBlank()
