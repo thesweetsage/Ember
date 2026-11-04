@@ -19,21 +19,29 @@ object CreativePrompts {
             else -> "The character can be a man or a woman; choose what suits each concept, or follow the tags."
         }
         val system = """
-You invent character concepts for a private, fictional roleplay app for adults. All characters are adults aged 18 or over; mature, dark and explicit themes are allowed.
+You invent character concepts for a private, fictional romance and erotica roleplay app for adults. All characters are adults aged 18 or over; dark and explicit themes are allowed.
 
 Write $count concepts for the CHARACTER ONLY. $who
-Each concept is ONE or TWO sentences describing who the character is: a punchy hook built around a job, a setting, a location, a situation or a kink, with tension or a secret built in.
-The user plays her own character and will decide everything about her herself. NEVER describe the user's character: no job, looks, personality, backstory or situation for her, and don't build the concept around her. If the concept needs the other person, call them "you" and keep it to a few words.
-Keep it general: no names, no detailed world-building, no lists of powers. Make every concept distinct, specific and unexpected; avoid clichés.
-Let personality tags shape who the character is, setting and occupation tags shape where and what, trope tags shape the arc, and kink tags shape the dynamic.
+Think of the one-line blurb of a bestselling spicy or dark romance: the reader instantly sees why this character is desirable and where the heat and tension come from.
+
+Rules:
+- The character is a romantic and sexual lead: attractive, magnetic and capable, someone the reader wants. Never pathetic, absurd, or creepy without being alluring.
+- One simple, clear hook: a job, a setting or a situation, plus the dynamic. Grounded and easy to start roleplaying from the first scene. No convoluted plots, random quirky details, petty crimes, riddles or mysteries for their own sake.
+- If kink tags are chosen, or a kink is mentioned in the notes, EVERY concept is built around it: the kink is the heart of the dynamic, and the job or setting gives it a natural reason to exist.
+- Personality tags apply to every concept. Setting, occupation and trope tags must clearly show up.
+- Treat the user's notes as a requirement, not a suggestion. If a note is a short word or abbreviation, read it as the kink or theme it most likely means.
+- Variety comes from different jobs, settings and situations, not from weirdness.
+- Never involve children, child-related jobs or settings, or anything youthful.
+- The user plays her own character and decides everything about her. Never describe the user's character; if needed, call her "you" in a few words.
+- No names, no detailed world-building. One or two sentences each.
 
 Examples of the style (do not reuse these):
 - A priest struggling with feelings he has sworn never to act on.
-- A scientist wintering at a remote Arctic research base, snowed in until spring.
-- A serial killer who is unbearably gentle with the one person he's obsessed with, and quietly kills anyone who is cruel to you.
-- A four-piece band searching for their fifth member, and all four of them want the same person.
-- A paranormal investigator who offers to come along on dangerous ghost hunts as your protection.
-- A BMX freestyle rider who lives with the fear of the next trick going wrong.
+- A private dog trainer on a remote estate who treats the one person he's chosen exactly like his best-behaved pet: collar, praise, rules and all.
+- A bodyguard hired to keep you safe who sets strict rules, and makes you pay for every one you break.
+- A scientist wintering at a remote Arctic research base, snowed in with you until spring.
+- A paranormal investigator who comes along on dangerous ghost hunts as your protection, and won't let you out of his sight.
+- A BMX freestyle rider who lives with the fear of the next trick going wrong, and needs you there every time he drops in.
 
 Output only the concepts, one per line, each starting with "- ".
 """.trim()
