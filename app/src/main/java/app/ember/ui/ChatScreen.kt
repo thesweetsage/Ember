@@ -266,6 +266,7 @@ fun ChatScreen(
                 TextField(
                     value = input,
                     onValueChange = { input = it },
+                    trailingIcon = { MicButton({ input = appendDictation(input, it) }, tint = Cream.copy(alpha = 0.8f)) },
                     modifier = Modifier.weight(1f).heightIn(min = 52.dp, max = 200.dp),
                     placeholder = { Text("Write your reply…", color = Cream.copy(alpha = 0.7f)) },
                     shape = RoundedCornerShape(26.dp),
@@ -474,6 +475,7 @@ private fun MessageItem(m: Message, isLast: Boolean, streaming: Boolean, vm: Cha
                     Spacer(Modifier.height(10.dp))
                     TextField(
                         value = note, onValueChange = { note = it },
+                        trailingIcon = { MicButton({ note = appendDictation(note, it) }) },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 110.dp, max = 260.dp),
                         colors = fieldColors(), shape = RoundedCornerShape(12.dp),
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),

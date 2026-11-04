@@ -196,6 +196,7 @@ fun TextDialog(
                 }
                 androidx.compose.material3.TextField(
                     value = text, onValueChange = { text = it },
+                    trailingIcon = { MicButton({ text = appendDictation(text, it) }) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp, max = 420.dp),
                     colors = fieldColors(), shape = RoundedCornerShape(12.dp),
                 )

@@ -292,6 +292,7 @@ fun BuilderScreen(buildId: String?, onBack: () -> Unit, openEditor: () -> Unit) 
             Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.Bottom) {
                 TextField(
                     value = input, onValueChange = { input = it },
+                    trailingIcon = { MicButton({ input = appendDictation(input, it) }) },
                     modifier = Modifier.weight(1f).heightIn(min = 52.dp, max = 180.dp),
                     placeholder = { Text("e.g. a priest and an atheist, dominant, pet play", color = EmberColors.Dim) },
                     colors = fieldColors(), shape = RoundedCornerShape(26.dp),

@@ -79,6 +79,7 @@ fun WriteForMeSheet(vm: ChatViewModel, personaName: String, onSent: () -> Unit) 
             Text("Your notes: what you do and say", fontSize = 13.sp, color = EmberColors.Muted)
             TextField(
                 value = vm.wfmNotes, onValueChange = { vm.wfmNotes = it },
+                trailingIcon = { MicButton({ vm.wfmNotes = appendDictation(vm.wfmNotes, it) }) },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 90.dp, max = 220.dp),
                 placeholder = { Text("e.g. she laughs, grabs his sleeve, says she wasn't admiring anything. Leave empty and it decides.", color = EmberColors.Dim) },
                 colors = fieldColors(), shape = RoundedCornerShape(12.dp),
@@ -120,6 +121,7 @@ fun WriteForMeSheet(vm: ChatViewModel, personaName: String, onSent: () -> Unit) 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextField(
                         value = vm.wfmChange, onValueChange = { vm.wfmChange = it },
+                        trailingIcon = { MicButton({ vm.wfmChange = appendDictation(vm.wfmChange, it) }) },
                         modifier = Modifier.weight(1f),
                         placeholder = { Text("Change something: shorter, flirtier, add…", color = EmberColors.Dim) },
                         colors = fieldColors(), shape = RoundedCornerShape(24.dp), singleLine = true,
