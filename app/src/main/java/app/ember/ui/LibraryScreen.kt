@@ -29,7 +29,9 @@ import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Rule
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -62,7 +64,7 @@ import app.ember.data.Store
 import coil.compose.AsyncImage
 import java.io.File
 
-private enum class Tab(val label: String) { All("All"), Favourites("Favourites"), Recent("Recent") }
+private enum class Tab(val label: String) { All("All"), Favourites("Favourites"), Recent("Recent"), Archived("Archived") }
 
 @Composable
 fun LibraryScreen(
@@ -70,16 +72,21 @@ fun LibraryScreen(
     editCharacter: (String) -> Unit,
     openRules: () -> Unit,
     openSettings: () -> Unit,
+    openPersonas: () -> Unit,
 ) {
     var tab by rememberSaveable { mutableStateOf(Tab.All) }
     var confirmDelete by remember { mutableStateOf<Character?>(null) }
+    var query by rememberSaveable { mutableStateOf("") }
+    var searching by rememberSaveable { mutableStateOf(false) }
 
-    val all = Store.characters
+    val all = Store.characters.filter { !it.archived }
+    val q = query.trim().lowercase()
     val shown = when (tab) {
         Tab.All -> all.sortedBy { it.name.lowercase() }
         Tab.Favourites -> all.filter { it.favourite }.sortedBy { it.name.lowercase() }
         Tab.Recent -> all.sortedByDescending { maxOf(Store.lastActivity(it.id), it.createdAt) }
-    }
+        Tab.Archived -> Store.characters.filter { it.archived }.sortedBy { it.name.lowercase() }
+    }.filter { q.isEmpty() || it.name.lowercase().contains(q) || it.tags.lowercase().contains(q) }
 
     Scaffold(
         containerColor = EmberColors.Bg,
@@ -97,6 +104,8 @@ fun LibraryScreen(
             ) {
                 Text("Ember", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = EmberColors.Text)
                 Spacer(Modifier.weight(1f))
+                IconButton(onClick = { searching = !searching; if (!searching) query = "" }) { Icon(Icons.Outlined.Search, "Search", tint = EmberColors.Text) }
+                IconButton(onClick = openPersonas) { Icon(Icons.Outlined.Person, "Personas", tint = EmberColors.Text) }
                 IconButton(onClick = openRules) { Icon(Icons.Outlined.Rule, "Rules", tint = EmberColors.Text) }
                 IconButton(onClick = openSettings) { Icon(Icons.Outlined.Settings, "Settings", tint = EmberColors.Text) }
             }
@@ -113,6 +122,14 @@ fun LibraryScreen(
                     )
                     Text("Open", color = EmberColors.RedSoft, fontWeight = FontWeight.SemiBold)
                 }
+            }
+            if (searching) {
+                androidx.compose.material3.TextField(
+                    value = query, onValueChange = { query = it }, singleLine = true,
+                    placeholder = { Text("Search names or tags", color = EmberColors.Dim) },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    colors = fieldColors(), shape = RoundedCornerShape(24.dp),
+                )
             }
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
@@ -142,10 +159,15 @@ fun LibraryScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
-                        if (tab == Tab.Favourites) "No favourites yet." else "No characters yet.",
+                        when {
+                            q.isNotEmpty() -> "No matches."
+                            tab == Tab.Favourites -> "No favourites yet."
+                            tab == Tab.Archived -> "Nothing archived."
+                            else -> "No characters yet."
+                        },
                         color = EmberColors.Muted, fontSize = 16.sp,
                     )
-                    if (tab != Tab.Favourites) {
+                    if (tab == Tab.All && q.isEmpty()) {
                         Spacer(Modifier.height(16.dp))
                         Button(onClick = { editCharacter("new") }) { Text("Create your first character") }
                     }
@@ -163,6 +185,7 @@ fun LibraryScreen(
                             onOpen = { openChat(c.id) },
                             onEdit = { editCharacter(c.id) },
                             onFavourite = { Store.saveCharacter(c.copy(favourite = !c.favourite)) },
+                            onArchive = { Store.saveCharacter(c.copy(archived = !c.archived)) },
                             onDelete = { confirmDelete = c },
                         )
                     }
@@ -193,6 +216,7 @@ private fun CharacterCard(
     onOpen: () -> Unit,
     onEdit: () -> Unit,
     onFavourite: () -> Unit,
+    onArchive: () -> Unit,
     onDelete: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
@@ -244,6 +268,7 @@ private fun CharacterCard(
                     text = { Text(if (c.favourite) "Remove from favourites" else "Add to favourites") },
                     onClick = { menu = false; onFavourite() },
                 )
+                DropdownMenuItem(text = { Text(if (c.archived) "Unarchive" else "Archive") }, onClick = { menu = false; onArchive() })
                 DropdownMenuItem(text = { Text("Delete") }, onClick = { menu = false; onDelete() })
             }
         }

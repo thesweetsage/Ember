@@ -153,3 +153,4 @@ fun formatStory(text: String): AnnotatedString = buildAnnotatedString {
 }
 
 fun wordCount(s: String): Int = s.split(Regex("\\s+")).count { it.isNotBlank() }
+

@@ -10,14 +10,22 @@ data class Character(
     val description: String = "",
     val personality: String = "",
     val background: String = "",
-    val opening: String = "",
+    /** First entry is the main opening; the rest are alternates you can swipe between. */
+    val openings: List<String> = listOf(""),
     val example: String = "",
     val avatar: String? = null,
     val chatBg: String? = null,
     val replyWords: Int = 300,
+    val personaId: String? = null,
+    val useBackup: Boolean = false,
+    val tags: String = "",
+    val tint: Int? = null,
     val favourite: Boolean = false,
+    val archived: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
-)
+) {
+    val opening: String get() = openings.firstOrNull().orEmpty()
+}
 
 data class Message(
     val id: String = newId(),
@@ -28,13 +36,35 @@ data class Message(
     val text: String get() = versions.getOrElse(sel) { "" }
 }
 
+data class Pin(val id: String = newId(), val text: String)
+
+/** Auto summary of messages [from, to) of a chat. */
+data class Summary(val id: String = newId(), val from: Int, val to: Int, val text: String)
+
 data class Chat(
     val id: String = newId(),
     val characterId: String,
     val messages: List<Message> = emptyList(),
     val replyWords: Int = 300,
+    val personaId: String? = null,
+    val presetId: String? = null,
+    val direction: String = "",
+    val pins: List<Pin> = emptyList(),
+    val summaries: List<Summary> = emptyList(),
+    val temperature: Double? = null,
+    val useBackup: Boolean = false,
+    val autoSwitch: Boolean = true,
+    val tintFromPhoto: Boolean = true,
+    val bubbleOpacity: Float = 0.85f,
+    val textSize: Int = 16,
+    val tokensIn: Long = 0,
+    val tokensOut: Long = 0,
+    val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
-)
+) {
+    /** Number of messages already folded into summaries. */
+    val coveredUntil: Int get() = summaries.maxOfOrNull { it.to } ?: 0
+}
 
 data class Rule(
     val id: String = newId(),
@@ -43,12 +73,32 @@ data class Rule(
     val enabled: Boolean = true,
 )
 
+/** A named bundle of rules you switch on per chat. */
+data class Preset(val id: String = newId(), val name: String, val rules: List<String>)
+
+data class Persona(
+    val id: String = newId(),
+    val name: String,
+    val description: String = "",
+    val avatar: String? = null,
+)
+
 data class Settings(
     val baseUrl: String = "https://api.deepseek.com",
     val model: String = "deepseek-chat",
     val temperature: Double = 1.0,
-    val userName: String = "",
-    val userDescription: String = "",
+    val backupBaseUrl: String = "",
+    val backupModel: String = "",
+    val autoSwitchDefault: Boolean = true,
+    val summariseEvery: Int = 30,
+    val writeForMeWords: Int = 100,
+    val defaultPersonaId: String? = null,
+    /** Optional prices per million tokens, in euros, for the cost counter. */
+    val priceIn: Double = 0.0,
+    val priceOut: Double = 0.0,
+    /** Kept only to move an old single "your character" into a persona. */
+    val legacyUserName: String = "",
+    val legacyUserDescription: String = "",
 )
 
 /** One built-in writing rule. Title is shown in the app; text is what the model receives. */

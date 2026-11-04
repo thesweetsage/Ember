@@ -2,12 +2,20 @@ package app.ember.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.palette.graphics.Palette
+import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 
 /**
  * All app data, kept in memory as Compose state and saved as JSON files in the app's
@@ -18,14 +26,17 @@ object Store {
     private lateinit var chatDir: File
     private lateinit var imageDir: File
     private lateinit var prefs: SharedPreferences
-    private val writer = Executors.newSingleThreadExecutor()
+    private var writer = Executors.newSingleThreadExecutor()
 
     var characters by mutableStateOf(listOf<Character>())
-
         private set
     var chats by mutableStateOf(listOf<Chat>())
         private set
     var rules by mutableStateOf(listOf<Rule>())
+        private set
+    var presets by mutableStateOf(listOf<Preset>())
+        private set
+    var personas by mutableStateOf(listOf<Persona>())
         private set
     var groundRules by mutableStateOf(DEFAULT_GROUND_RULES)
         private set
@@ -33,6 +44,12 @@ object Store {
         private set
     var hasApiKey by mutableStateOf(false)
         private set
+    var hasBackupKey by mutableStateOf(false)
+        private set
+    private var activeChats by mutableStateOf(mapOf<String, String>())
+
+    /** A message to scroll to when a chat opens (set by search). */
+    var focusMessageId by mutableStateOf<String?>(null)
 
     fun init(context: Context) {
         if (::dir.isInitialized) return
@@ -40,17 +57,61 @@ object Store {
         chatDir = File(dir, "chats").apply { mkdirs() }
         imageDir = File(dir, "images").apply { mkdirs() }
         prefs = context.getSharedPreferences("ember", Context.MODE_PRIVATE)
+        load()
+    }
 
+    private fun load() {
         characters = read("characters.json")?.let { Json.parseList(it) { o -> Json.character(o) } } ?: emptyList()
         rules = read("rules.json")?.let { Json.parseList(it) { o -> Json.rule(o) } } ?: emptyList()
+        presets = read("presets.json")?.let { Json.parseList(it) { o -> Json.preset(o) } } ?: emptyList()
+        personas = read("personas.json")?.let { Json.parseList(it) { o -> Json.persona(o) } } ?: emptyList()
         groundRules = read("ground.json")?.let { Json.parseList(it) { o -> Json.ground(o) } }
             ?.takeIf { it.isNotEmpty() } ?: DEFAULT_GROUND_RULES
-        settings = read("settings.json")?.let { runCatching { Json.settings(org.json.JSONObject(it)) }.getOrNull() }
-            ?: Settings()
+        settings = read("settings.json")?.let { runCatching { Json.settings(JSONObject(it)) }.getOrNull() } ?: Settings()
         chats = chatDir.listFiles().orEmpty().filter { it.name.endsWith(".json") }.mapNotNull { f ->
-            runCatching { Json.chat(org.json.JSONObject(f.readText())) }.getOrNull()
+            runCatching { Json.chat(JSONObject(f.readText())) }.getOrNull()
         }
+        activeChats = prefs.all.filterKeys { it.startsWith("active_") }
+            .mapKeys { it.key.removePrefix("active_") }.mapValues { it.value.toString() }
         hasApiKey = prefs.contains("apiKey")
+        hasBackupKey = prefs.contains("backupKey")
+        migrateLegacyUser()
+        addStarterPresets()
+    }
+
+    /** Older builds had one "your character" in Settings; it becomes your first persona. */
+    private fun migrateLegacyUser() {
+        val s = settings
+        if (personas.isEmpty() && s.legacyUserName.isNotBlank()) {
+            val p = Persona(name = s.legacyUserName, description = s.legacyUserDescription)
+            personas = listOf(p); savePersonas()
+            updateSettings(s.copy(defaultPersonaId = p.id, legacyUserName = "", legacyUserDescription = ""))
+        }
+    }
+
+    private fun addStarterPresets() {
+        if (prefs.getBoolean("starterPresets", false)) return
+        if (presets.isEmpty()) {
+            presets = listOf(
+                Preset(name = "Slow burn", rules = listOf(
+                    "Build tension slowly through glances, near-touches and charged dialogue.",
+                    "Do not rush to a kiss or anything physical; let it simmer.",
+                    "Keep the attraction mostly in subtext and inner thoughts.",
+                )),
+                Preset(name = "Explicit scene", rules = listOf(
+                    "This scene is intimate. Write it explicitly and without fading to black.",
+                    "Slow the pacing down and stay in the moment, describing each touch and reaction.",
+                    "Keep dialogue in the scene; let the characters talk to each other.",
+                    "Stay true to each character's personality, even in intimacy.",
+                )),
+                Preset(name = "Short and punchy", rules = listOf(
+                    "Favour dialogue over description.",
+                    "Keep paragraphs short and the pace quick.",
+                )),
+            )
+            savePresets()
+        }
+        prefs.edit().putBoolean("starterPresets", true).apply()
     }
 
     // ---------- files ----------
@@ -69,6 +130,8 @@ object Store {
 
     private fun saveCharacters() = write(File(dir, "characters.json"), Json.list(characters) { Json.character(it) })
     private fun saveRules() = write(File(dir, "rules.json"), Json.list(rules) { Json.rule(it) })
+    private fun savePresets() = write(File(dir, "presets.json"), Json.list(presets) { Json.preset(it) })
+    private fun savePersonas() = write(File(dir, "personas.json"), Json.list(personas) { Json.persona(it) })
     private fun saveGround() = write(File(dir, "ground.json"), Json.list(groundRules) { Json.ground(it) })
     private fun saveSettings() = write(File(dir, "settings.json"), Json.settings(settings).toString())
 
@@ -85,15 +148,42 @@ object Store {
         if (path != null && path.startsWith(imageDir.absolutePath)) File(path).delete()
     }
 
-    // ---------- API key ----------
+    /** A dark colour taken from a photo, used to tint that character's chat. */
+    fun computeTint(path: String?): Int? = runCatching {
+        if (path == null) return null
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(path, bounds)
+        var sample = 1
+        while (bounds.outWidth / sample > 300 || bounds.outHeight / sample > 300) sample *= 2
+        val bmp = BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample }) ?: return null
+        val p = Palette.from(bmp).generate()
+        val sw = p.mutedSwatch ?: p.darkMutedSwatch ?: p.darkVibrantSwatch ?: p.dominantSwatch ?: return null
+        val hsv = FloatArray(3)
+        Color.colorToHSV(sw.rgb, hsv)
+        hsv[1] = hsv[1].coerceAtMost(0.55f)
+        hsv[2] = hsv[2].coerceIn(0.28f, 0.42f)
+        Color.HSVToColor(hsv)
+    }.getOrNull()
+
+    // ---------- API keys ----------
 
     fun apiKey(): String = prefs.getString("apiKey", null)?.let { KeyVault.decrypt(it) }.orEmpty()
+    fun backupKey(): String = prefs.getString("backupKey", null)?.let { KeyVault.decrypt(it) }.orEmpty()
 
     fun setApiKey(key: String) {
         if (key.isBlank()) prefs.edit().remove("apiKey").apply()
         else prefs.edit().putString("apiKey", KeyVault.encrypt(key.trim())).apply()
         hasApiKey = key.isNotBlank()
     }
+
+    fun setBackupKey(key: String) {
+        if (key.isBlank()) prefs.edit().remove("backupKey").apply()
+        else prefs.edit().putString("backupKey", KeyVault.encrypt(key.trim())).apply()
+        hasBackupKey = key.isNotBlank()
+    }
+
+    val backupReady: Boolean
+        get() = hasBackupKey && settings.backupBaseUrl.isNotBlank() && settings.backupModel.isNotBlank()
 
     // ---------- characters ----------
 
@@ -124,31 +214,81 @@ object Store {
     fun lastActivity(characterId: String): Long =
         chats.filter { it.characterId == characterId }.maxOfOrNull { it.updatedAt } ?: 0L
 
+    // ---------- personas ----------
+
+    fun persona(id: String?): Persona? = id?.let { pid -> personas.firstOrNull { it.id == pid } }
+
+    fun savePersona(p: Persona) {
+        val old = persona(p.id)
+        if (old != null && old.avatar != p.avatar) deleteImage(old.avatar)
+        personas = if (old == null) personas + p else personas.map { if (it.id == p.id) p else it }
+        savePersonas()
+        if (settings.defaultPersonaId == null) updateSettings(settings.copy(defaultPersonaId = p.id))
+    }
+
+    fun deletePersona(id: String) {
+        persona(id)?.let { deleteImage(it.avatar) }
+        personas = personas.filter { it.id != id }
+        savePersonas()
+        if (settings.defaultPersonaId == id) updateSettings(settings.copy(defaultPersonaId = personas.firstOrNull()?.id))
+    }
+
+    /** The persona a chat uses: its own choice, else the character's default, else your default. */
+    fun personaFor(chat: Chat?, character: Character?): Persona? =
+        persona(chat?.personaId) ?: persona(character?.personaId) ?: persona(settings.defaultPersonaId)
+
     // ---------- chats ----------
 
     fun chat(id: String): Chat? = chats.firstOrNull { it.id == id }
 
-    fun latestChat(characterId: String): Chat? =
-        chats.filter { it.characterId == characterId }.maxByOrNull { it.updatedAt }
+    fun chatsFor(characterId: String): List<Chat> =
+        chats.filter { it.characterId == characterId }.sortedByDescending { it.updatedAt }
+
+    /** The chat that opens for a character: the one you last picked, else the newest. */
+    fun activeChat(characterId: String): Chat? =
+        activeChats[characterId]?.let { chat(it) } ?: chatsFor(characterId).firstOrNull()
+
+    fun setActiveChat(characterId: String, chatId: String) {
+        activeChats = activeChats + (characterId to chatId)
+        prefs.edit().putString("active_$characterId", chatId).apply()
+    }
 
     fun newChat(c: Character): Chat {
-        val opening = c.opening.trim()
+        val openings = c.openings.map { it.trim() }.filter { it.isNotEmpty() }
         val chat = Chat(
             characterId = c.id,
             replyWords = c.replyWords,
-            messages = if (opening.isEmpty()) emptyList()
-            else listOf(Message(fromUser = false, versions = listOf(opening))),
+            useBackup = c.useBackup,
+            autoSwitch = settings.autoSwitchDefault,
+            messages = if (openings.isEmpty()) emptyList()
+            else listOf(Message(fromUser = false, versions = openings)),
         )
         putChat(chat, persist = true)
+        setActiveChat(c.id, chat.id)
         return chat
     }
 
+    fun deleteChat(id: String) {
+        val c = chat(id) ?: return
+        File(chatDir, "$id.json").delete()
+        chats = chats.filter { it.id != id }
+        if (activeChats[c.characterId] == id) {
+            activeChats = activeChats - c.characterId
+            prefs.edit().remove("active_${c.characterId}").apply()
+        }
+    }
+
     /** Replaces a chat in memory; persist = false while a reply is still streaming in. */
-    fun putChat(chat: Chat, persist: Boolean = true) {
-        val updated = chat.copy(updatedAt = System.currentTimeMillis())
+    fun putChat(chat: Chat, persist: Boolean = true, touch: Boolean = true) {
+        val updated = if (touch) chat.copy(updatedAt = System.currentTimeMillis()) else chat
         chats = if (chats.any { it.id == chat.id }) chats.map { if (it.id == chat.id) updated else it }
         else chats + updated
         if (persist) persistChat(chat.id)
+    }
+
+    fun updateChat(id: String, persist: Boolean = true, f: (Chat) -> Chat) {
+        val c = chat(id) ?: return
+        putChat(f(c), persist)
     }
 
     fun persistChat(id: String) {
@@ -157,14 +297,67 @@ object Store {
     }
 
     fun updateMessage(chatId: String, messageId: String, persist: Boolean, f: (Message) -> Message) {
-        val c = chat(chatId) ?: return
-        putChat(c.copy(messages = c.messages.map { if (it.id == messageId) f(it) else it }), persist)
+        updateChat(chatId, persist) { c -> c.copy(messages = c.messages.map { if (it.id == messageId) f(it) else it }) }
     }
 
-    // ---------- rules & settings ----------
+    // ---------- rules, presets & settings ----------
 
     fun updateRules(list: List<Rule>) { rules = list; saveRules() }
+    fun updatePresets(list: List<Preset>) { presets = list; savePresets() }
+    fun preset(id: String?): Preset? = id?.let { pid -> presets.firstOrNull { it.id == pid } }
     fun updateGroundRules(list: List<GroundRule>) { groundRules = list; saveGround() }
     fun resetGroundRules() = updateGroundRules(DEFAULT_GROUND_RULES)
     fun updateSettings(s: Settings) { settings = s; saveSettings() }
+
+    // ---------- backup & restore ----------
+
+    private fun flushWrites() {
+        writer.shutdown()
+        writer.awaitTermination(10, TimeUnit.SECONDS)
+        writer = Executors.newSingleThreadExecutor()
+    }
+
+    /** Writes characters, chats, photos, personas, rules and settings into one zip. API keys are not included. */
+    fun exportTo(context: Context, uri: Uri) {
+        flushWrites()
+        context.contentResolver.openOutputStream(uri)!!.use { out ->
+            ZipOutputStream(out).use { zip ->
+                dir.walkTopDown().filter { it.isFile && !it.name.endsWith(".tmp") }.forEach { f ->
+                    zip.putNextEntry(ZipEntry(f.relativeTo(dir).path))
+                    f.inputStream().use { it.copyTo(zip) }
+                    zip.closeEntry()
+                }
+            }
+        }
+    }
+
+    /** Replaces everything in the app with the contents of a backup zip made by [exportTo]. */
+    fun importFrom(context: Context, uri: Uri) {
+        flushWrites()
+        val staging = File(dir.parentFile, "ember_restore").apply { deleteRecursively(); mkdirs() }
+        val root = staging.canonicalPath + File.separator
+        var sawData = false
+        context.contentResolver.openInputStream(uri)!!.use { input ->
+            ZipInputStream(input).use { zip ->
+                while (true) {
+                    val e = zip.nextEntry ?: break
+                    val target = File(staging, e.name)
+                    if (!target.canonicalPath.startsWith(root)) continue
+                    if (e.isDirectory) { target.mkdirs(); continue }
+                    target.parentFile?.mkdirs()
+                    target.outputStream().use { zip.copyTo(it) }
+                    if (e.name == "characters.json") sawData = true
+                }
+            }
+        }
+        require(sawData) { "That file isn't an Ember backup." }
+        dir.deleteRecursively()
+        staging.renameTo(dir)
+        chatDir = File(dir, "chats").apply { mkdirs() }
+        imageDir = File(dir, "images").apply { mkdirs() }
+        prefs.edit().apply { prefs.all.keys.filter { it.startsWith("active_") }.forEach { remove(it) } }.apply()
+    }
+
+    /** Reloads everything from disk (call on the main thread after a restore). */
+    fun reload() = load()
 }

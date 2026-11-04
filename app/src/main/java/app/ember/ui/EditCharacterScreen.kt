@@ -64,7 +64,11 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
     var description by rememberSaveable { mutableStateOf(base.description) }
     var personality by rememberSaveable { mutableStateOf(base.personality) }
     var background by rememberSaveable { mutableStateOf(base.background) }
-    var opening by rememberSaveable { mutableStateOf(base.opening) }
+    var openings by remember { mutableStateOf(base.openings.ifEmpty { listOf("") }) }
+    var tags by rememberSaveable { mutableStateOf(base.tags) }
+    var personaId by rememberSaveable { mutableStateOf(base.personaId) }
+    var useBackup by rememberSaveable { mutableStateOf(base.useBackup) }
+    var pickPersona by remember { mutableStateOf(false) }
     var example by rememberSaveable { mutableStateOf(base.example) }
     var replyWords by rememberSaveable { mutableStateOf(base.replyWords.toString()) }
     var avatar by rememberSaveable { mutableStateOf(base.avatar) }
@@ -84,8 +88,10 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
         val words = replyWords.toIntOrNull()?.coerceIn(30, 2000) ?: 300
         val c = base.copy(
             name = name.trim(), description = description, personality = personality,
-            background = background, opening = opening, example = example,
+            background = background, openings = openings.ifEmpty { listOf("") }, example = example,
             avatar = avatar, chatBg = chatBg, replyWords = words,
+            tags = tags.trim(), personaId = personaId, useBackup = useBackup,
+            tint = if (avatar != base.avatar || chatBg != base.chatBg || base.tint == null) Store.computeTint(chatBg ?: avatar) else base.tint,
         )
         Store.saveCharacter(c)
         if (isNew) onCreated(c.id) else onBack()
@@ -150,11 +156,35 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
                 placeholder = "Appearance, history, world, relationships, the setup between them and your character. Paste as much as you like.",
                 minLines = 7,
                 trailingInfo = "${wordCount(background)} words · ~${background.length / 4} tokens")
-            EmberField("Opening message", opening, { opening = it },
-                placeholder = "Write the opening scene like a novel: third person, \"quotes\" for dialogue, actions as full sentences.",
-                minLines = 5, trailingInfo = "No limit")
+            openings.forEachIndexed { i, text ->
+                EmberField(
+                    if (i == 0) "Opening message" else "Alternate opening $i", text,
+                    { v -> openings = openings.toMutableList().also { it[i] = v } },
+                    placeholder = "Write the opening scene like a novel: third person, \"quotes\" for dialogue, actions as full sentences.",
+                    minLines = 5, trailingInfo = if (i == 0) "Swipe between openings in chat" else null,
+                )
+                if (i > 0) {
+                    TextButton(onClick = { openings = openings.toMutableList().also { it.removeAt(i) } }) {
+                        Text("Remove alternate opening $i", color = EmberColors.RedSoft)
+                    }
+                }
+            }
+            TextButton(
+                onClick = { openings = openings + "" },
+                modifier = Modifier.border(1.dp, EmberColors.Outline, RoundedCornerShape(20.dp)),
+            ) { Text("+ Add alternate opening", color = EmberColors.TextSoft) }
             EmberField("Example dialogue", example, { example = it },
                 placeholder = "Optional. A few lines in their voice so the model copies the style.", minLines = 3)
+            EmberField("Tags", tags, { tags = it }, singleLine = true,
+                placeholder = "e.g. fantasy, slow burn, enemies to lovers")
+
+            Column {
+                SectionLabel("Defaults for new chats")
+                Column(Modifier.fillMaxWidth().background(EmberColors.Surface, RoundedCornerShape(16.dp)).padding(horizontal = 16.dp)) {
+                    SettingRow("Your persona", Store.persona(personaId)?.name ?: "Your default") { pickPersona = true }
+                    ToggleRow("Use backup model", useBackup, sub = if (Store.backupReady) Store.settings.backupModel else "Set up a backup model in Settings", divider = false) { useBackup = it }
+                }
+            }
             EmberField("Default reply length (words)", replyWords, { replyWords = it.filter(Char::isDigit).take(4) },
                 singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
             Text(
@@ -164,6 +194,17 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
             error?.let { Text(it, color = EmberColors.RedSoft) }
             Spacer(Modifier.height(8.dp))
         }
+    }
+
+    if (pickPersona) {
+        PickerDialog(
+            title = "Default persona for ${name.ifBlank { "this character" }}",
+            items = Store.personas, label = { it.name }, sub = { it.description.take(80) },
+            isSelected = { it.id == personaId },
+            noneLabel = "Your default persona", noneSelected = personaId == null,
+            onPick = { p -> personaId = p?.id; pickPersona = false },
+            onDismiss = { pickPersona = false },
+        )
     }
 }
 

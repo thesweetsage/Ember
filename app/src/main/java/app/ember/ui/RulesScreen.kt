@@ -47,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.ember.data.GroundRule
+import app.ember.data.Preset
 import app.ember.data.Rule
 import app.ember.data.Store
 
@@ -55,6 +56,7 @@ fun RulesScreen(onBack: () -> Unit) {
     var editGround by remember { mutableStateOf<Int?>(null) }
     var editRule by remember { mutableStateOf<Rule?>(null) }
     var confirmReset by remember { mutableStateOf(false) }
+    var editPreset by remember { mutableStateOf<Preset?>(null) }
 
     Scaffold(
         containerColor = EmberColors.Bg,
@@ -161,7 +163,62 @@ fun RulesScreen(onBack: () -> Unit) {
                     )
                 }
             }
+
+            item {
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Presets", fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { editPreset = Preset(name = "", rules = emptyList()) }) { Text("New preset", color = EmberColors.RedSoft) }
+                }
+                Text("Named sets of rules you switch on per chat from the chat bar.", fontSize = 13.sp, color = EmberColors.Muted)
+            }
+            items(Store.presets, key = { it.id }) { p ->
+                Column(
+                    Modifier.fillMaxWidth().background(EmberColors.Surface, RoundedCornerShape(18.dp))
+                        .border(1.dp, EmberColors.Line, RoundedCornerShape(18.dp)).clickable { editPreset = p }.padding(16.dp),
+                ) {
+                    Text(p.name, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text("${p.rules.size} rules", fontSize = 13.sp, color = EmberColors.Muted)
+                    p.rules.take(3).forEach { Text("• $it", fontSize = 14.sp, color = EmberColors.TextSoft, maxLines = 1) }
+                }
+            }
         }
+    }
+
+    editPreset?.let { p ->
+        val isNew = Store.presets.none { it.id == p.id }
+        var name by remember(p.id) { mutableStateOf(p.name) }
+        var body by remember(p.id) { mutableStateOf(p.rules.joinToString("\n")) }
+        AlertDialog(
+            onDismissRequest = { editPreset = null },
+            title = { Text(if (isNew) "New preset" else "Edit preset") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    EmberField("Name", name, { name = it }, singleLine = true, placeholder = "e.g. Slow burn")
+                    EmberField("Rules, one per line", body, { body = it }, minLines = 6,
+                        placeholder = "Build tension slowly.\nNo kiss yet.")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val lines = body.lines().map { it.trim().removePrefix("-").removePrefix("•").trim() }.filter { it.isNotEmpty() }
+                    if (name.isNotBlank()) {
+                        val updated = p.copy(name = name.trim(), rules = lines)
+                        Store.updatePresets(if (isNew) Store.presets + updated else Store.presets.map { if (it.id == p.id) updated else it })
+                    }
+                    editPreset = null
+                }) { Text("Save") }
+            },
+            dismissButton = {
+                Row {
+                    if (!isNew) TextButton(onClick = { Store.updatePresets(Store.presets.filter { it.id != p.id }); editPreset = null }) {
+                        Text("Delete", color = EmberColors.RedSoft)
+                    }
+                    TextButton(onClick = { editPreset = null }) { Text("Cancel") }
+                }
+            },
+            containerColor = EmberColors.Surface,
+        )
     }
 
     editGround?.let { i ->
