@@ -141,6 +141,8 @@ object Refusal {
 
     fun looksLike(text: String): Boolean {
         val head = text.take(400).lowercase().replace('’', '\'')
-        return phrases.any { head.contains(it) }
+        // Story replies almost always contain dialogue; refusals almost never do.
+        val hasDialogue = head.contains('"') || head.contains('“')
+        return !hasDialogue && phrases.any { head.contains(it) }
     }
 }
