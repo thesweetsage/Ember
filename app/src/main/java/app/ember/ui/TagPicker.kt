@@ -20,7 +20,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -70,7 +74,6 @@ fun TagSummary(tags: List<String>) {
 /** Full-height picker: every category, built-in suggestions, your own tags. No limit. */
 @Composable
 fun TagPickerSheet(title: String, initial: List<String>, onDone: (List<String>) -> Unit, onDismiss: () -> Unit, doneLabel: String = "Done") {
-    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selected by remember { mutableStateOf(initial) }
     var filter by remember { mutableStateOf("") }
     var adding by remember { mutableStateOf<String?>(null) }
@@ -80,14 +83,17 @@ fun TagPickerSheet(title: String, initial: List<String>, onDone: (List<String>) 
         selected = if (tag in selected) selected - tag else selected + tag
     }
 
-    // Swiping is off so scrolling up can't close it, and closing it any other way keeps your picks.
-    ModalBottomSheet(
+    // A full-screen page (not a swipeable sheet), so scrolling can never close it.
+    // Closing it with the back button keeps your picks.
+    Dialog(
         onDismissRequest = { onDone(selected) },
-        sheetState = sheet,
-        containerColor = EmberColors.Bg,
-        sheetGesturesEnabled = false,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).navigationBarsPadding().imePadding()) {
+      Surface(Modifier.fillMaxSize(), color = EmberColors.Bg) {
+        Column(
+            Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()
+                .padding(horizontal = 16.dp).padding(top = 12.dp)
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 Text("${selected.size} selected", fontSize = 13.sp, color = EmberColors.Muted)
@@ -99,7 +105,7 @@ fun TagPickerSheet(title: String, initial: List<String>, onDone: (List<String>) 
                 modifier = Modifier.fillMaxWidth(), colors = fieldColors(), shape = RoundedCornerShape(24.dp),
             )
             Column(
-                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(vertical = 12.dp),
+                Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 Tags.categories.forEach { cat ->
@@ -155,4 +161,5 @@ fun TagPickerSheet(title: String, initial: List<String>, onDone: (List<String>) 
             }
         }
     }
+      }
 }
