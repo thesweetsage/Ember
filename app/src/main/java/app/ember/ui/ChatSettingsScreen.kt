@@ -59,16 +59,22 @@ fun ChatSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
             SettingsGroup("Steering") {
-                Column(Modifier.padding(vertical = 14.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Reply length (words)", fontSize = 16.sp, modifier = Modifier.weight(1f))
-                        Text("${chat.replyWords}", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                ToggleRow(
+                    "Auto reply length", chat.replyWords <= 0,
+                    sub = "The character decides: short for small moments, long for big scenes",
+                ) { on -> update { it.copy(replyWords = if (on) 0 else 300) } }
+                if (chat.replyWords > 0) {
+                    Column(Modifier.padding(vertical = 14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Reply length (words)", fontSize = 16.sp, modifier = Modifier.weight(1f))
+                            Text("${chat.replyWords}", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                        Slider(
+                            value = chat.replyWords.toFloat(), valueRange = 50f..1000f,
+                            onValueChange = { v -> update { it.copy(replyWords = ((v / 10).roundToInt() * 10)) } },
+                            colors = SliderDefaults.colors(thumbColor = EmberColors.Text, activeTrackColor = EmberColors.Red),
+                        )
                     }
-                    Slider(
-                        value = chat.replyWords.toFloat(), valueRange = 50f..1000f,
-                        onValueChange = { v -> update { it.copy(replyWords = ((v / 10).roundToInt() * 10)) } },
-                        colors = SliderDefaults.colors(thumbColor = EmberColors.Text, activeTrackColor = EmberColors.Red),
-                    )
                 }
                 HorizontalDivider(color = EmberColors.Line)
                 SettingRow("Scene direction", chat.direction.ifBlank { "None" }) { editDirection = true }

@@ -114,7 +114,13 @@ object PromptBuilder {
         val out = conversation(system, trimHistory(p.chat, history), flip = false, fill = fill)
         out.add(ChatMsg("system", buildString {
             append("Write $charName's next reply now, following every ground rule. ")
-            append("Aim for about $replyWords words and no more than ${replyWords + replyWords / 5}. ")
+            if (replyWords <= 0) {
+                append("Choose the length yourself to fit the moment: keep it short (around 80 to 150 words) when a quick reaction ")
+                append("or a line of dialogue is enough, and write much longer (up to about 700 words) for important, emotional or ")
+                append("intimate scenes that need room for detail and inner thoughts. ")
+            } else {
+                append("Aim for about $replyWords words and no more than ${replyWords + replyWords / 5}. ")
+            }
             append("End on a complete sentence.")
             if (!extraInstruction.isNullOrBlank()) append("\n").append(extraInstruction)
         }))
@@ -156,7 +162,14 @@ object PromptBuilder {
                 append("Rewrite it with this change: ").append(change.trim())
                 append(". Keep everything else unless the change says otherwise.\n")
             }
-            append("Aim for about $words words. Only write $userName's reply, nothing else. End on a complete sentence.")
+            if (words <= 0) {
+                append("Choose the length yourself to fit the notes and the moment: short (around 40 to 100 words) when the notes ")
+                append("are brief or the moment is small, and much longer (up to about 500 words) for important scenes that need ")
+                append("detail and inner thoughts. ")
+            } else {
+                append("Aim for about $words words. ")
+            }
+            append("Only write $userName's reply, nothing else. End on a complete sentence.")
         }))
         return out
     }
@@ -179,5 +192,5 @@ object PromptBuilder {
     }
 
     /** API-side cap, generous enough that the model finishes its last sentence. */
-    fun maxTokens(words: Int): Int = (words * 2.2).toInt().coerceIn(120, 8000)
+    fun maxTokens(words: Int): Int = if (words <= 0) 1800 else (words * 2.2).toInt().coerceIn(120, 8000)
 }

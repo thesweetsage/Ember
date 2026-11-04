@@ -82,7 +82,7 @@ fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit) {
                 backupModel = backupModel.trim(),
                 temperature = (temperature * 10).roundToInt() / 10.0,
                 autoSwitchDefault = autoSwitch,
-                writeForMeWords = wfmWords.toIntOrNull()?.coerceIn(20, 2000) ?: 100,
+                writeForMeWords = wfmWords.toIntOrNull()?.let { if (it <= 0) 0 else it.coerceIn(20, 2000) } ?: 0,
                 priceIn = priceIn.replace(',', '.').toDoubleOrNull() ?: 0.0,
                 priceOut = priceOut.replace(',', '.').toDoubleOrNull() ?: 0.0,
             )
@@ -196,7 +196,7 @@ fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit) {
                     Text("Higher is more creative, lower is steadier.", fontSize = 12.5.sp, color = EmberColors.Muted)
                 }
             }
-            EmberField("\"Write for me\" default length (words)", wfmWords, { wfmWords = it.filter(Char::isDigit).take(4) },
+            EmberField("\"Write for me\" default length (words, 0 = Auto)", wfmWords, { wfmWords = it.filter(Char::isDigit).take(4) },
                 singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
 
             SectionLabel("Cost counter (optional)")

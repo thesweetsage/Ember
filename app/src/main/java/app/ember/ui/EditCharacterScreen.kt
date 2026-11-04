@@ -85,7 +85,7 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
 
     fun save() {
         if (name.isBlank()) { error = "Give your character a name."; return }
-        val words = replyWords.toIntOrNull()?.coerceIn(30, 2000) ?: 300
+        val words = replyWords.toIntOrNull()?.let { if (it <= 0) 0 else it.coerceIn(30, 2000) } ?: 0
         val c = base.copy(
             name = name.trim(), description = description, personality = personality,
             background = background, openings = openings.ifEmpty { listOf("") }, example = example,
@@ -185,7 +185,7 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
                     ToggleRow("Use backup model", useBackup, sub = if (Store.backupReady) Store.settings.backupModel else "Set up a backup model in Settings", divider = false) { useBackup = it }
                 }
             }
-            EmberField("Default reply length (words)", replyWords, { replyWords = it.filter(Char::isDigit).take(4) },
+            EmberField("Default reply length (words, 0 = Auto)", replyWords, { replyWords = it.filter(Char::isDigit).take(4) },
                 singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
             Text(
                 "Tip: write {{char}} for the character's name and {{user}} for yours.",

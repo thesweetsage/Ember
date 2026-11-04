@@ -87,8 +87,9 @@ fun WriteForMeSheet(vm: ChatViewModel, personaName: String, onSent: () -> Unit) 
 
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("Length", fontSize = 13.sp, color = EmberColors.Muted)
+                DraftChip("Auto", vm.wfmWords == 0) { vm.wfmWords = 0 }
                 DRAFT_LENGTHS.forEach { w -> DraftChip("$w", vm.wfmWords == w) { vm.wfmWords = w } }
-                val custom = vm.wfmWords !in DRAFT_LENGTHS
+                val custom = vm.wfmWords > 0 && vm.wfmWords !in DRAFT_LENGTHS
                 DraftChip(if (custom) "${vm.wfmWords}" else "Custom", custom) { customLength = true }
             }
 
@@ -99,7 +100,7 @@ fun WriteForMeSheet(vm: ChatViewModel, personaName: String, onSent: () -> Unit) 
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            "Draft ${vm.wfmSel + 1} of ${vm.wfmDrafts.size} · ~${wordCount(draft)} words",
+                            "Draft ${vm.wfmSel + 1} of ${vm.wfmDrafts.size} · ${wordCount(draft)} words",
                             fontSize = 12.5.sp, color = EmberColors.Muted, modifier = Modifier.weight(1f),
                         )
                         if (vm.wfmDrafts.size > 1) {
@@ -167,7 +168,7 @@ fun WriteForMeSheet(vm: ChatViewModel, personaName: String, onSent: () -> Unit) 
     }
 
     if (customLength) {
-        var value by remember { mutableStateOf(vm.wfmWords.toString()) }
+        var value by remember { mutableStateOf(if (vm.wfmWords > 0) vm.wfmWords.toString() else "") }
         AlertDialog(
             onDismissRequest = { customLength = false },
             title = { Text("Draft length") },

@@ -45,7 +45,8 @@ class ChatViewModel : ViewModel() {
     var wfmDrafts by mutableStateOf(listOf<String>())
         private set
     var wfmSel by mutableStateOf(0)
-    var wfmWords by mutableStateOf(0)
+    /** Draft length in words; 0 means Auto, -1 means not set yet. */
+    var wfmWords by mutableStateOf(-1)
     var wfmBusy by mutableStateOf(false)
         private set
     var wfmError by mutableStateOf<String?>(null)
@@ -59,7 +60,7 @@ class ChatViewModel : ViewModel() {
         characterId = id
         val c = Store.character(id) ?: return
         if (Store.activeChat(id) == null) Store.newChat(c)
-        if (wfmWords == 0) wfmWords = Store.settings.writeForMeWords
+        if (wfmWords < 0) wfmWords = Store.settings.writeForMeWords
     }
 
     private fun context(chat: Chat): PromptContext? {
@@ -101,7 +102,8 @@ class ChatViewModel : ViewModel() {
         Store.updateChat(ch.id) { f(it) }
     }
 
-    fun setLength(words: Int) = updateChat { it.copy(replyWords = words.coerceIn(30, 2000)) }
+    /** 0 means Auto: the model picks the length to fit the scene. */
+    fun setLength(words: Int) = updateChat { it.copy(replyWords = if (words <= 0) 0 else words.coerceIn(30, 2000)) }
 
     /** Sends your message (if any) and gets the character's reply. Empty send lets the character carry on. */
     fun send(text: String) {
@@ -351,7 +353,7 @@ class ChatViewModel : ViewModel() {
 
     fun openWriteForMe() {
         wfmOpen = true
-        if (wfmWords == 0) wfmWords = Store.settings.writeForMeWords
+        if (wfmWords < 0) wfmWords = Store.settings.writeForMeWords
     }
 
     fun resetWriteForMe() {

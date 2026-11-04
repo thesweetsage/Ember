@@ -252,9 +252,10 @@ fun ChatScreen(
                     item { IconChip(Icons.Outlined.Edit, "Direction") { editDirection = true } }
                 }
                 item { Icon(Icons.Outlined.ShortText, "Reply length", tint = Cream.copy(alpha = 0.8f), modifier = Modifier.padding(start = 4.dp).size(18.dp)) }
+                item { LengthChip("Auto", on = replyWords <= 0) { vm.setLength(0) } }
                 items(LENGTHS) { w -> LengthChip("$w", on = replyWords == w) { vm.setLength(w) } }
                 item {
-                    val custom = replyWords !in LENGTHS
+                    val custom = replyWords > 0 && replyWords !in LENGTHS
                     LengthChip(if (custom) "$replyWords" else "Custom", on = custom) { customLength = true }
                 }
             }
@@ -303,7 +304,7 @@ fun ChatScreen(
     }
 
     if (customLength) {
-        var value by remember { mutableStateOf(replyWords.toString()) }
+        var value by remember { mutableStateOf(if (replyWords > 0) replyWords.toString() else "") }
         AlertDialog(
             onDismissRequest = { customLength = false },
             title = { Text("Reply length") },
