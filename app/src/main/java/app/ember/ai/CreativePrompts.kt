@@ -12,21 +12,28 @@ object CreativePrompts {
             "at the centre of the story, unless the tags or the user say otherwise. The user likes dominant-leaning men and concepts built " +
             "around one strong hook."
 
-    fun ideas(tags: List<String>, notes: String, count: Int, avoid: List<String>): List<ChatMsg> {
+    fun ideas(tags: List<String>, notes: String, count: Int, avoid: List<String>, gender: String): List<ChatMsg> {
+        val who = when (gender) {
+            "Man" -> "The character is a man."
+            "Woman" -> "The character is a woman."
+            else -> "The character can be a man or a woman; choose what suits each concept, or follow the tags."
+        }
         val system = """
-$FRAME
+You invent character concepts for a private, fictional roleplay app for adults. All characters are adults aged 18 or over; mature, dark and explicit themes are allowed.
 
-Write $count character concepts. Each concept is ONE or TWO sentences: a punchy hook built around a job, a setting, a location, a situation or a kink, with a source of tension already built in (how they meet, what keeps them apart, what could go wrong).
-Keep them general: no names, no detailed world-building, no lists of powers or backstory. Make every concept distinct, specific and unexpected; avoid clichés.
-Let personality tags shape who he is, setting and occupation tags shape where and what, trope tags shape the arc, and kink tags shape the dynamic between them.
+Write $count concepts for the CHARACTER ONLY. $who
+Each concept is ONE or TWO sentences describing who the character is: a punchy hook built around a job, a setting, a location, a situation or a kink, with tension or a secret built in.
+The user plays her own character and will decide everything about her herself. NEVER describe the user's character: no job, looks, personality, backstory or situation for her, and don't build the concept around her. If the concept needs the other person, call them "you" and keep it to a few words.
+Keep it general: no names, no detailed world-building, no lists of powers. Make every concept distinct, specific and unexpected; avoid clichés.
+Let personality tags shape who the character is, setting and occupation tags shape where and what, trope tags shape the arc, and kink tags shape the dynamic.
 
 Examples of the style (do not reuse these):
-- A priest who falls for an atheist who keeps coming to confession just to argue with him, and struggles with what he feels.
-- A scientist at an Arctic research base and the base's cook, snowed in together for the whole winter.
-- A serial killer who is unbearably gentle with her and quietly kills anyone who is cruel to her.
-- A four-piece band looking for their fifth member; all of them fall for her and they decide to share.
-- A paranormal investigator she meets online because she needs someone to go ghost hunting with; he comes along to keep her safe and ends up falling for her.
-- A BMX freestyle rider whose crew takes her in because she knows bikes, and she becomes his anchor through the fear of the next trick going wrong.
+- A priest struggling with feelings he has sworn never to act on.
+- A scientist wintering at a remote Arctic research base, snowed in until spring.
+- A serial killer who is unbearably gentle with the one person he's obsessed with, and quietly kills anyone who is cruel to you.
+- A four-piece band searching for their fifth member, and all four of them want the same person.
+- A paranormal investigator who offers to come along on dangerous ghost hunts as your protection.
+- A BMX freestyle rider who lives with the fear of the next trick going wrong.
 
 Output only the concepts, one per line, each starting with "- ".
 """.trim()

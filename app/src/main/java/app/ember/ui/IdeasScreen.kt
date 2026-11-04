@@ -49,6 +49,8 @@ import kotlinx.coroutines.launch
 class IdeasViewModel : ViewModel() {
     var tags by mutableStateOf(listOf<String>())
     var notes by mutableStateOf("")
+    /** "Man", "Woman" or "Any". */
+    var gender by mutableStateOf("Man")
     var results by mutableStateOf(listOf<String>())
         private set
     var busy by mutableStateOf(false)
@@ -61,7 +63,7 @@ class IdeasViewModel : ViewModel() {
         val avoid = if (more) results else emptyList()
         viewModelScope.launch {
             try {
-                val text = Ai.complete(CreativePrompts.ideas(tags, notes, 6, avoid), 1200, 1.1)
+                val text = Ai.complete(CreativePrompts.ideas(tags, notes, 6, avoid, gender), 1200, 1.1)
                 val parsed = CreativePrompts.parseIdeas(text)
                 if (parsed.isEmpty()) error = "No ideas came back. Try again."
                 results = if (more) results + parsed else parsed
@@ -110,6 +112,10 @@ fun IdeasScreen(
                         }
                     }
                     if (vm.tags.isNotEmpty()) TagSummary(vm.tags)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Character", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        listOf("Man", "Woman", "Any").forEach { g -> TagChip(g, on = vm.gender == g) { vm.gender = g } }
+                    }
                     EmberField(
                         "Anything else (optional)", vm.notes, { vm.notes = it }, minLines = 2, maxLines = 4,
                         placeholder = "e.g. built around pet play, set in a church, he's a BMX rider",
