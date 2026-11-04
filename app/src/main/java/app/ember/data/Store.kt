@@ -208,6 +208,9 @@ object Store {
         saveCharacters()
     }
 
+    /** Pins one character to the top of the library (null unpins). */
+    fun setPinned(id: String?) = updateSettings(settings.copy(pinnedCharacterId = id))
+
     fun messageCount(characterId: String): Int =
         chats.filter { it.characterId == characterId }.sumOf { it.messages.size }
 

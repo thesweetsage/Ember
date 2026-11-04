@@ -93,6 +93,8 @@ data class Settings(
     val summariseEvery: Int = 30,
     val writeForMeWords: Int = 100,
     val defaultPersonaId: String? = null,
+    /** The character shown as a wide banner at the top of the library. */
+    val pinnedCharacterId: String? = null,
     /** Optional prices per million tokens, in euros, for the cost counter. */
     val priceIn: Double = 0.0,
     val priceOut: Double = 0.0,

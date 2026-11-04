@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -87,6 +88,9 @@ fun LibraryScreen(
         Tab.Recent -> all.sortedByDescending { maxOf(Store.lastActivity(it.id), it.createdAt) }
         Tab.Archived -> Store.characters.filter { it.archived }.sortedBy { it.name.lowercase() }
     }.filter { q.isEmpty() || it.name.lowercase().contains(q) || it.tags.lowercase().contains(q) }
+    val pinned = Store.character(Store.settings.pinnedCharacterId ?: "")?.takeIf { !it.archived }
+    val showBanner = pinned != null && tab == Tab.All && q.isEmpty()
+    val gridItems = if (showBanner) shown.filter { it.id != pinned?.id } else shown
 
     Scaffold(
         containerColor = EmberColors.Bg,
@@ -152,7 +156,7 @@ fun LibraryScreen(
                     }
                 }
             }
-            if (shown.isEmpty()) {
+            if (gridItems.isEmpty() && !showBanner) {
                 Column(
                     Modifier.fillMaxSize().padding(32.dp),
                     verticalArrangement = Arrangement.Center,
@@ -179,9 +183,21 @@ fun LibraryScreen(
                     verticalArrangement = Arrangement.spacedBy(3.dp),
                     contentPadding = PaddingValues(bottom = 96.dp),
                 ) {
-                    items(shown, key = { it.id }) { c ->
+                    if (showBanner && pinned != null) {
+                        item(key = "pinned", span = { GridItemSpan(maxLineSpan) }) {
+                            PinnedBanner(
+                                pinned,
+                                onOpen = { openChat(pinned.id) },
+                                onEdit = { editCharacter(pinned.id) },
+                                onUnpin = { Store.setPinned(null) },
+                            )
+                        }
+                    }
+                    items(gridItems, key = { it.id }) { c ->
                         CharacterCard(
                             c,
+                            isPinned = c.id == pinned?.id,
+                            onPin = { Store.setPinned(if (c.id == pinned?.id) null else c.id) },
                             onOpen = { openChat(c.id) },
                             onEdit = { editCharacter(c.id) },
                             onFavourite = { Store.saveCharacter(c.copy(favourite = !c.favourite)) },
@@ -213,6 +229,8 @@ fun LibraryScreen(
 @Composable
 private fun CharacterCard(
     c: Character,
+    isPinned: Boolean,
+    onPin: () -> Unit,
     onOpen: () -> Unit,
     onEdit: () -> Unit,
     onFavourite: () -> Unit,
@@ -263,6 +281,7 @@ private fun CharacterCard(
                 Icon(Icons.Filled.MoreVert, "More options for ${c.name}", tint = Color.White)
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(text = { Text(if (isPinned) "Unpin from top" else "Pin to top") }, onClick = { menu = false; onPin() })
                 DropdownMenuItem(text = { Text("Edit") }, onClick = { menu = false; onEdit() })
                 DropdownMenuItem(
                     text = { Text(if (c.favourite) "Remove from favourites" else "Add to favourites") },
@@ -270,6 +289,59 @@ private fun CharacterCard(
                 )
                 DropdownMenuItem(text = { Text(if (c.archived) "Unarchive" else "Archive") }, onClick = { menu = false; onArchive() })
                 DropdownMenuItem(text = { Text("Delete") }, onClick = { menu = false; onDelete() })
+            }
+        }
+    }
+}
+
+/** Wide banner for the pinned character: photo, last line of the chat, and a way straight back in. */
+@Composable
+private fun PinnedBanner(c: Character, onOpen: () -> Unit, onEdit: () -> Unit, onUnpin: () -> Unit) {
+    var menu by remember { mutableStateOf(false) }
+    val chat = Store.activeChat(c.id)
+    val last = chat?.messages?.lastOrNull()?.text?.replace("\n", " ")?.trim().orEmpty()
+    Box(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 12.dp).height(190.dp)
+            .clip(RoundedCornerShape(18.dp)).background(EmberColors.Field).clickable(onClick = onOpen)
+    ) {
+        val photo = c.chatBg ?: c.avatar
+        if (photo != null) {
+            AsyncImage(model = File(photo), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        }
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(listOf(Color(0x33140807), Color(0x99140807), Color(0xF0140807)))
+            )
+        )
+        Text(
+            "PINNED", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp,
+            modifier = Modifier.align(Alignment.TopStart).padding(12.dp)
+                .background(EmberColors.Red, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 4.dp),
+        )
+        Box(Modifier.align(Alignment.TopEnd)) {
+            IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "More options for ${c.name}", tint = Color.White) }
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(text = { Text("Unpin from top") }, onClick = { menu = false; onUnpin() })
+                DropdownMenuItem(text = { Text("Edit") }, onClick = { menu = false; onEdit() })
+            }
+        }
+        Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(16.dp)) {
+            Text(c.name, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (last.isNotEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                Text(last, color = EmberColors.TextSoft, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.height(40.dp).clip(RoundedCornerShape(20.dp)).background(EmberColors.Red)
+                        .clickable(onClick = onOpen).padding(horizontal = 18.dp),
+                    contentAlignment = Alignment.Center,
+                ) { Text("Continue chat", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold) }
+                Spacer(Modifier.width(12.dp))
+                Icon(Icons.AutoMirrored.Outlined.Chat, null, tint = EmberColors.TextSoft, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("${Store.messageCount(c.id)}", color = EmberColors.TextSoft, fontSize = 13.sp)
             }
         }
     }
