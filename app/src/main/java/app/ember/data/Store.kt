@@ -66,7 +66,7 @@ object Store {
         presets = read("presets.json")?.let { Json.parseList(it) { o -> Json.preset(o) } } ?: emptyList()
         personas = read("personas.json")?.let { Json.parseList(it) { o -> Json.persona(o) } } ?: emptyList()
         groundRules = read("ground.json")?.let { Json.parseList(it) { o -> Json.ground(o) } }
-            ?.takeIf { it.isNotEmpty() } ?: DEFAULT_GROUND_RULES
+            ?.takeIf { it.isNotEmpty() }?.let { withNewGroundRules(it) } ?: DEFAULT_GROUND_RULES
         settings = read("settings.json")?.let { runCatching { Json.settings(JSONObject(it)) }.getOrNull() } ?: Settings()
         chats = chatDir.listFiles().orEmpty().filter { it.name.endsWith(".json") }.mapNotNull { f ->
             runCatching { Json.chat(JSONObject(f.readText())) }.getOrNull()
@@ -77,6 +77,15 @@ object Store {
         hasBackupKey = prefs.contains("backupKey")
         migrateLegacyUser()
         addStarterPresets()
+    }
+
+    /** Adds built-in ground rules introduced after you edited your copy, at their usual position. */
+    private fun withNewGroundRules(saved: List<GroundRule>): List<GroundRule> {
+        val out = saved.toMutableList()
+        DEFAULT_GROUND_RULES.forEachIndexed { i, d ->
+            if (out.none { it.title == d.title }) out.add(i.coerceAtMost(out.size), d)
+        }
+        return out
     }
 
     /** Older builds had one "your character" in Settings; it becomes your first persona. */

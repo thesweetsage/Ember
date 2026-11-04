@@ -115,12 +115,12 @@ object PromptBuilder {
         out.add(ChatMsg("system", buildString {
             append("Write $charName's next reply now, following every ground rule. ")
             if (replyWords <= 0) {
-                append("Choose the length yourself to fit the moment: keep it short (around 80 to 150 words) when a quick reaction ")
-                append("or a line of dialogue is enough, and write much longer (up to about 700 words) for important, emotional or ")
-                append("intimate scenes that need room for detail and inner thoughts. ")
+                append("Choose the length yourself to fit the moment: usually around 200 to 300 words, and longer ")
+                append("(up to about 700 words) for important, emotional or intimate scenes that need room for detail and inner thoughts. ")
             } else {
                 append("Aim for about $replyWords words and no more than ${replyWords + replyWords / 5}. ")
             }
+            append("Format it like a page from a novel: split it into short paragraphs separated by a blank line, starting a new paragraph whenever the action, the speaker or the inner thought shifts. Never write one solid block of text. ")
             append("End on a complete sentence.")
             if (!extraInstruction.isNullOrBlank()) append("\n").append(extraInstruction)
         }))
@@ -163,12 +163,12 @@ object PromptBuilder {
                 append(". Keep everything else unless the change says otherwise.\n")
             }
             if (words <= 0) {
-                append("Choose the length yourself to fit the notes and the moment: short (around 40 to 100 words) when the notes ")
-                append("are brief or the moment is small, and much longer (up to about 500 words) for important scenes that need ")
-                append("detail and inner thoughts. ")
+                append("Choose the length yourself to fit the notes and the moment: usually around 200 to 300 words, and longer ")
+                append("(up to about 600 words) for important scenes that need detail and inner thoughts. ")
             } else {
                 append("Aim for about $words words. ")
             }
+            append("Format it like a page from a novel: split it into short paragraphs separated by a blank line, starting a new paragraph whenever the action, the speaker or the inner thought shifts. Never write one solid block of text. ")
             append("Only write $userName's reply, nothing else. End on a complete sentence.")
         }))
         return out

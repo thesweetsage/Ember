@@ -124,6 +124,10 @@ val DEFAULT_GROUND_RULES = listOf(
         "Vary sentence length and rhythm. Do not write strings of short, clipped sentences like \"He said. He walked. He stopped.\" Connect actions with detail, sensation and motive so the prose flows."
     ),
     GroundRule(
+        "Paragraphs",
+        "Lay every reply out like a page from a novel: short paragraphs separated by a blank line, with a new paragraph whenever the action, the speaker or the inner thought shifts. Never write one solid block of text."
+    ),
+    GroundRule(
         "Inner thoughts",
         "Include {{char}}'s inner thoughts in italics, a few short lines per reply, showing what they feel or want but do not say out loud. Mark italics with underscores, like _this_."
     ),
