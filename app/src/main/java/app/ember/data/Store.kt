@@ -51,6 +51,10 @@ object Store {
 
     var builds by mutableStateOf(listOf<BuildSession>())
         private set
+
+    /** Tags you created yourself; they appear in every tag picker. */
+    var customTags by mutableStateOf(listOf<String>())
+        private set
     var groundRules by mutableStateOf(DEFAULT_GROUND_RULES)
         private set
     var settings by mutableStateOf(Settings())
@@ -82,6 +86,9 @@ object Store {
         personas = read("personas.json")?.let { Json.parseList(it) { o -> Json.persona(o) } } ?: emptyList()
         ideas = read("ideas.json")?.let { Json.parseList(it) { o -> Json.idea(o) } } ?: emptyList()
         builds = read("builds.json")?.let { Json.parseList(it) { o -> Json.build(o) } } ?: emptyList()
+        customTags = read("tags.json")?.let { t ->
+            runCatching { org.json.JSONArray(t).let { a -> (0 until a.length()).map { a.getString(it) } } }.getOrNull()
+        } ?: emptyList()
         groundRules = read("ground.json")?.let { Json.parseList(it) { o -> Json.ground(o) } }
             ?.takeIf { it.isNotEmpty() }?.let { withNewGroundRules(it) } ?: DEFAULT_GROUND_RULES
         markGroundSeen()
@@ -187,6 +194,22 @@ object Store {
 
     fun saveIdea(i: Idea) { if (ideas.none { it.id == i.id }) { ideas = listOf(i) + ideas; saveIdeas() } }
     fun deleteIdea(id: String) { ideas = ideas.filter { it.id != id }; saveIdeas() }
+
+    private fun saveCustomTags() = write(File(dir, "tags.json"), org.json.JSONArray(customTags).toString())
+
+    fun addCustomTag(tag: String) {
+        if (tag !in customTags) { customTags = customTags + tag; saveCustomTags() }
+    }
+
+    fun removeCustomTag(tag: String) { customTags = customTags - tag; saveCustomTags() }
+
+    /** Tags beyond the built-in suggestions: ones you created, plus any already used on a character. */
+    fun extraTags(category: String): List<String> {
+        val builtIn = Tags.categories.firstOrNull { it.name == category }?.suggestions.orEmpty()
+        return (customTags + characters.flatMap { it.tags } + ideas.flatMap { it.tags })
+            .filter { Tags.category(it) == category && Tags.name(it) !in builtIn }
+            .map { Tags.name(it) }.distinct()
+    }
 
     /** Every tag used by any character, for the library's tag filter. */
     val allTags: List<String> get() = characters.flatMap { it.tags }.distinct()

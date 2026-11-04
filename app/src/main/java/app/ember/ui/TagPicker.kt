@@ -3,6 +3,9 @@ package app.ember.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material3.AlertDialog
+import app.ember.data.Store
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,11 +47,11 @@ import androidx.compose.ui.unit.sp
 import app.ember.data.Tags
 
 @Composable
-fun TagChip(label: String, on: Boolean, onClick: (() -> Unit)?) {
+fun TagChip(label: String, on: Boolean, onLongClick: (() -> Unit)? = null, onClick: (() -> Unit)?) {
     Box(
         Modifier.clip(RoundedCornerShape(16.dp))
             .background(if (on) EmberColors.Red else EmberColors.Field)
-            .let { if (onClick != null) it.clickable(onClick = onClick) else it }
+            .let { if (onClick != null) it.combinedClickable(onClick = onClick, onLongClick = onLongClick) else it }
             .padding(horizontal = 12.dp, vertical = 7.dp),
     ) {
         Text(label, fontSize = 13.sp, color = if (on) Color.White else EmberColors.TextSoft, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal)
@@ -78,6 +81,7 @@ fun TagPickerSheet(title: String, initial: List<String>, onDone: (List<String>) 
     var filter by remember { mutableStateOf("") }
     var adding by remember { mutableStateOf<String?>(null) }
     var newTag by remember { mutableStateOf("") }
+    var removing by remember { mutableStateOf<String?>(null) }
 
     fun toggle(tag: String) {
         selected = if (tag in selected) selected - tag else selected + tag
@@ -94,6 +98,20 @@ fun TagPickerSheet(title: String, initial: List<String>, onDone: (List<String>) 
             Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()
                 .padding(horizontal = 16.dp).padding(top = 12.dp)
         ) {
+            removing?.let { tag ->
+                AlertDialog(
+                    onDismissRequest = { removing = null },
+                    title = { Text("Remove \"${Tags.name(tag)}\"?") },
+                    text = { Text("It stops being suggested. Characters that already have it keep it.") },
+                    confirmButton = {
+                        TextButton(onClick = { Store.removeCustomTag(tag); selected = selected - tag; removing = null }) {
+                            Text("Remove", color = EmberColors.RedSoft)
+                        }
+                    },
+                    dismissButton = { TextButton(onClick = { removing = null }) { Text("Cancel") } },
+                    containerColor = EmberColors.Surface,
+                )
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 Text("${selected.size} selected", fontSize = 13.sp, color = EmberColors.Muted)
@@ -104,13 +122,18 @@ fun TagPickerSheet(title: String, initial: List<String>, onDone: (List<String>) 
                 placeholder = { Text("Find a tag", color = EmberColors.Dim) },
                 modifier = Modifier.fillMaxWidth(), colors = fieldColors(), shape = RoundedCornerShape(24.dp),
             )
+            Text(
+                "Tags you add are saved for every character. Long-press one of your own tags to remove it.",
+                fontSize = 12.sp, color = EmberColors.Dim, modifier = Modifier.padding(top = 6.dp),
+            )
             Column(
                 Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 Tags.categories.forEach { cat ->
                     val own = selected.filter { Tags.category(it) == cat.name }.map { Tags.name(it) }
-                    val all = (cat.suggestions + own).distinct()
+                    val extra = Store.extraTags(cat.name)
+                    val all = (cat.suggestions + extra + own).distinct()
                         .filter { filter.isBlank() || it.contains(filter.trim(), ignoreCase = true) }
                     val count = own.size
                     Column {
@@ -122,7 +145,11 @@ fun TagPickerSheet(title: String, initial: List<String>, onDone: (List<String>) 
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             all.forEach { name ->
                                 val tag = Tags.make(cat.name, name)
-                                TagChip(name, on = tag in selected) { toggle(tag) }
+                                val isCustom = name in extra
+                                TagChip(
+                                    name, on = tag in selected,
+                                    onLongClick = if (isCustom) ({ removing = tag }) else null,
+                                ) { toggle(tag) }
                             }
                             Box(
                                 Modifier.clip(RoundedCornerShape(16.dp)).border(1.dp, EmberColors.Outline, RoundedCornerShape(16.dp))
@@ -141,6 +168,7 @@ fun TagPickerSheet(title: String, initial: List<String>, onDone: (List<String>) 
                                 TextButton(onClick = {
                                     if (newTag.isNotBlank()) {
                                         val tag = Tags.make(cat.name, newTag)
+                                        Store.addCustomTag(tag)
                                         if (tag !in selected) selected = selected + tag
                                     }
                                     newTag = ""; adding = null
