@@ -70,7 +70,7 @@ class ChatViewModel : ViewModel() {
             chat = chat,
             ground = Store.groundRules,
             rules = Store.rules,
-            preset = Store.preset(chat.presetId),
+            preset = null,
         )
     }
 

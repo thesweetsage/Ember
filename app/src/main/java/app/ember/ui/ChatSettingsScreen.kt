@@ -48,7 +48,6 @@ fun ChatSettingsScreen(
     fun update(f: (Chat) -> Chat) = Store.updateChat(chat.id) { f(it) }
 
     var pickPersona by remember { mutableStateOf(false) }
-    var pickPreset by remember { mutableStateOf(false) }
     var editDirection by remember { mutableStateOf(false) }
     var pickSummaryEvery by remember { mutableStateOf(false) }
     var confirmNew by remember { mutableStateOf(false) }
@@ -73,7 +72,7 @@ fun ChatSettingsScreen(
                 }
                 HorizontalDivider(color = EmberColors.Line)
                 SettingRow("Scene direction", chat.direction.ifBlank { "None" }) { editDirection = true }
-                SettingRow("Rules preset", Store.preset(chat.presetId)?.name ?: "None") { pickPreset = true }
+                SettingRow("Rules", "${Store.rules.count { it.enabled }} on", sub = "Apply to every chat") { openRules() }
                 SettingRow("Your persona", Store.personaFor(chat, character)?.name ?: "None", divider = false) { pickPersona = true }
             }
 
@@ -153,14 +152,6 @@ fun ChatSettingsScreen(
             isSelected = { it.id == Store.personaFor(chat, character)?.id },
             onPick = { p -> if (p != null) update { it.copy(personaId = p.id) }; pickPersona = false },
             onDismiss = { pickPersona = false },
-        )
-    }
-    if (pickPreset) {
-        PickerDialog(
-            title = "Rules preset", items = Store.presets, label = { it.name }, sub = { "${it.rules.size} rules" },
-            isSelected = { it.id == chat.presetId }, noneLabel = "No preset", noneSelected = chat.presetId == null,
-            onPick = { p -> update { it.copy(presetId = p?.id) }; pickPreset = false },
-            onDismiss = { pickPreset = false },
         )
     }
     if (editDirection) {

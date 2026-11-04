@@ -89,27 +89,31 @@ object Store {
         }
     }
 
+    /**
+     * Presets were removed: every rule is now a general rule you switch on or off, applying to all chats.
+     * Rules from older presets are moved into that list (only the explicit-scene ones start switched on).
+     */
     private fun addStarterPresets() {
-        if (prefs.getBoolean("starterPresets", false)) return
-        if (presets.isEmpty()) {
-            presets = listOf(
-                Preset(name = "Slow burn", rules = listOf(
-                    "Build tension slowly through glances, near-touches and charged dialogue.",
-                    "Do not rush to a kiss or anything physical; let it simmer.",
-                    "Keep the attraction mostly in subtext and inner thoughts.",
-                )),
-                Preset(name = "Explicit scene", rules = listOf(
-                    "This scene is intimate. Write it explicitly and without fading to black.",
-                    "Slow the pacing down and stay in the moment, describing each touch and reaction.",
-                    "Keep dialogue in the scene; let the characters talk to each other.",
-                    "Stay true to each character's personality, even in intimacy.",
-                )),
-                Preset(name = "Short and punchy", rules = listOf(
-                    "Favour dialogue over description.",
-                    "Keep paragraphs short and the pace quick.",
-                )),
+        if (presets.isNotEmpty()) {
+            rules = rules + presets.flatMap { p ->
+                p.rules.filter { it.isNotBlank() }.map { Rule(label = p.name, text = it, enabled = p.name == "Explicit scene") }
+            }
+            presets = emptyList()
+            saveRules()
+            File(dir, "presets.json").delete()
+        } else if (!prefs.getBoolean("starterPresets", false) && rules.isEmpty()) {
+            rules = listOf(
+                Rule(label = "Explicit scene", text = "This scene is intimate. Write it explicitly and without fading to black."),
+                Rule(label = "Explicit scene", text = "Slow the pacing down and stay in the moment, describing each touch and reaction."),
+                Rule(label = "Explicit scene", text = "Keep dialogue in the scene; let the characters talk to each other."),
+                Rule(label = "Explicit scene", text = "Stay true to each character's personality, even in intimacy."),
+                Rule(label = "Slow burn", text = "Build tension slowly through glances, near-touches and charged dialogue.", enabled = false),
+                Rule(label = "Slow burn", text = "Do not rush to a kiss or anything physical; let it simmer.", enabled = false),
+                Rule(label = "Slow burn", text = "Keep the attraction mostly in subtext and inner thoughts.", enabled = false),
+                Rule(label = "Short and punchy", text = "Favour dialogue over description.", enabled = false),
+                Rule(label = "Short and punchy", text = "Keep paragraphs short and the pace quick.", enabled = false),
             )
-            savePresets()
+            saveRules()
         }
         prefs.edit().putBoolean("starterPresets", true).apply()
     }

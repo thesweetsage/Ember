@@ -128,7 +128,6 @@ fun ChatScreen(
     val messages = chat?.messages.orEmpty()
     val replyWords = chat?.replyWords ?: character.replyWords
     val persona = Store.personaFor(chat, character)
-    val preset = Store.preset(chat?.presetId)
     val pal = chatPalette(chat, character.tint)
     val textSize = (chat?.textSize ?: 16).sp
 
@@ -137,7 +136,6 @@ fun ChatScreen(
     var customLength by remember { mutableStateOf(false) }
     var confirmNewChat by remember { mutableStateOf(false) }
     var pickPersona by remember { mutableStateOf(false) }
-    var pickPreset by remember { mutableStateOf(false) }
     var editDirection by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val hasHeader = character.description.isNotBlank()
@@ -242,14 +240,14 @@ fun ChatScreen(
                 }
             }
 
-            // Persona, preset and length chips
+            // Persona, rules and length chips
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 item { IconChip(Icons.Outlined.Person, persona?.name ?: "No persona") { pickPersona = true } }
-                item { IconChip(Icons.Outlined.Rule, preset?.name ?: "No preset") { pickPreset = true } }
+                item { IconChip(Icons.Outlined.Rule, "Rules · ${Store.rules.count { it.enabled }} on") { openRules() } }
                 if (chat?.direction.isNullOrBlank()) {
                     item { IconChip(Icons.Outlined.Edit, "Direction") { editDirection = true } }
                 }
@@ -350,20 +348,6 @@ fun ChatScreen(
         if (Store.personas.isEmpty()) {
             LaunchedEffect(Unit) { pickPersona = false; openPersonas() }
         }
-    }
-
-    if (pickPreset) {
-        PickerDialog(
-            title = "Rules preset for this chat",
-            items = Store.presets,
-            label = { it.name },
-            sub = { "${it.rules.size} rules" },
-            isSelected = { it.id == chat?.presetId },
-            noneLabel = "No preset",
-            noneSelected = chat?.presetId == null,
-            onPick = { p -> vm.updateChat { it.copy(presetId = p?.id) }; pickPreset = false },
-            onDismiss = { pickPreset = false },
-        )
     }
 
     if (editDirection) {
