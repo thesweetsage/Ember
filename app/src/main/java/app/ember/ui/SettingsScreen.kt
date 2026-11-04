@@ -61,7 +61,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
 
     fun commit() {
-        Store.setSettings(
+        Store.updateSettings(
             Settings(
                 baseUrl = baseUrl.trim().ifBlank { Settings().baseUrl },
                 model = model.trim().ifBlank { Settings().model },

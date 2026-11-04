@@ -163,8 +163,8 @@ object Store {
 
     // ---------- rules & settings ----------
 
-    fun setRules(list: List<Rule>) { rules = list; saveRules() }
-    fun setGroundRules(list: List<GroundRule>) { groundRules = list; saveGround() }
-    fun resetGroundRules() = setGroundRules(DEFAULT_GROUND_RULES)
-    fun setSettings(s: Settings) { settings = s; saveSettings() }
+    fun updateRules(list: List<Rule>) { rules = list; saveRules() }
+    fun updateGroundRules(list: List<GroundRule>) { groundRules = list; saveGround() }
+    fun resetGroundRules() = updateGroundRules(DEFAULT_GROUND_RULES)
+    fun updateSettings(s: Settings) { settings = s; saveSettings() }
 }

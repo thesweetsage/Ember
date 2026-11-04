@@ -147,7 +147,7 @@ fun RulesScreen(onBack: () -> Unit) {
                         Spacer(Modifier.weight(1f))
                         Switch(
                             checked = r.enabled,
-                            onCheckedChange = { on -> Store.setRules(Store.rules.map { if (it.id == r.id) it.copy(enabled = on) else it }) },
+                            onCheckedChange = { on -> Store.updateRules(Store.rules.map { if (it.id == r.id) it.copy(enabled = on) else it }) },
                             colors = SwitchDefaults.colors(
                                 checkedTrackColor = EmberColors.Red, checkedThumbColor = Color.White,
                                 uncheckedTrackColor = EmberColors.Outline, uncheckedThumbColor = EmberColors.Muted,
@@ -186,7 +186,7 @@ fun RulesScreen(onBack: () -> Unit) {
                 confirmButton = {
                     TextButton(onClick = {
                         if (text.isNotBlank()) {
-                            Store.setGroundRules(Store.groundRules.mapIndexed { j, x -> if (j == i) GroundRule(x.title, text.trim()) else x })
+                            Store.updateGroundRules(Store.groundRules.mapIndexed { j, x -> if (j == i) GroundRule(x.title, text.trim()) else x })
                         }
                         editGround = null
                     }) { Text("Save") }
@@ -214,7 +214,7 @@ fun RulesScreen(onBack: () -> Unit) {
                 TextButton(onClick = {
                     if (text.isNotBlank()) {
                         val updated = r.copy(label = label.trim(), text = text.trim())
-                        Store.setRules(if (isNew) Store.rules + updated else Store.rules.map { if (it.id == r.id) updated else it })
+                        Store.updateRules(if (isNew) Store.rules + updated else Store.rules.map { if (it.id == r.id) updated else it })
                     }
                     editRule = null
                 }) { Text("Save") }
@@ -222,7 +222,7 @@ fun RulesScreen(onBack: () -> Unit) {
             dismissButton = {
                 Row {
                     if (!isNew) {
-                        TextButton(onClick = { Store.setRules(Store.rules.filter { it.id != r.id }); editRule = null }) {
+                        TextButton(onClick = { Store.updateRules(Store.rules.filter { it.id != r.id }); editRule = null }) {
                             Text("Delete", color = EmberColors.RedSoft)
                         }
                     }
