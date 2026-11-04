@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- A single flame: the "ember" -->
+    <path
+        android:fillColor="#FFB23F3B"
+        android:pathData="M54,30 C60,40 70,46 70,60 C70,70 62,78 54,78 C46,78 38,70 38,60 C38,52 43,47 46,42 C47,49 50,52 53,53 C51,45 51,37 54,30 Z" />
+    <path
+        android:fillColor="#FFF3B0AA"
+        android:pathData="M54,54 C57,59 61,62 61,67 C61,71 58,74 54,74 C50,74 47,71 47,67 C47,63 50,61 51,58 C52,61 53,62 54,62 C54,59 53,57 54,54 Z" />
+</vector>
