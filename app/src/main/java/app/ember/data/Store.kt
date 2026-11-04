@@ -46,6 +46,11 @@ object Store {
 
     /** A character drafted by the AI builder, waiting to be reviewed in the editor. */
     var editorDraft by mutableStateOf<Character?>(null)
+    /** The builder conversation that [editorDraft] came from; removed once the character is created. */
+    var editorDraftBuildId: String? = null
+
+    var builds by mutableStateOf(listOf<BuildSession>())
+        private set
     var groundRules by mutableStateOf(DEFAULT_GROUND_RULES)
         private set
     var settings by mutableStateOf(Settings())
@@ -74,6 +79,7 @@ object Store {
         presets = read("presets.json")?.let { Json.parseList(it) { o -> Json.preset(o) } } ?: emptyList()
         personas = read("personas.json")?.let { Json.parseList(it) { o -> Json.persona(o) } } ?: emptyList()
         ideas = read("ideas.json")?.let { Json.parseList(it) { o -> Json.idea(o) } } ?: emptyList()
+        builds = read("builds.json")?.let { Json.parseList(it) { o -> Json.build(o) } } ?: emptyList()
         groundRules = read("ground.json")?.let { Json.parseList(it) { o -> Json.ground(o) } }
             ?.takeIf { it.isNotEmpty() }?.let { withNewGroundRules(it) } ?: DEFAULT_GROUND_RULES
         markGroundSeen()
@@ -162,6 +168,18 @@ object Store {
     private fun saveRules() = write(File(dir, "rules.json"), Json.list(rules) { Json.rule(it) })
     private fun savePresets() = write(File(dir, "presets.json"), Json.list(presets) { Json.preset(it) })
     private fun savePersonas() = write(File(dir, "personas.json"), Json.list(personas) { Json.persona(it) })
+    private fun saveBuilds() = write(File(dir, "builds.json"), Json.list(builds) { Json.build(it) })
+
+    fun build(id: String?): BuildSession? = id?.let { bid -> builds.firstOrNull { it.id == bid } }
+
+    fun saveBuild(b: BuildSession) {
+        val updated = b.copy(updatedAt = System.currentTimeMillis())
+        builds = listOf(updated) + builds.filter { it.id != b.id }
+        saveBuilds()
+    }
+
+    fun deleteBuild(id: String) { builds = builds.filter { it.id != id }; saveBuilds() }
+
     private fun saveIdeas() = write(File(dir, "ideas.json"), Json.list(ideas) { Json.idea(it) })
 
     fun saveIdea(i: Idea) { if (ideas.none { it.id == i.id }) { ideas = listOf(i) + ideas; saveIdeas() } }

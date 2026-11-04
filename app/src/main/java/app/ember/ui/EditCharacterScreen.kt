@@ -96,7 +96,9 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
             tint = if (avatar != base.avatar || chatBg != base.chatBg || base.tint == null) Store.computeTint(chatBg ?: avatar) else base.tint,
         )
         Store.saveCharacter(c)
+        if (draft != null) Store.editorDraftBuildId?.let { Store.deleteBuild(it) }
         Store.editorDraft = null
+        Store.editorDraftBuildId = null
         if (isNew) onCreated(c.id) else onBack()
     }
 

@@ -29,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.padding
+import app.ember.data.Store
 
 enum class Section { Characters, Chats, Ideas, Personas }
 
@@ -40,6 +42,7 @@ class BottomNav(
     val personas: () -> Unit,
     val createManual: () -> Unit,
     val createWithAi: () -> Unit,
+    val continueBuild: (String) -> Unit,
 )
 
 @Composable
@@ -88,6 +91,18 @@ fun EmberBottomBar(current: Section, nav: BottomNav) {
                     }
                     TextButton(onClick = { choose = false; nav.createManual() }) {
                         Text("Write it myself", color = EmberColors.Text)
+                    }
+                    val builds = Store.builds.take(5)
+                    if (builds.isNotEmpty()) {
+                        Text("Continue building", fontSize = 13.sp, color = EmberColors.Muted, modifier = Modifier.padding(start = 12.dp, top = 10.dp))
+                        builds.forEach { b ->
+                            TextButton(onClick = { choose = false; nav.continueBuild(b.id) }) {
+                                Text(
+                                    "${b.title}  ·  ${b.draft.size}/7 sections",
+                                    color = EmberColors.Text, maxLines = 1,
+                                )
+                            }
+                        }
                     }
                 }
             },

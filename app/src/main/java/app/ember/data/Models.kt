@@ -74,6 +74,22 @@ data class Rule(
     val enabled: Boolean = true,
 )
 
+data class BuildMsg(val fromUser: Boolean, val text: String)
+
+/** An AI character-builder conversation, saved as you go so it can be continued later. */
+data class BuildSession(
+    val id: String = newId(),
+    val messages: List<BuildMsg> = emptyList(),
+    val draft: Map<String, String> = emptyMap(),
+    val tags: List<String> = emptyList(),
+    val updatedAt: Long = System.currentTimeMillis(),
+) {
+    val title: String
+        get() = draft["Name"]?.lines()?.firstOrNull()?.trim()?.trim('*', '"')?.ifBlank { null }
+            ?: messages.firstOrNull { it.fromUser }?.text?.replace("\n", " ")?.take(60)
+            ?: "Untitled build"
+}
+
 /** A saved character concept from the Ideas tab. */
 data class Idea(val id: String = newId(), val text: String, val tags: List<String> = emptyList(), val createdAt: Long = System.currentTimeMillis())
 

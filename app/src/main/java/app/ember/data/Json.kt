@@ -110,6 +110,21 @@ object Json {
     fun idea(i: Idea): JSONObject = JSONObject().put("id", i.id).put("text", i.text).put("tags", JSONArray(i.tags)).put("createdAt", i.createdAt)
     fun idea(o: JSONObject) = Idea(o.str("id"), o.str("text"), o.strings("tags"), o.optLong("createdAt", 0L))
 
+    fun build(b: BuildSession): JSONObject = JSONObject()
+        .put("id", b.id).put("updatedAt", b.updatedAt).put("tags", JSONArray(b.tags))
+        .put("messages", arr(b.messages) { JSONObject().put("fromUser", it.fromUser).put("text", it.text) })
+        .put("draft", JSONObject().apply { b.draft.forEach { (k, v) -> put(k, v) } })
+
+    fun build(o: JSONObject): BuildSession {
+        val d = o.optJSONObject("draft")
+        val draft = d?.keys()?.asSequence()?.associateWith { d.optString(it, "") }.orEmpty()
+        return BuildSession(
+            id = o.str("id"),
+            messages = o.objects("messages") { BuildMsg(it.optBoolean("fromUser"), it.str("text")) },
+            draft = draft, tags = o.strings("tags"), updatedAt = o.optLong("updatedAt", 0L),
+        )
+    }
+
     fun ground(g: GroundRule): JSONObject = JSONObject().put("title", g.title).put("text", g.text)
     fun ground(o: JSONObject) = GroundRule(o.str("title"), o.str("text"))
 

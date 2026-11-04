@@ -58,7 +58,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.ember.ai.Ai
 import app.ember.ai.ChatMsg
 import app.ember.ai.CreativePrompts
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.AlertDialog
+import androidx.compose.runtime.remember
+import app.ember.data.BuildMsg
+import app.ember.data.BuildSession
 import app.ember.data.Character
+import app.ember.data.newId
 import app.ember.data.Idea
 import app.ember.data.Store
 import app.ember.data.Tags
@@ -66,10 +72,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-data class BuilderMsg(val fromUser: Boolean, val text: String)
-
 class BuilderViewModel : ViewModel() {
-    var messages by mutableStateOf(listOf<BuilderMsg>())
+    var messages by mutableStateOf(listOf<BuildMsg>())
         private set
     var busy by mutableStateOf(false)
         private set
@@ -78,12 +82,31 @@ class BuilderViewModel : ViewModel() {
     var draft by mutableStateOf(mapOf<String, String>())
         private set
     var tags by mutableStateOf(listOf<String>())
+        private set
+    var sessionId: String = newId()
+        private set
     private var started = false
     private var job: Job? = null
 
-    fun start(seed: Idea?) {
+    /** Saves the conversation so it survives leaving the screen or closing the app. */
+    private var discarded = false
+
+    private fun persist() {
+        if (discarded || messages.none { it.fromUser }) return
+        Store.saveBuild(BuildSession(sessionId, messages.filter { it.text.isNotBlank() }, draft, tags))
+    }
+
+    fun updateTags(list: List<String>) { tags = list; persist() }
+
+    fun discard() { discarded = true; job?.cancel(); Store.deleteBuild(sessionId) }
+
+    fun start(buildId: String?, seed: Idea?) {
         if (started) return
         started = true
+        Store.build(buildId)?.let { b ->
+            sessionId = b.id; messages = b.messages; draft = b.draft; tags = b.tags
+            return
+        }
         if (seed != null) {
             tags = seed.tags
             send(
@@ -96,19 +119,20 @@ class BuilderViewModel : ViewModel() {
 
     fun send(text: String) {
         if (busy || text.isBlank()) return
-        messages = messages + BuilderMsg(true, text.trim())
+        messages = messages + BuildMsg(true, text.trim())
+        persist()
         val persona = Store.persona(Store.settings.defaultPersonaId)
         val prompt = buildList {
             add(ChatMsg("system", CreativePrompts.builderSystem(persona)))
             if (tags.isNotEmpty()) add(ChatMsg("system", "Tags she has picked so far: ${Tags.describe(tags)}"))
             messages.forEach { add(ChatMsg(if (it.fromUser) "user" else "assistant", it.text)) }
         }
-        messages = messages + BuilderMsg(false, "")
+        messages = messages + BuildMsg(false, "")
         val idx = messages.lastIndex
         busy = true; error = null
         job = viewModelScope.launch {
             try {
-                Ai.stream(prompt, 2400, 1.0) { t -> messages = messages.toMutableList().also { if (idx < it.size) it[idx] = BuilderMsg(false, t) } }
+                Ai.stream(prompt, 2400, 1.0) { t -> messages = messages.toMutableList().also { if (idx < it.size) it[idx] = BuildMsg(false, t) } }
             } catch (e: CancellationException) {
                 // stopped
             } catch (e: Exception) {
@@ -116,6 +140,7 @@ class BuilderViewModel : ViewModel() {
             } finally {
                 if (messages.getOrNull(idx)?.text.isNullOrBlank()) messages = messages.filterIndexed { i, _ -> i != idx }
                 busy = false
+                persist()
             }
         }
     }
@@ -130,6 +155,7 @@ class BuilderViewModel : ViewModel() {
             val key = CreativePrompts.SECTIONS.firstOrNull { it.equals(section, ignoreCase = true) } ?: section
             draft = draft + (key to text)
         }
+        persist()
     }
 
     fun toCharacter(): Character = Character(
@@ -147,12 +173,15 @@ class BuilderViewModel : ViewModel() {
 private val QUICK = listOf("Give me 3 concepts", "Next section", "Make it darker", "More dominant", "Shorter", "Start the opening message")
 
 @Composable
-fun BuilderScreen(onBack: () -> Unit, openEditor: () -> Unit) {
+fun BuilderScreen(buildId: String?, onBack: () -> Unit, openEditor: () -> Unit) {
     val vm: BuilderViewModel = viewModel()
     LaunchedEffect(Unit) {
-        vm.start(Store.builderSeed)
+        vm.start(buildId, Store.builderSeed)
         Store.builderSeed = null
     }
+    var confirmLeave by remember { mutableStateOf(false) }
+    val tryLeave: () -> Unit = { if (vm.messages.any { it.fromUser }) { confirmLeave = true } else { onBack() } }
+    BackHandler { tryLeave() }
     var input by rememberSaveable { mutableStateOf("") }
     var pickTags by rememberSaveable { mutableStateOf(false) }
     val listState = rememberLazyListState()
@@ -165,7 +194,7 @@ fun BuilderScreen(onBack: () -> Unit, openEditor: () -> Unit) {
     Scaffold(
         containerColor = EmberColors.Bg,
         topBar = {
-            EmberTopBar("Build with AI", onBack) {
+            EmberTopBar("Build with AI", tryLeave) {
                 TextButton(onClick = { pickTags = true }) { Text("Tags (${vm.tags.size})", color = EmberColors.RedSoft) }
             }
         },
@@ -251,6 +280,7 @@ fun BuilderScreen(onBack: () -> Unit, openEditor: () -> Unit) {
                 Button(
                     onClick = {
                         Store.editorDraft = vm.toCharacter()
+                        Store.editorDraftBuildId = vm.sessionId
                         openEditor()
                     },
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).height(46.dp),
@@ -284,7 +314,25 @@ fun BuilderScreen(onBack: () -> Unit, openEditor: () -> Unit) {
     if (pickTags) {
         TagPickerSheet(
             title = "Tags for this character", initial = vm.tags,
-            onDone = { vm.tags = it; pickTags = false }, onDismiss = { pickTags = false },
+            onDone = { vm.updateTags(it); pickTags = false }, onDismiss = { pickTags = false },
+        )
+    }
+
+    if (confirmLeave) {
+        AlertDialog(
+            onDismissRequest = { confirmLeave = false },
+            title = { Text("Leave the builder?") },
+            text = {
+                Text("Your progress is saved. Pick it up any time from + → Continue building, or discard it now.")
+            },
+            confirmButton = { TextButton(onClick = { confirmLeave = false; onBack() }) { Text("Leave, keep it saved") } },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { confirmLeave = false; vm.discard(); onBack() }) { Text("Discard", color = EmberColors.RedSoft) }
+                    TextButton(onClick = { confirmLeave = false }) { Text("Stay") }
+                }
+            },
+            containerColor = EmberColors.Surface,
         )
     }
 }

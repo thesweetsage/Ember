@@ -51,6 +51,7 @@ class MainActivity : ComponentActivity() {
                         personas = { tab("personas") },
                         createManual = { Store.editorDraft = null; nav.navigate("edit/new") },
                         createWithAi = { nav.navigate("builder") },
+                        continueBuild = { nav.navigate("builder/$it") },
                     )
                     NavHost(navController = nav, startDestination = "library") {
                         composable("library") {
@@ -75,7 +76,10 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable("builder") {
-                            BuilderScreen(onBack = { nav.popBackStack() }, openEditor = { nav.navigate("edit/new") })
+                            BuilderScreen(null, onBack = { nav.popBackStack() }, openEditor = { nav.navigate("edit/new") })
+                        }
+                        composable("builder/{id}", arguments = idArg) { entry ->
+                            BuilderScreen(entry.arguments?.getString("id"), onBack = { nav.popBackStack() }, openEditor = { nav.navigate("edit/new") })
                         }
                         composable("edit/{id}", arguments = idArg) { entry ->
                             val id = entry.arguments?.getString("id") ?: "new"
