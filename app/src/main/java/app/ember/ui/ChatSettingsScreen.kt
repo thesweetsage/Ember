@@ -111,7 +111,7 @@ fun ChatSettingsScreen(
                 SettingRow("Summarise every", if (s.summariseEvery > 0) "${s.summariseEvery} messages" else "Off") { pickSummaryEvery = true }
                 SettingRow("Chat archives", onClick = openArchives)
                 SettingRow("Search chat history", onClick = openSearch)
-                SettingRow("Start new chat with ${character.name}", divider = false) { confirmNew = true }
+                SettingRow("Start fresh with ${character.name}", sub = "Keeps this chat", divider = false) { confirmNew = true }
             }
 
             SettingsGroup("Appearance") {
@@ -185,7 +185,7 @@ fun ChatSettingsScreen(
         AlertDialog(
             onDismissRequest = { confirmNew = false },
             title = { Text("Start a new chat?") },
-            text = { Text("This starts again from the opening message. The current chat stays in Chat archives.") },
+            text = { Text("A new chat begins from the opening message. This chat is kept in the Chats section.") },
             confirmButton = { TextButton(onClick = { Store.newChat(character); confirmNew = false; onBack() }) { Text("Start new chat") } },
             dismissButton = { TextButton(onClick = { confirmNew = false }) { Text("Cancel") } },
             containerColor = EmberColors.Surface,

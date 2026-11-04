@@ -17,6 +17,7 @@ import app.ember.data.Store
 import app.ember.ui.ArchivesScreen
 import app.ember.ui.ChatScreen
 import app.ember.ui.ChatSettingsScreen
+import app.ember.ui.ChatsScreen
 import app.ember.ui.EditCharacterScreen
 import app.ember.ui.EmberColors
 import app.ember.ui.EmberTheme
@@ -45,6 +46,16 @@ class MainActivity : ComponentActivity() {
                                 openRules = { nav.navigate("rules") },
                                 openSettings = { nav.navigate("settings") },
                                 openPersonas = { nav.navigate("personas") },
+                                openChats = { nav.navigate("chats") { popUpTo("library"); launchSingleTop = true } },
+                            )
+                        }
+                        composable("chats") {
+                            ChatsScreen(
+                                openChat = { nav.navigate("chat/$it") },
+                                openCharacters = { nav.popBackStack("library", inclusive = false) },
+                                create = { nav.navigate("edit/new") },
+                                openPersonas = { nav.navigate("personas") },
+                                openRules = { nav.navigate("rules") },
                             )
                         }
                         composable("edit/{id}", arguments = idArg) { entry ->

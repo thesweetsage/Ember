@@ -74,6 +74,7 @@ fun LibraryScreen(
     openRules: () -> Unit,
     openSettings: () -> Unit,
     openPersonas: () -> Unit,
+    openChats: () -> Unit,
 ) {
     var tab by rememberSaveable { mutableStateOf(Tab.All) }
     var confirmDelete by remember { mutableStateOf<Character?>(null) }
@@ -94,11 +95,8 @@ fun LibraryScreen(
 
     Scaffold(
         containerColor = EmberColors.Bg,
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { editCharacter("new") },
-                containerColor = EmberColors.Red, contentColor = Color.White, shape = CircleShape,
-            ) { Icon(Icons.Filled.Add, contentDescription = "New character") }
+        bottomBar = {
+            EmberBottomBar(Section.Characters, {}, openChats, { editCharacter("new") }, openPersonas, openRules)
         },
     ) { pad ->
         Column(Modifier.fillMaxSize().padding(pad)) {
@@ -109,8 +107,6 @@ fun LibraryScreen(
                 Text("Ember", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = EmberColors.Text)
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = { searching = !searching; if (!searching) query = "" }) { Icon(Icons.Outlined.Search, "Search", tint = EmberColors.Text) }
-                IconButton(onClick = openPersonas) { Icon(Icons.Outlined.Person, "Personas", tint = EmberColors.Text) }
-                IconButton(onClick = openRules) { Icon(Icons.Outlined.Rule, "Rules", tint = EmberColors.Text) }
                 IconButton(onClick = openSettings) { Icon(Icons.Outlined.Settings, "Settings", tint = EmberColors.Text) }
             }
             if (!Store.hasApiKey) {
@@ -181,7 +177,7 @@ fun LibraryScreen(
                     columns = GridCells.Fixed(3),
                     horizontalArrangement = Arrangement.spacedBy(3.dp),
                     verticalArrangement = Arrangement.spacedBy(3.dp),
-                    contentPadding = PaddingValues(bottom = 96.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp),
                 ) {
                     if (showBanner && pinned != null) {
                         item(key = "pinned", span = { GridItemSpan(maxLineSpan) }) {

@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.Draw
 import androidx.compose.material.icons.outlined.Edit
@@ -173,13 +174,15 @@ fun ChatScreen(
                     val model = if (chat?.useBackup == true && Store.backupReady) Store.settings.backupModel else Store.settings.model
                     Text(model, color = Cream.copy(alpha = 0.8f), fontSize = 12.sp, maxLines = 1)
                 }
+                RoundIcon(Icons.Filled.RestartAlt, "Start fresh, keep this chat", onClick = { confirmNewChat = true })
+                Spacer(Modifier.width(6.dp))
                 RoundIcon(Icons.Outlined.Lightbulb, "Memory", onClick = openMemory)
                 Spacer(Modifier.width(6.dp))
                 RoundIcon(Icons.Filled.Menu, "Chat settings", onClick = openChatSettings)
                 Box {
                     IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "More", tint = Cream) }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                        DropdownMenuItem(text = { Text("Start new chat") }, onClick = { menu = false; confirmNewChat = true })
+                        DropdownMenuItem(text = { Text("Start fresh (keep this chat)") }, onClick = { menu = false; confirmNewChat = true })
                         DropdownMenuItem(text = { Text("Chat archives") }, onClick = { menu = false; openArchives() })
                         DropdownMenuItem(text = { Text("Search chat history") }, onClick = { menu = false; openSearch() })
                         DropdownMenuItem(text = { Text("Edit character") }, onClick = { menu = false; editCharacter() })
@@ -327,8 +330,8 @@ fun ChatScreen(
         AlertDialog(
             onDismissRequest = { confirmNewChat = false },
             title = { Text("Start a new chat?") },
-            text = { Text("This starts again from the opening message. The current chat stays in Chat archives.") },
-            confirmButton = { TextButton(onClick = { vm.newChat(); confirmNewChat = false }) { Text("Start new chat") } },
+            text = { Text("A new chat begins from the opening message. This chat is kept: find it in the Chats section or in Chat archives.") },
+            confirmButton = { TextButton(onClick = { vm.newChat(); confirmNewChat = false }) { Text("Start fresh") } },
             dismissButton = { TextButton(onClick = { confirmNewChat = false }) { Text("Cancel") } },
             containerColor = EmberColors.Surface,
         )
