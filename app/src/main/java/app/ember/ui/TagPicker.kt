@@ -80,7 +80,13 @@ fun TagPickerSheet(title: String, initial: List<String>, onDone: (List<String>) 
         selected = if (tag in selected) selected - tag else selected + tag
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet, containerColor = EmberColors.Bg) {
+    // Swiping is off so scrolling up can't close it, and closing it any other way keeps your picks.
+    ModalBottomSheet(
+        onDismissRequest = { onDone(selected) },
+        sheetState = sheet,
+        containerColor = EmberColors.Bg,
+        sheetGesturesEnabled = false,
+    ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).navigationBarsPadding().imePadding()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
