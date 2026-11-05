@@ -1,6 +1,7 @@
 package app.ember.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -63,6 +64,8 @@ private fun AiHelperDialog(
     prompt: (note: String) -> List<ChatMsg>,
     preferBackup: Boolean,
     showResult: Boolean = true,
+    /** When set, a "Suggest ideas" button fills tappable ideas for the note box. */
+    suggest: ((avoid: List<String>) -> List<ChatMsg>)? = null,
     onDismiss: () -> Unit,
     extra: @Composable () -> Unit = {},
     actions: @Composable (result: String) -> Unit,
@@ -73,6 +76,25 @@ private fun AiHelperDialog(
     var error by remember { mutableStateOf<String?>(null) }
     var job by remember { mutableStateOf<Job?>(null) }
     val scope = rememberCoroutineScope()
+    var ideas by remember { mutableStateOf(listOf<String>()) }
+    var seen by remember { mutableStateOf(listOf<String>()) }
+    var ideasBusy by remember { mutableStateOf(false) }
+
+    fun loadIdeas() {
+        val ask = suggest ?: return
+        ideasBusy = true; error = null
+        scope.launch {
+            try {
+                val got = CreativePrompts.parseSuggestions(Ai.complete(ask(seen.takeLast(20)), null, 1.0, preferBackup = Ai.creativeOnBackup))
+                if (got.isEmpty()) error = "No ideas came back. Try again."
+                ideas = got; seen = seen + got
+            } catch (e: Exception) {
+                error = e.message ?: "Couldn't get ideas."
+            } finally {
+                ideasBusy = false
+            }
+        }
+    }
 
     fun generate() {
         job?.cancel()
@@ -112,6 +134,23 @@ private fun AiHelperDialog(
                     colors = fieldColors(), shape = RoundedCornerShape(12.dp),
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 )
+                if (suggest != null) {
+                    TextButton(onClick = { loadIdeas() }, enabled = !ideasBusy) {
+                        Text(
+                            if (ideasBusy) "Thinking of ideas…" else if (ideas.isEmpty()) "✦ Suggest ideas" else "✦ More ideas",
+                            color = EmberColors.RedSoft,
+                        )
+                    }
+                    ideas.forEach { idea ->
+                        Text(
+                            idea, fontSize = 14.sp, lineHeight = 19.sp,
+                            color = if (idea == note) EmberColors.Bg else EmberColors.Text,
+                            modifier = Modifier.fillMaxWidth()
+                                .background(if (idea == note) EmberColors.Text else EmberColors.Surface, RoundedCornerShape(12.dp))
+                                .clickable { note = idea }.padding(horizontal = 14.dp, vertical = 10.dp),
+                        )
+                    }
+                }
                 extra()
                 Button(
                     onClick = { generate() }, enabled = !busy && (!noteRequired || note.isNotBlank()),
@@ -173,6 +212,7 @@ fun NewScenarioDialog(character: Character, onStarted: (chatCharacterId: String)
         notePlaceholder = "e.g. we're strangers stuck in the same cabin during a snowstorm",
         noteRequired = true,
         prompt = { setup -> CreativePrompts.scenario(character, setup, persona) },
+        suggest = { avoid -> CreativePrompts.suggestions(character, forVariant = false, avoid = avoid) },
         preferBackup = false,
         onDismiss = onDismiss,
         extra = {
@@ -205,6 +245,7 @@ fun VariantDialog(character: Character, onReady: () -> Unit, onDismiss: () -> Un
         notePlaceholder = "e.g. he's her rival instead of her bodyguard, set in 1920s Paris",
         noteRequired = true,
         prompt = { changes -> CreativePrompts.variant(character, changes) },
+        suggest = { avoid -> CreativePrompts.suggestions(character, forVariant = true, avoid = avoid) },
         preferBackup = Ai.creativeOnBackup,
         showResult = false,
         onDismiss = onDismiss,

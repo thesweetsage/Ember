@@ -128,6 +128,26 @@ ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take
         return listOf(ChatMsg("system", system), ChatMsg("user", "The character:\n${card(c)}\n\nThe new scenario: ${setup.trim()}"))
     }
 
+    /** Short ideas for "New scenario" or "Make a variant", fitted to this character. One per line. */
+    fun suggestions(c: app.ember.data.Character, forVariant: Boolean, avoid: List<String>): List<ChatMsg> {
+        val ask = if (forVariant) {
+            "Suggest 5 different variants of this character: the same core man, changed in one bold way each (his role, the era or world, " +
+                "the dynamic with her, a darker or softer version, a supernatural twist). Each is what she'd type as 'what's different'."
+        } else {
+            "Suggest 5 different new scenarios for a roleplay with this same character: fresh setups for how they meet or where their story " +
+                "is now (a forced proximity, a reunion, a secret, a dangerous situation, a different relationship). Each is what she'd type as 'the setup'."
+        }
+        val system = "$FRAME\n\n$ask Fit them to his personality, tags and kinks; keep each one short and punchy, under 20 words, plain language. " +
+            "Reply with exactly 5 lines, one idea per line, no numbering, bullets or quotes, nothing else."
+        val user = "The character:\n${card(c).take(6000)}" +
+            (if (avoid.isNotEmpty()) "\n\nDon't repeat these:\n" + avoid.joinToString("\n") else "")
+        return listOf(ChatMsg("system", system), ChatMsg("user", user))
+    }
+
+    fun parseSuggestions(text: String): List<String> = text.lines()
+        .map { it.trim().replace(Regex("^(\\d+[.)]|[-*•])\\s*"), "").trim().trim('"', '“', '”').trim() }
+        .filter { it.length in 8..220 }.take(5)
+
     /** "Make a variant": the same character reworked with her changes, as builder-style sections. */
     fun variant(c: app.ember.data.Character, changes: String): List<ChatMsg> {
         val names = listOf("Name", "Short description", "Personality", "Background", "Opening message", "Example dialogue")
