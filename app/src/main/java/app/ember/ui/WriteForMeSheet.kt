@@ -46,6 +46,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.ember.data.Store
 
 private val DRAFT_LENGTHS = listOf(50, 100, 200)
 
@@ -74,6 +75,21 @@ fun WriteForMeSheet(vm: ChatViewModel, personaName: String, onSent: () -> Unit) 
                     "as $personaName", fontSize = 13.sp, color = EmberColors.TextSoft,
                     modifier = Modifier.background(EmberColors.Field, RoundedCornerShape(14.dp)).padding(horizontal = 10.dp, vertical = 5.dp),
                 )
+            }
+            // Which model writes your drafts; tap to switch between your main and backup models.
+            val s = Store.settings
+            val usingBackup = s.wfmUseBackup && Store.backupReady
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Written by ", fontSize = 13.sp, color = EmberColors.Muted)
+                TextButton(
+                    onClick = {
+                        if (Store.backupReady) Store.updateSettings(s.copy(wfmUseBackup = !s.wfmUseBackup))
+                        else vm.wfmError = "Set up a backup model in Settings to switch."
+                    },
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp),
+                ) {
+                    Text((if (usingBackup) s.backupModel else s.model) + "  ⇄", fontSize = 13.sp, color = EmberColors.RedSoft)
+                }
             }
 
             Text("Your notes: what you do and say", fontSize = 13.sp, color = EmberColors.Muted)

@@ -237,6 +237,15 @@ fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit) {
                 fontSize = 12.5.sp, color = EmberColors.Muted,
             )
 
+            SettingsGroup("Write for me") {
+                ToggleRow(
+                    "Use the backup model for my drafts", Store.settings.wfmUseBackup,
+                    sub = if (Store.backupReady) "Drafts written by ${Store.settings.backupModel}; chat replies stay on ${Store.settings.model}"
+                    else "Set up a backup model above first",
+                    divider = false,
+                ) { on -> Store.updateSettings(Store.settings.copy(wfmUseBackup = on)) }
+            }
+
             SettingsGroup("Defaults for new chats") {
                 ToggleRow("Switch to backup on refusal", autoSwitch, divider = true) { autoSwitch = it }
                 Column(Modifier.padding(vertical = 12.dp)) {

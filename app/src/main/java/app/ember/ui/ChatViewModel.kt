@@ -481,7 +481,11 @@ class ChatViewModel : ViewModel() {
         if (wfmBusy || busy) return
         val ch = chat ?: return
         val ctx = context(ch) ?: return
-        val eps = endpoints(ch) ?: run { wfmError = "Add your API key in Settings first."; return }
+        val chatEps = endpoints(ch) ?: run { wfmError = "Add your API key in Settings first."; return }
+        // "Model for Write for me": the backup writes your drafts, with the main model as its fallback.
+        val eps = if (Store.settings.wfmUseBackup && Store.backupReady) {
+            backupEndpoint() to (if (Store.hasApiKey) mainEndpoint() else null)
+        } else chatEps
         val current = wfmDrafts.getOrNull(wfmSel)
         val prompt = PromptBuilder.forUser(
             ctx, ch.messages, wfmWords, wfmNotes,
