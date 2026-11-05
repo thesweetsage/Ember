@@ -98,6 +98,21 @@ object PromptBuilder {
         return out
     }
 
+    /**
+     * Adds this reply's instructions to the end of the latest user message, where the model pays the most
+     * attention, rather than as a separate note far from the rules.
+     */
+    private fun attachInstruction(out: ArrayList<ChatMsg>, instruction: String) {
+        val note = "[Instructions for this reply only. Not part of the story; follow them silently.]\n$instruction"
+        val last = out.lastOrNull()
+        if (last != null && last.role == "user") out[out.size - 1] = ChatMsg("user", last.content + "\n\n" + note)
+        else out.add(ChatMsg("user", note))
+    }
+
+    /** Readable copy of a prompt, for "See what's sent". */
+    fun describe(prompt: List<ChatMsg>): String =
+        prompt.joinToString("\n\n────────\n\n") { m -> "[" + m.role.uppercase() + "]\n" + m.content }
+
     /** The character's next reply. */
     fun forCharacter(p: PromptContext, history: List<Message>, replyWords: Int, extraInstruction: String? = null): List<ChatMsg> {
         val charName = p.character.name.ifBlank { "the character" }
@@ -117,14 +132,14 @@ object PromptBuilder {
             storySections(p.chat, fill)
         }
         val out = conversation(system, trimHistory(p.chat, history), flip = false, fill = fill)
-        out.add(ChatMsg("system", buildString {
+        attachInstruction(out, buildString {
             append("Write $charName's next reply now, following every ground rule. ")
             append("Stay exactly true to $charName as the character card describes them. ")
             p.character.personality.trim().takeIf { it.isNotEmpty() }?.let {
                 append("Reminder of who $charName is: ").append(fill(it.take(700)))
                 append(if (it.length > 700) "… " else " ")
             }
-            append("Keep the dialogue natural, short and human, like real people talking, never a speech; most of the reply is narration, body language and inner thought. ")
+            append("Dialogue rules for this reply: whenever anyone speaks, keep it to one or two short, plain sentences, then cut to an action, a pause, a look or a thought before they speak again. Across the whole reply, dialogue is at most about a quarter of the words; the rest is narration, body language and inner thought. No speeches, no eloquent explanations of feelings, no perfectly phrased declarations. Real people are brief, a little awkward and say less than they mean. Like this: \"You came.\" He didn't look up from the board. \"Didn't think you would.\" Not like this: a long, articulate paragraph where he explains exactly how he feels. ")
             if (replyWords <= 0) {
                 append("Choose the length yourself to fit the moment: usually around 200 to 300 words, and longer ")
                 append("(up to about 700 words) for important, emotional or intimate scenes that need room for detail and inner thoughts. ")
@@ -134,7 +149,7 @@ object PromptBuilder {
             append("Format it like a page from a novel: split it into short paragraphs separated by a blank line, starting a new paragraph whenever the action, the speaker or the inner thought shifts. Never write one solid block of text. ")
             append("End on a complete sentence.")
             if (!extraInstruction.isNullOrBlank()) append("\n").append(extraInstruction)
-        }))
+        })
         return out
     }
 
@@ -167,13 +182,13 @@ object PromptBuilder {
             storySections(p.chat, fill)
         }
         val out = conversation(system, trimHistory(p.chat, history), flip = true, fill = fill)
-        out.add(ChatMsg("system", buildString {
+        attachInstruction(out, buildString {
             append("Write $userName's next reply now, following every ground rule and every rule for writing as $userName, as polished novel prose. ")
             p.persona?.description?.trim()?.takeIf { it.isNotEmpty() }?.let {
                 append("Stay exactly true to who $userName is: ").append(fill(it.take(700)))
                 append(if (it.length > 700) "… " else " ")
             }
-            append("Keep her dialogue natural, short and human, never a speech. ")
+            append("Dialogue rules for this reply: whenever anyone speaks, keep it to one or two short, plain sentences, then cut to an action, a pause, a look or a thought before they speak again. Across the whole reply, dialogue is at most about a quarter of the words; the rest is narration, body language and inner thought. No speeches, no eloquent explanations of feelings, no perfectly phrased declarations. Real people are brief, a little awkward and say less than they mean. Like this: \"You came.\" She didn't look up from the board. \"Didn't think you would.\" Not like this: a long, articulate paragraph where she explains exactly how he feels. ")
             if (notes.isNotBlank()) {
                 append("Base it on these notes from the user. Include every action and line of dialogue they mention, ")
                 append("in a sensible order, and expand them into full writing without adding big actions or moves they didn't ask for:\n")
@@ -194,7 +209,7 @@ object PromptBuilder {
             }
             append("Format it like a page from a novel: split it into short paragraphs separated by a blank line, starting a new paragraph whenever the action, the speaker or the inner thought shifts. Never write one solid block of text. ")
             append("Only write $userName's reply, nothing else. End on a complete sentence.")
-        }))
+        })
         return out
     }
 

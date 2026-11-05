@@ -223,6 +223,7 @@ class ChatViewModel : ViewModel() {
             return
         }
         val prompt = PromptBuilder.forCharacter(ctx, history, ch.replyWords, extra)
+        Store.lastPrompt = PromptBuilder.describe(prompt)
         val maxTokens = PromptBuilder.maxTokens(ch.replyWords)
         val temp = temperature(ch)
 
@@ -395,6 +396,7 @@ class ChatViewModel : ViewModel() {
             draft = if (rewrite) current else null,
             change = if (rewrite) wfmChange else null,
         )
+        Store.lastPrompt = PromptBuilder.describe(prompt)
         val idx = wfmDrafts.size
         wfmDrafts = wfmDrafts + ""
         wfmSel = idx

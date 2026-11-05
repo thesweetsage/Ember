@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -51,6 +52,7 @@ fun ChatSettingsScreen(
     var editDirection by remember { mutableStateOf(false) }
     var pickSummaryEvery by remember { mutableStateOf(false) }
     var confirmNew by remember { mutableStateOf(false) }
+    var showPrompt by remember { mutableStateOf(false) }
     val s = Store.settings
 
     Scaffold(containerColor = EmberColors.Bg, topBar = { EmberTopBar("Chat settings", onBack) }) { pad ->
@@ -108,7 +110,8 @@ fun ChatSettingsScreen(
                     }
                 }
                 HorizontalDivider(color = EmberColors.Line)
-                SettingRow("Cost of this chat", costLabel(chat), sub = "${chat.tokensIn + chat.tokensOut} tokens used", divider = false)
+                SettingRow("Cost of this chat", costLabel(chat), sub = "${chat.tokensIn + chat.tokensOut} tokens used")
+                SettingRow("See what's sent", sub = "The exact instructions and chat in the last request", divider = false) { showPrompt = true }
             }
 
             SettingsGroup("History & memory") {
@@ -151,6 +154,8 @@ fun ChatSettingsScreen(
         }
     }
 
+    if (showPrompt) PromptViewer { showPrompt = false }
+
     if (pickPersona) {
         PickerDialog(
             title = "Your persona in this chat", items = Store.personas, label = { it.name },
@@ -188,6 +193,25 @@ fun ChatSettingsScreen(
             containerColor = EmberColors.Surface,
         )
     }
+}
+
+@Composable
+private fun PromptViewer(onClose: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text("Last request sent") },
+        text = {
+            val text = Store.lastPrompt ?: "Nothing sent yet since the app was opened. Send a message or use Write for me, then look again."
+            androidx.compose.foundation.text.selection.SelectionContainer {
+                Text(
+                    text, fontSize = 12.sp, lineHeight = 17.sp, color = EmberColors.TextSoft,
+                    modifier = Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onClose) { Text("Close") } },
+        containerColor = EmberColors.Surface,
+    )
 }
 
 fun costLabel(chat: Chat): String {

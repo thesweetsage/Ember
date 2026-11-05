@@ -69,6 +69,9 @@ object Store {
         private set
     private var activeChats by mutableStateOf(mapOf<String, String>())
 
+    /** The exact text of the last request sent to the model, for "See what's sent". */
+    var lastPrompt by mutableStateOf<String?>(null)
+
     /** A message to scroll to when a chat opens (set by search). */
     var focusMessageId by mutableStateOf<String?>(null)
 
