@@ -195,14 +195,17 @@ object PromptBuilder {
                 append("such as a breath, a glance or a blush; never new actions, feelings, lines or moves that aren't in the notes.\n")
                 beats.forEachIndexed { i, b -> append("${i + 1}. ").append(b).append("\n") }
             } else {
-                append("Decide what $userName does and says next, true to her and the scene. ")
+                append("No notes were given, so write a short, simple reply: $userName's natural reaction to exactly what $charName just said and did in the last message. ")
+                append("Keep track of what has already happened (who is touching whom, what has already been said or asked) and don't repeat or contradict it. ")
+                append("One reaction and at most one or two short lines from her; no new topics, no back-and-forth, no running ahead. ")
             }
             if (!draft.isNullOrBlank() && !change.isNullOrBlank()) {
                 append("\nCurrent draft:\n").append(draft.trim()).append("\n")
                 append("Rewrite it with this change: ").append(change.trim()).append(". Keep everything else.\n")
             }
             append("Dialogue: plain and natural, no speeches or poetic lines. ")
-            if (words <= 0) append("Length: whatever it takes to cover every beat in the notes, and no more. Never pad. ")
+            if (words <= 0 && notes.isBlank()) append("Length: about 80 to 150 words. ")
+            else if (words <= 0) append("Length: whatever it takes to cover every beat in the notes, and no more. Never pad. ")
             else append("Length: about $words words, between ${words * 85 / 100} and ${words * 115 / 100}. Reach it by deepening her body language, what she notices and her thoughts around the beats, never by adding new actions or lines. ")
             append("Write only $userName's part and stop there; never write $charName's actions, words or reactions. ")
             append("Split it into short paragraphs separated by blank lines, never one block of text. End on a complete sentence.")
