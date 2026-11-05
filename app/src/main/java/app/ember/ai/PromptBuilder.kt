@@ -141,7 +141,7 @@ object PromptBuilder {
             }
             append("Dialogue for this reply: real people talking, never a written speech. Each line of dialogue says only what this moment needs. Once the point is made, stop the talking and show the reaction instead; do not keep a character speaking for paragraph after paragraph. A character can say more when the moment truly calls for it, like a confession or a fight, but it still sounds spoken: plain words, restarts, pauses, hesitations. ")
             append("Every reply must show, in full flowing sentences: (1) $charName's body reacting, such as the face, the jaw, the brows, the hands, the breath, the posture and the small tells they can't hide; (2) what $charName notices about $userName in this moment (her expression, her hands, the way she said something) and what it does to them; (3) $charName's inner thoughts in italics. Every action carries feeling: never a bare, flat line like \"He reached for his tea.\" Show how and why. ")
-            append("Style example, for tone only (never reuse its content): She laughed, and something in his chest pulled tight. He looked down at his hands so she wouldn't catch it on his face, that stupid, helpless softness, and turned the cup a quarter-turn on the table. _Don't. Don't make this a thing._ \"Yeah,\" he said, too quietly. \"Okay.\" ")
+            append("Spoken lines are plain, everyday words. No metaphors, poetic images, aphorisms or clever, quotable phrasing when anyone speaks; that kind of language never comes out of a real person's mouth. Say it the way a real person would: \"I missed you. It was weird here without you.\" Never: \"The quiet had a name in it now.\" Keep any lyrical writing for the narration, and keep even that grounded. ")
             if (replyWords <= 0) {
                 append("Choose the length yourself to fit the moment: usually around 200 to 300 words, and longer ")
                 append("(up to about 700 words) for important, emotional or intimate scenes that need room for detail and inner thoughts. ")
@@ -191,6 +191,7 @@ object PromptBuilder {
                 append(if (it.length > 700) "… " else " ")
             }
             append("Her dialogue: she says ONLY the lines in the notes. You may lightly polish their wording, but never add new lines of speech she didn't ask for; if the notes give her one line, she says one line. Fill the rest of the reply with her body language, what she notices about $charName in this moment and what it does to her, and her inner thoughts in italics, in full flowing sentences. Never pad with extra dialogue or extra actions. ")
+            append("Spoken lines are plain, everyday words. No metaphors, poetic images, aphorisms or clever, quotable phrasing when anyone speaks; that kind of language never comes out of a real person's mouth. Say it the way a real person would: \"I missed you. It was weird here without you.\" Never: \"The quiet had a name in it now.\" Keep any lyrical writing for the narration, and keep even that grounded. ")
             if (notes.isNotBlank()) {
                 append("Base it on these notes from the user. Include every action and line of dialogue they mention, ")
                 append("in a sensible order, and expand them into full writing without adding big actions or moves they didn't ask for:\n")

@@ -145,7 +145,7 @@ val DEFAULT_GROUND_RULES = listOf(
     ),
     GroundRule(
         "Natural dialogue",
-        "Write dialogue the way real people talk. Most lines are brief and plain: people hesitate, trail off, interrupt, joke, deflect and say ordinary things like \"Okay. Night, then.\" When a moment truly matters, a character can say more, but it still sounds spoken, with restarts, pauses and plain words: never a polished speech, a perfectly structured monologue or an eloquent explanation of their feelings."
+        "Write dialogue the way real people talk. Most lines are brief and plain: people hesitate, trail off, interrupt, joke, deflect and say ordinary things like \"Okay. Night, then.\" When a moment truly matters, a character can say more, but it still sounds spoken, with restarts, pauses and plain words: never a polished speech, a perfectly structured monologue or an eloquent explanation of their feelings. Spoken lines use plain, everyday words: no metaphors, poetic images or quotable phrasing when anyone talks."
     ),
     GroundRule(
         "More prose than talk",
