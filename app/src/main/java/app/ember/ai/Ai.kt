@@ -13,7 +13,7 @@ object Ai {
     }
 
     /** Streams a reply, retrying with the backup model if the main one refuses. */
-    suspend fun stream(prompt: List<ChatMsg>, maxTokens: Int, temperature: Double, onText: (String) -> Unit): String {
+    suspend fun stream(prompt: List<ChatMsg>, maxTokens: Int?, temperature: Double, onText: (String) -> Unit): String {
         check()
         suspend fun runOn(ep: Endpoint): String {
             val buf = StringBuilder()
@@ -34,7 +34,7 @@ object Ai {
         return runOn(backup())
     }
 
-    suspend fun complete(prompt: List<ChatMsg>, maxTokens: Int, temperature: Double): String {
+    suspend fun complete(prompt: List<ChatMsg>, maxTokens: Int?, temperature: Double): String {
         check()
         val first = try {
             LlmClient.complete(main(), prompt, maxTokens, temperature).text

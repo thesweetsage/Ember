@@ -44,15 +44,16 @@ object LlmClient {
         }
     }
 
-    private fun body(model: String, messages: List<ChatMsg>, maxTokens: Int, temperature: Double, stream: Boolean): String {
+    private fun body(model: String, messages: List<ChatMsg>, maxTokens: Int?, temperature: Double, stream: Boolean): String {
         val o = JSONObject()
             .put("model", model.trim())
             .put("stream", stream)
-            .put("max_tokens", maxTokens)
             .put("temperature", temperature)
             .put("messages", JSONArray().apply {
                 messages.forEach { put(JSONObject().put("role", it.role).put("content", it.content)) }
             })
+        // No cap means the model decides; a cap here would also eat into a thinking model's reasoning.
+        if (maxTokens != null) o.put("max_tokens", maxTokens)
         if (stream) o.put("stream_options", JSONObject().put("include_usage", true))
         return o.toString()
     }
@@ -80,7 +81,7 @@ object LlmClient {
         return StreamEvent.Usage(u.optLong("prompt_tokens", 0), u.optLong("completion_tokens", 0))
     }
 
-    fun stream(ep: Endpoint, messages: List<ChatMsg>, maxTokens: Int, temperature: Double): Flow<StreamEvent> = flow {
+    fun stream(ep: Endpoint, messages: List<ChatMsg>, maxTokens: Int?, temperature: Double): Flow<StreamEvent> = flow {
         val conn = open(ep, stream = true)
         try {
             conn.outputStream.use { it.write(body(ep.model, messages, maxTokens, temperature, true).toByteArray()) }
@@ -130,7 +131,7 @@ object LlmClient {
     }.flowOn(Dispatchers.IO)
 
     /** One-shot request (used for summaries). */
-    suspend fun complete(ep: Endpoint, messages: List<ChatMsg>, maxTokens: Int, temperature: Double): Completion =
+    suspend fun complete(ep: Endpoint, messages: List<ChatMsg>, maxTokens: Int?, temperature: Double): Completion =
         withContext(Dispatchers.IO) {
             val conn = open(ep, stream = false)
             try {

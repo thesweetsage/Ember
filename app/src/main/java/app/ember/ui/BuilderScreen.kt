@@ -132,7 +132,7 @@ class BuilderViewModel : ViewModel() {
         busy = true; error = null
         job = viewModelScope.launch {
             try {
-                Ai.stream(prompt, 2400, 1.0) { t -> messages = messages.toMutableList().also { if (idx < it.size) it[idx] = BuildMsg(false, t) } }
+                Ai.stream(prompt, null, 1.0) { t -> messages = messages.toMutableList().also { if (idx < it.size) it[idx] = BuildMsg(false, t) } }
             } catch (e: CancellationException) {
                 // stopped
             } catch (e: Exception) {

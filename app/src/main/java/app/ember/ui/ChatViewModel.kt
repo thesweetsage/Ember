@@ -283,7 +283,7 @@ class ChatViewModel : ViewModel() {
 
     /** Streams one request, passing the text so far to [onText], and adds the token usage to the chat. */
     private suspend fun streamInto(
-        chatId: String, ep: Endpoint, prompt: List<ChatMsg>, maxTokens: Int, temp: Double, onText: (String) -> Unit,
+        chatId: String, ep: Endpoint, prompt: List<ChatMsg>, maxTokens: Int?, temp: Double, onText: (String) -> Unit,
     ) {
         val buf = StringBuilder()
         LlmClient.stream(ep, prompt, maxTokens, temp).collect { ev ->
@@ -334,10 +334,10 @@ class ChatViewModel : ViewModel() {
                 val block = ch.messages.subList(start, end)
                 val prompt = PromptBuilder.forSummary(ctx, block)
                 val result = try {
-                    LlmClient.complete(eps.first, prompt, 600, 0.4)
-                        .takeIf { !Refusal.looksLike(it.text) } ?: eps.second?.let { LlmClient.complete(it, prompt, 600, 0.4) }
+                    LlmClient.complete(eps.first, prompt, null, 0.4)
+                        .takeIf { !Refusal.looksLike(it.text) } ?: eps.second?.let { LlmClient.complete(it, prompt, null, 0.4) }
                 } catch (e: ContentBlockedException) {
-                    eps.second?.let { LlmClient.complete(it, prompt, 600, 0.4) }
+                    eps.second?.let { LlmClient.complete(it, prompt, null, 0.4) }
                 }
                 if (result != null && result.text.isNotBlank() && !Refusal.looksLike(result.text)) {
                     Store.updateChat(chatId) { c ->
@@ -370,7 +370,7 @@ class ChatViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val prompt = PromptBuilder.forSummary(ctx, ch.messages.subList(start, end))
-                val r = LlmClient.complete(eps.first, prompt, 600, 0.4)
+                val r = LlmClient.complete(eps.first, prompt, null, 0.4)
                 Store.updateChat(ch.id) { c ->
                     c.copy(summaries = c.summaries + Summary(from = start, to = end, text = r.text),
                         tokensIn = c.tokensIn + r.input, tokensOut = c.tokensOut + r.output)

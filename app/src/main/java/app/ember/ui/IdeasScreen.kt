@@ -63,7 +63,7 @@ class IdeasViewModel : ViewModel() {
         val avoid = if (more) results else emptyList()
         viewModelScope.launch {
             try {
-                val text = Ai.complete(CreativePrompts.ideas(tags, notes, 6, avoid, gender), 1200, 0.85)
+                val text = Ai.complete(CreativePrompts.ideas(tags, notes, 6, avoid, gender), null, 0.85)
                 val parsed = CreativePrompts.parseIdeas(text)
                 if (parsed.isEmpty()) error = "No ideas came back. Try again."
                 results = if (more) results + parsed else parsed

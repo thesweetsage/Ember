@@ -235,5 +235,6 @@ object PromptBuilder {
 
     /** API-side cap, generous enough that the model finishes its last sentence. */
     // Generous on purpose: "thinking" models spend part of this before they write a word.
-    fun maxTokens(words: Int): Int = (if (words <= 0) 1800 else (words * 2.2).toInt()).plus(3000).coerceIn(3200, 8000)
+    // Auto sends no cap at all. A fixed length keeps a generous cap, with room for "thinking" models to reason first.
+    fun maxTokens(words: Int): Int? = if (words <= 0) null else ((words * 2.2).toInt() + 3000).coerceAtMost(8000)
 }
