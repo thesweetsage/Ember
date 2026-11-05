@@ -260,12 +260,25 @@ class ChatViewModel : ViewModel() {
                     if (fallback == null) throw e
                     true
                 }
+                var used = primary
                 if (blocked && fallback != null) {
                     show("")
                     streamInto(cid, fallback, prompt, maxTokens, temp, wordLimit(ch.replyWords, 500), ::show)
+                    used = fallback
                     info = "The main model refused, so the backup model wrote this reply."
                 } else if (blocked) {
                     info = "This looks like a refusal. Add a backup model in Settings to retry these automatically."
+                }
+                // Far too short for the length you chose: ask once more at the right length.
+                val got = wordCount(written)
+                if (base.isEmpty() && ch.replyWords > 0 && got in 1 until ch.replyWords * 6 / 10) {
+                    val again = PromptBuilder.forCharacter(
+                        ctx, history, ch.replyWords,
+                        (extra?.let { "$it\n" } ?: "") + "A first attempt came out at only $got words, far too short. " +
+                            "Write this reply at about ${ch.replyWords} words: the same events, with deeper body language, noticing and inner thoughts.",
+                    )
+                    show("")
+                    streamInto(cid, used, again, maxTokens, temp, wordLimit(ch.replyWords, 500), ::show)
                 }
                 if (written.isBlank()) error = "The model sent back an empty reply. Try again."
             } catch (e: CancellationException) {
@@ -495,9 +508,21 @@ class ChatViewModel : ViewModel() {
                     if (fallback == null) throw e
                     true
                 }
+                var used = primary
                 if (blocked && fallback != null) {
                     show("")
                     streamInto(ch.id, fallback, prompt, PromptBuilder.maxTokens(wfmWords), temperature(ch), wordLimit(wfmWords, 500), ::show)
+                    used = fallback
+                }
+                // Far too short for the length you chose: rewrite once at the right length, same beats.
+                val got = wordCount(written)
+                if (wfmWords > 0 && got in 1 until wfmWords * 6 / 10) {
+                    val again = PromptBuilder.forUser(
+                        ctx, ch.messages, wfmWords, wfmNotes, draft = written,
+                        change = "it is only $got words; make it about $wfmWords words by deepening her body language, what she notices and her thoughts, keeping every beat and adding no new actions or lines",
+                    )
+                    show("")
+                    streamInto(ch.id, used, again, PromptBuilder.maxTokens(wfmWords), temperature(ch), wordLimit(wfmWords, 500), ::show)
                 }
                 if (rewrite) wfmChange = ""
             } catch (e: CancellationException) {

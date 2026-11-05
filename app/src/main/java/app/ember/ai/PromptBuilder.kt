@@ -145,7 +145,7 @@ object PromptBuilder {
             append("Dialogue: plain and natural, only what the moment needs, no speeches or poetic lines. ")
             append("Show $charName's body reacting, what they notice about $userName, and their thoughts. ")
             if (replyWords <= 0) append("Length: fit the moment, usually 200 to 300 words, up to about 450 for big scenes, never more. ")
-            else append("Length: about $replyWords words. ")
+            else append("Length: about $replyWords words, between ${replyWords * 85 / 100} and ${replyWords * 115 / 100}. Reach it by deepening body language, what $charName notices and their thoughts, not by adding events. ")
             append("Write only $charName's part and stop at the first moment $userName could respond; never write $userName's actions, words or thoughts. ")
             append("Split it into short paragraphs separated by blank lines, never one block of text. End on a complete sentence.")
             if (!extraInstruction.isNullOrBlank()) append("\n").append(extraInstruction)
@@ -203,7 +203,7 @@ object PromptBuilder {
             }
             append("Dialogue: plain and natural, no speeches or poetic lines. ")
             if (words <= 0) append("Length: whatever it takes to cover every beat in the notes, and no more. Never pad. ")
-            else append("Length: about $words words. ")
+            else append("Length: about $words words, between ${words * 85 / 100} and ${words * 115 / 100}. Reach it by deepening her body language, what she notices and her thoughts around the beats, never by adding new actions or lines. ")
             append("Write only $userName's part and stop there; never write $charName's actions, words or reactions. ")
             append("Split it into short paragraphs separated by blank lines, never one block of text. End on a complete sentence.")
         })
