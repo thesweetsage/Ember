@@ -52,7 +52,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit, openCosts: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit, openCosts: () -> Unit, openTrash: () -> Unit = {}) {
     val context = LocalContext.current
     val s = Store.settings
     var baseUrl by rememberSaveable { mutableStateOf(s.baseUrl) }
@@ -137,6 +137,10 @@ fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit, openCosts: () -
                 SettingRow(
                     "Spending", "$" + "%.2f".format(Locale.US, Store.spentThisMonth()) + " this month",
                     sub = "By model and by character, with an optional monthly budget", onClick = { commit(); openCosts() },
+                )
+                SettingRow(
+                    "Recently deleted", if (Store.trash.isEmpty()) "Empty" else "${Store.trash.size}",
+                    sub = "Deleted characters and chats, kept for 30 days", onClick = { commit(); openTrash() },
                 )
                 ToggleRow(
                     "Fingerprint lock", Store.settings.lockEnabled,

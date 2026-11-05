@@ -97,7 +97,7 @@ fun ArchivesScreen(characterId: String, onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { confirmDelete = null },
             title = { Text("Delete this chat?") },
-            text = { Text("All ${c.messages.size} messages and its memories will be deleted. This can't be undone.") },
+            text = { Text("It moves to Recently deleted (in Settings) for 30 days, then it's gone for good.") },
             confirmButton = {
                 TextButton(onClick = {
                     Store.deleteChat(c.id)

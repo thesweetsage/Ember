@@ -43,6 +43,8 @@ fun EmberField(
     trailingInfo: String? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
     visualTransformation: VisualTransformation = VisualTransformation.None,
+    /** Shows a small "Improve with AI" button next to the label. */
+    onImprove: (() -> Unit)? = null,
 ) {
     Column(modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
@@ -55,6 +57,12 @@ fun EmberField(
             )
             Spacer(Modifier.weight(1f))
             if (trailingInfo != null) Text(trailingInfo, fontSize = 12.sp, color = EmberColors.Dim)
+            if (onImprove != null) {
+                androidx.compose.material3.TextButton(
+                    onClick = onImprove, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp),
+                    modifier = Modifier.height(28.dp),
+                ) { Text("✦ Improve", fontSize = 12.5.sp, color = EmberColors.RedSoft) }
+            }
         }
         Spacer(Modifier.height(8.dp))
         TextField(

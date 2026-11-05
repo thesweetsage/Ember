@@ -82,6 +82,7 @@ class MainActivity : FragmentActivity() {
                                 openRules = { nav.navigate("rules") },
                                 openSettings = { nav.navigate("settings") },
                                 bottomBar = { EmberBottomBar(Section.Characters, bottom) },
+                                openWrapped = { nav.navigate("wrapped") },
                             )
                         }
                         composable("chats") {
@@ -125,6 +126,7 @@ class MainActivity : FragmentActivity() {
                                 openArchives = { nav.navigate("archives/$id") },
                                 openSearch = { nav.navigate("search/$id") },
                                 openPersonas = { nav.navigate("personas") },
+                                openNewDraft = { nav.navigate("edit/new") },
                             )
                         }
                         composable("chatsettings/{id}", arguments = idArg) { entry ->
@@ -156,8 +158,10 @@ class MainActivity : FragmentActivity() {
                         }
                         composable("rules") { RulesScreen(onBack = { nav.popBackStack() }) }
                         composable("settings") {
-                            SettingsScreen(onBack = { nav.popBackStack() }, openPersonas = { nav.navigate("personas") }, openCosts = { nav.navigate("costs") })
+                            SettingsScreen(onBack = { nav.popBackStack() }, openPersonas = { nav.navigate("personas") }, openCosts = { nav.navigate("costs") }, openTrash = { nav.navigate("trash") })
                         }
+                        composable("trash") { app.ember.ui.TrashScreen(onBack = { nav.popBackStack() }) }
+                        composable("wrapped") { app.ember.ui.WrappedScreen(onBack = { nav.popBackStack() }) }
                         composable("costs") { CostScreen(onBack = { nav.popBackStack() }) }
                     }
                     if (locked) LockScreen(this@MainActivity) { locked = false }

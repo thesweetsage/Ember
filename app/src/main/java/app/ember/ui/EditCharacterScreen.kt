@@ -76,6 +76,12 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
     var avatar by rememberSaveable { mutableStateOf(base.avatar) }
     var chatBg by rememberSaveable { mutableStateOf(base.chatBg) }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
+    /** Which field "Improve with AI" is open for: label, current text, and where the result goes. */
+    var improving by remember { mutableStateOf<Triple<String, String, (String) -> Unit>?>(null) }
+    fun current() = base.copy(
+        name = name, description = description, personality = personality, background = background,
+        openings = openings, example = example, tags = tags,
+    )
 
     val pickAvatar = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) Store.importImage(context, uri)?.let { avatar = it }
@@ -100,6 +106,10 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
         Store.editorDraft = null
         Store.editorDraftBuildId = null
         if (isNew) onCreated(c.id) else onBack()
+    }
+
+    improving?.let { (field, text, apply) ->
+        ImproveFieldDialog(field, text, current(), onReplace = apply, onDismiss = { improving = null })
     }
 
     Scaffold(
@@ -153,20 +163,26 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
             EmberField("Name", name, { name = it; error = null }, required = true,
                 placeholder = "Character name", singleLine = true)
             EmberField("Short description", description, { description = it },
-                placeholder = "One or two lines, shown at the top of the chat.", minLines = 2, maxLines = 4)
+                placeholder = "One or two lines, shown at the top of the chat.", minLines = 2, maxLines = 4,
+                onImprove = { improving = Triple("Short description", description) { v: String -> description = v } })
             EmberField("Personality", personality, { personality = it },
                 placeholder = "Temperament, how they talk, what they want, what they hide, habits.",
-                minLines = 5, maxLines = 8, trailingInfo = "No limit")
+                minLines = 5, maxLines = 8,
+                onImprove = { improving = Triple("Personality", personality) { v: String -> personality = v } })
             EmberField("Background", background, { background = it },
                 placeholder = "Appearance, history, world, relationships, the setup between them and your character. Paste as much as you like.",
                 minLines = 7, maxLines = 9,
-                trailingInfo = "${wordCount(background)} words · ~${background.length / 4} tokens")
+                trailingInfo = "${wordCount(background)} words",
+                onImprove = { improving = Triple("Background", background) { v: String -> background = v } })
             openings.forEachIndexed { i, text ->
                 EmberField(
                     if (i == 0) "Opening message" else "Alternate opening $i", text,
                     { v -> openings = openings.toMutableList().also { it[i] = v } },
                     placeholder = "Write the opening scene like a novel: third person, \"quotes\" for dialogue, actions as full sentences.",
-                    minLines = 5, maxLines = 8, trailingInfo = if (i == 0) "Swipe between openings in chat" else null,
+                    minLines = 5, maxLines = 8,
+                    onImprove = { improving = Triple(if (i == 0) "Opening message" else "Alternate opening $i", text) { v: String ->
+                        openings = openings.toMutableList().also { if (i < it.size) it[i] = v }
+                    } },
                 )
                 if (i > 0) {
                     TextButton(onClick = { openings = openings.toMutableList().also { it.removeAt(i) } }) {
@@ -179,7 +195,8 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
                 modifier = Modifier.border(1.dp, EmberColors.Outline, RoundedCornerShape(20.dp)),
             ) { Text("+ Add alternate opening", color = EmberColors.TextSoft) }
             EmberField("Example dialogue", example, { example = it },
-                placeholder = "Optional. A few lines in their voice so the model copies the style.", minLines = 3, maxLines = 6)
+                placeholder = "Optional. A few lines in their voice so the model copies the style.", minLines = 3, maxLines = 6,
+                onImprove = { improving = Triple("Example dialogue", example) { v: String -> example = v } })
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Tags", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))

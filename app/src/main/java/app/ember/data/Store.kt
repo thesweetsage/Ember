@@ -114,6 +114,7 @@ object Store {
         hasApiKey = prefs.contains("apiKey")
         hasBackupKey = prefs.contains("backupKey")
         hasVoiceKey = prefs.contains("voiceKey")
+        loadTrash()
         usage = read("usage.json")?.let { Json.parseList(it) { o -> Json.usage(o) } } ?: emptyList()
         migrateLegacyUser()
         addStarterPresets()
@@ -359,13 +360,96 @@ object Store {
         saveCharacters()
     }
 
+    /** Moves the character and all their chats to Recently deleted (kept 30 days). Photos stay until then. */
     fun deleteCharacter(id: String) {
         val c = character(id) ?: return
-        deleteImage(c.avatar); deleteImage(c.chatBg)
-        chats.filter { it.characterId == id }.forEach { File(chatDir, it.id + ".json").delete() }
+        val theirChats = chats.filter { it.characterId == id }
+        putInTrash(c.id, JSONObject().put("kind", "character").put("name", c.name)
+            .put("character", Json.character(c)).put("chats", org.json.JSONArray().apply { theirChats.forEach { put(Json.chat(it)) } }))
+        theirChats.forEach { File(chatDir, it.id + ".json").delete() }
         chats = chats.filter { it.characterId != id }
         characters = characters.filter { it.id != id }
         saveCharacters()
+    }
+
+    // ---------- recently deleted ----------
+
+    data class TrashItem(val id: String, val kind: String, val name: String, val deletedAt: Long, val chatCount: Int)
+
+    var trash by mutableStateOf(listOf<TrashItem>())
+        private set
+    private val trashDir get() = File(dir, "trash").apply { mkdirs() }
+    private const val TRASH_DAYS = 30L
+
+    private fun putInTrash(id: String, o: JSONObject) {
+        o.put("deletedAt", System.currentTimeMillis())
+        File(trashDir, "$id.json").writeText(o.toString())
+        loadTrash()
+    }
+
+    private fun loadTrash() {
+        val cutoff = System.currentTimeMillis() - TRASH_DAYS * 24 * 3600 * 1000
+        trash = trashDir.listFiles().orEmpty().filter { it.name.endsWith(".json") }.mapNotNull { f ->
+            val o = runCatching { JSONObject(f.readText()) }.getOrNull() ?: return@mapNotNull null
+            val at = o.optLong("deletedAt", 0)
+            if (at < cutoff) { purgeTrashFile(f, o); return@mapNotNull null }
+            TrashItem(f.name.removeSuffix(".json"), o.optString("kind"), o.optString("name"), at, o.optJSONArray("chats")?.length() ?: 0)
+        }.sortedByDescending { it.deletedAt }
+    }
+
+    private fun purgeTrashFile(f: File, o: JSONObject) {
+        o.optJSONObject("character")?.let { j ->
+            val c = Json.character(j)
+            // Photos go only if no current character uses them.
+            listOf(c.avatar, c.chatBg).forEach { p -> if (p != null && characters.none { it.avatar == p || it.chatBg == p }) deleteImage(p) }
+        }
+        f.delete()
+    }
+
+    /** Puts a deleted character (with their chats) or chat back. Returns a problem to show, or null. */
+    fun restore(id: String): String? {
+        val f = File(trashDir, "$id.json")
+        val o = runCatching { JSONObject(f.readText()) }.getOrNull() ?: return "That item is gone."
+        when (o.optString("kind")) {
+            "character" -> {
+                val c = Json.character(o.getJSONObject("character"))
+                val arr = o.optJSONArray("chats")
+                val restored = (0 until (arr?.length() ?: 0)).mapNotNull { i -> runCatching { Json.chat(arr!!.getJSONObject(i)) }.getOrNull() }
+                characters = characters.filter { it.id != c.id } + c
+                saveCharacters()
+                restored.forEach { putChat(it, persist = true, touch = false) }
+            }
+            "chat" -> {
+                val chat = Json.chat(o.getJSONObject("chat"))
+                if (character(chat.characterId) == null) return "Restore ${o.optString("name")} first; this chat belongs to them."
+                putChat(chat, persist = true, touch = false)
+            }
+        }
+        f.delete()
+        loadTrash()
+        return null
+    }
+
+    fun deleteForever(id: String) {
+        val f = File(trashDir, "$id.json")
+        runCatching { JSONObject(f.readText()) }.getOrNull()?.let { purgeTrashFile(f, it) } ?: f.delete()
+        loadTrash()
+    }
+
+    /** A copy of a photo under a new file name, so two characters never share (and delete) the same file. */
+    fun copyImage(path: String?): String? = runCatching {
+        if (path == null || !File(path).exists()) return null
+        val out = File(imageDir, newId() + ".img")
+        File(path).copyTo(out)
+        out.absolutePath
+    }.getOrNull()
+
+    /** Starts a new chat with a given opening (for "New scenario"). */
+    fun newChatWithOpening(c: Character, opening: String): Chat {
+        val chat = newChat(c)
+        val withOpening = chat.copy(messages = listOf(Message(fromUser = false, versions = listOf(opening.trim()))))
+        putChat(withOpening, persist = true)
+        return withOpening
     }
 
     /** Light mode (0) sends what isn't summarised yet, capped at 30k characters. */
@@ -436,6 +520,7 @@ object Store {
 
     fun deleteChat(id: String) {
         val c = chat(id) ?: return
+        putInTrash(id, JSONObject().put("kind", "chat").put("name", character(c.characterId)?.name.orEmpty()).put("chat", Json.chat(c)))
         File(chatDir, "$id.json").delete()
         chats = chats.filter { it.id != id }
         if (activeChats[c.characterId] == id) {

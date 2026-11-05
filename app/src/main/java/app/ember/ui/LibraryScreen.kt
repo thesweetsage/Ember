@@ -76,7 +76,10 @@ fun LibraryScreen(
     openRules: () -> Unit,
     openSettings: () -> Unit,
     bottomBar: @Composable () -> Unit,
+    openWrapped: () -> Unit = {},
 ) {
+    var scenarioFor by remember { mutableStateOf<Character?>(null) }
+    var variantFor by remember { mutableStateOf<Character?>(null) }
     var tab by rememberSaveable { mutableStateOf(Tab.All) }
     var confirmDelete by remember { mutableStateOf<Character?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
@@ -112,6 +115,7 @@ fun LibraryScreen(
                 IconButton(onClick = { pickTags = true }) {
                     Icon(Icons.Outlined.Sell, "Filter by tags", tint = if (tagFilter.isEmpty()) EmberColors.Text else EmberColors.RedSoft)
                 }
+                IconButton(onClick = openWrapped) { Icon(androidx.compose.material.icons.Icons.Outlined.AutoAwesome, "Ember Wrapped", tint = EmberColors.Text) }
                 IconButton(onClick = openRules) { Icon(Icons.Outlined.Rule, "Rules", tint = EmberColors.Text) }
                 IconButton(onClick = openSettings) { Icon(Icons.Outlined.Settings, "Settings", tint = EmberColors.Text) }
             }
@@ -214,11 +218,20 @@ fun LibraryScreen(
                             onFavourite = { Store.saveCharacter(c.copy(favourite = !c.favourite)) },
                             onArchive = { Store.saveCharacter(c.copy(archived = !c.archived)) },
                             onDelete = { confirmDelete = c },
+                            onScenario = { scenarioFor = c },
+                            onVariant = { variantFor = c },
                         )
                     }
                 }
             }
         }
+    }
+
+    scenarioFor?.let { c ->
+        NewScenarioDialog(c, onStarted = { id -> scenarioFor = null; openChat(id) }, onDismiss = { scenarioFor = null })
+    }
+    variantFor?.let { c ->
+        VariantDialog(c, onReady = { variantFor = null; editCharacter("new") }, onDismiss = { variantFor = null })
     }
 
     if (pickTags) {
@@ -232,7 +245,7 @@ fun LibraryScreen(
         AlertDialog(
             onDismissRequest = { confirmDelete = null },
             title = { Text("Delete ${c.name}?") },
-            text = { Text("This deletes the character and all of their chats. It can't be undone.") },
+            text = { Text("The character and all of their chats move to Recently deleted (in Settings) for 30 days, then they're gone for good.") },
             confirmButton = {
                 TextButton(onClick = { Store.deleteCharacter(c.id); confirmDelete = null }) {
                     Text("Delete", color = EmberColors.RedSoft)
@@ -254,6 +267,8 @@ private fun CharacterCard(
     onFavourite: () -> Unit,
     onArchive: () -> Unit,
     onDelete: () -> Unit,
+    onScenario: () -> Unit,
+    onVariant: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
     Box(
@@ -305,6 +320,8 @@ private fun CharacterCard(
                     text = { Text(if (c.favourite) "Remove from favourites" else "Add to favourites") },
                     onClick = { menu = false; onFavourite() },
                 )
+                DropdownMenuItem(text = { Text("New scenario…") }, onClick = { menu = false; onScenario() })
+                DropdownMenuItem(text = { Text("Make a variant…") }, onClick = { menu = false; onVariant() })
                 DropdownMenuItem(text = { Text(if (c.archived) "Unarchive" else "Archive") }, onClick = { menu = false; onArchive() })
                 DropdownMenuItem(text = { Text("Delete") }, onClick = { menu = false; onDelete() })
             }

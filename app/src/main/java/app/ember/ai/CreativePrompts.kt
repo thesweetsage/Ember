@@ -90,6 +90,54 @@ ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take
     /** Splits a builder message into plain text and [[Section]] blocks. */
     data class Part(val section: String?, val text: String)
 
+    private const val OPENING_RULES =
+        "Write it like a novel: third person, past tense, short paragraphs separated by blank lines, dialogue in quotes, actions as full " +
+            "sentences (never in asterisks), a few of his inner thoughts in italics marked with underscores like _this_. Never write her " +
+            "character's actions, words or thoughts; end on a moment she can respond to. 250 to 400 words. Use {{user}} for her character's name."
+
+    /** The whole character as plain text, for the prompts below. */
+    fun card(c: app.ember.data.Character): String = buildString {
+        append("Name: ${c.name}\n")
+        if (c.description.isNotBlank()) append("Short description: ${c.description.trim()}\n")
+        if (c.tags.isNotEmpty()) append("Tags: ${Tags.describe(c.tags)}\n")
+        append("\nPersonality:\n${c.personality.trim()}\n\nBackground:\n${c.background.trim()}\n")
+        if (c.opening.isNotBlank()) append("\nOpening message:\n${c.opening.trim()}\n")
+        if (c.example.isNotBlank()) append("\nExample dialogue:\n${c.example.trim()}\n")
+    }
+
+    /** "Improve with AI" on one field of the editor. */
+    fun improve(c: app.ember.data.Character, field: String, current: String, note: String): List<ChatMsg> {
+        val isOpening = field.contains("opening", ignoreCase = true)
+        val system = "$FRAME\n\nYou are improving one field of a character card for her. Keep every established fact, name and relationship " +
+            "unless her note says otherwise. Make it richer, more specific and more consistent with the rest of the card, in plain, " +
+            "natural language rather than purple prose. Keep the same point of view and roughly the same shape." +
+            (if (isOpening) " This field is the opening scene. $OPENING_RULES" else "") +
+            (if (field.contains("description", ignoreCase = true)) " This field is one or two lines only." else "") +
+            " Reply with only the new text for the field: no heading, no field name, no commentary."
+        val user = "The character card:\n${card(c)}\n\nField to improve: $field\nCurrent text:\n${current.ifBlank { "(empty, write it from scratch)" }}" +
+            (if (note.isNotBlank()) "\n\nHer note: ${note.trim()}" else "")
+        return listOf(ChatMsg("system", system), ChatMsg("user", user))
+    }
+
+    /** "New scenario": a fresh opening for an existing character in a new setup. */
+    fun scenario(c: app.ember.data.Character, setup: String, persona: Persona?): List<ChatMsg> {
+        val system = "$FRAME\n\nWrite the opening scene for a new roleplay with this existing character, in a new scenario she describes. " +
+            "He stays the same man at heart (same personality, voice and look) but his situation, setting and history with her change as the scenario says. " +
+            "$OPENING_RULES Reply with only the scene." +
+            (persona?.let { "\n\nHer character is ${it.name}: ${it.description.take(1500)}" } ?: "")
+        return listOf(ChatMsg("system", system), ChatMsg("user", "The character:\n${card(c)}\n\nThe new scenario: ${setup.trim()}"))
+    }
+
+    /** "Make a variant": the same character reworked with her changes, as builder-style sections. */
+    fun variant(c: app.ember.data.Character, changes: String): List<ChatMsg> {
+        val names = listOf("Name", "Short description", "Personality", "Background", "Opening message", "Example dialogue")
+        val system = "$FRAME\n\nMake a variant of an existing character: keep what isn't affected by her changes, and rework everything that is " +
+            "so the whole card is consistent. Write every section, each between markers on their own lines, exactly like this:\n" +
+            "[[Personality]]\n...text...\n[[/Personality]]\nUse these section names in this order: ${names.joinToString(", ")}. " +
+            "Opening message: $OPENING_RULES No other text."
+        return listOf(ChatMsg("system", system), ChatMsg("user", "The original character:\n${card(c)}\n\nWhat's different in this variant: ${changes.trim()}"))
+    }
+
     fun parseBuilder(text: String): List<Part> {
         val out = ArrayList<Part>()
         val re = Regex("\\[\\[([^\\]/][^\\]]*)]]\\s*\\n?([\\s\\S]*?)(\\n?\\s*\\[\\[/\\1]]|$)")
