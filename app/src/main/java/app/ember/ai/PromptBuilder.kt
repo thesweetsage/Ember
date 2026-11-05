@@ -233,5 +233,7 @@ object PromptBuilder {
     /** API-side cap, generous enough that the model finishes its last sentence. */
     // Generous on purpose: "thinking" models spend part of this before they write a word.
     // Auto sends no cap at all. A fixed length keeps a generous cap, with room for "thinking" models to reason first.
-    fun maxTokens(words: Int): Int? = if (words <= 0) null else ((words * 2.2).toInt() + 3000).coerceAtMost(8000)
+    /** No token cap for any length: the prompt and the app's word stop keep replies the right size. */
+    @Suppress("UNUSED_PARAMETER")
+    fun maxTokens(words: Int): Int? = null
 }

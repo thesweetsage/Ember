@@ -44,7 +44,8 @@ object LlmClient {
         }
     }
 
-    private fun body(model: String, messages: List<ChatMsg>, maxTokens: Int?, temperature: Double, stream: Boolean): String {
+    private fun body(ep: Endpoint, messages: List<ChatMsg>, maxTokens: Int?, temperature: Double, stream: Boolean, lightThinking: Boolean = false): String {
+        val model = ep.model
         val o = JSONObject()
             .put("model", model.trim())
             .put("stream", stream)
@@ -52,8 +53,15 @@ object LlmClient {
             .put("messages", JSONArray().apply {
                 messages.forEach { put(JSONObject().put("role", it.role).put("content", it.content)) }
             })
-        // No cap means the model decides; a cap here would also eat into a thinking model's reasoning.
+        // Reply length is steered by the prompt and the app's own word stop, never by a token cap,
+        // because thinking models spend the cap on thinking first and can run out before writing.
         if (maxTokens != null) o.put("max_tokens", maxTokens)
+        else if (ep.baseUrl.contains("openrouter", ignoreCase = true)) {
+            // Some OpenRouter providers apply a small default cap, so give plenty of room explicitly,
+            // and keep the thinking part bounded so there's always room left for the reply itself.
+            o.put("max_tokens", 16_000)
+            o.put("reasoning", if (lightThinking) JSONObject().put("effort", "low") else JSONObject().put("max_tokens", 6_000))
+        }
         if (stream) o.put("stream_options", JSONObject().put("include_usage", true))
         return o.toString()
     }
@@ -82,9 +90,12 @@ object LlmClient {
     }
 
     fun stream(ep: Endpoint, messages: List<ChatMsg>, maxTokens: Int?, temperature: Double): Flow<StreamEvent> = flow {
+      // If the model thinks so long it never writes, try once more with light thinking before giving up.
+      for (attempt in 0..1) {
         val conn = open(ep, stream = true)
+        var retry = false
         try {
-            conn.outputStream.use { it.write(body(ep.model, messages, maxTokens, temperature, true).toByteArray()) }
+            conn.outputStream.use { it.write(body(ep, messages, maxTokens, temperature, true, lightThinking = attempt > 0).toByteArray()) }
             if (conn.responseCode !in 200..299) fail(conn)
             var wrote = false
             var finish: String? = null
@@ -119,15 +130,17 @@ object LlmClient {
             if (!wrote) {
                 when (finish) {
                     "content_filter" -> throw ContentBlockedException("The model's provider filtered this reply.")
-                    "length" -> throw IOException(
-                        "The model spent its whole length allowance thinking and never wrote the reply. " +
-                            "Try again, or pick a model that doesn't think first."
+                    "length" -> if (attempt == 0) retry = true else throw IOException(
+                        "The model thought for too long and never wrote the reply, even on a second try. " +
+                            "Tap regenerate, or switch to a model that doesn't think first."
                     )
                 }
             }
         } finally {
             conn.disconnect()
         }
+        if (!retry) break
+      }
     }.flowOn(Dispatchers.IO)
 
     /** One-shot request (used for summaries). */
@@ -135,7 +148,7 @@ object LlmClient {
         withContext(Dispatchers.IO) {
             val conn = open(ep, stream = false)
             try {
-                conn.outputStream.use { it.write(body(ep.model, messages, maxTokens, temperature, false).toByteArray()) }
+                conn.outputStream.use { it.write(body(ep, messages, maxTokens, temperature, false).toByteArray()) }
                 if (conn.responseCode !in 200..299) fail(conn)
                 val o = JSONObject(conn.inputStream.bufferedReader().readText())
                 val text = o.getJSONArray("choices").getJSONObject(0).getJSONObject("message").optString("content", "")
