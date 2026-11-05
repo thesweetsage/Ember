@@ -223,7 +223,7 @@ val DEFAULT_WFM_RULES = listOf(
     ),
     GroundRule(
         "Follow the notes",
-        "Write what the user's notes describe and nothing more. Don't add big actions, decisions, confessions, kisses or moves she didn't ask for; small natural details like a glance, a blush, a fidget or a short thought are fine."
+        "Write what the user's notes describe and nothing more. She says only the lines of dialogue in the notes (lightly polished at most); never add new lines of speech, big actions, decisions, confessions, kisses or moves she didn't ask for. Fill the rest with her body language, what she notices and her inner thoughts."
     ),
     GroundRule(
         "Her voice",
