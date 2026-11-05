@@ -28,7 +28,7 @@ object Ai {
             if (!Store.backupReady) throw e
             null
         }
-        if (first != null && !Refusal.looksLike(first)) return first
+        if (first != null && first.isNotBlank() && !Refusal.looksLike(first)) return first
         if (!Store.backupReady) return first.orEmpty()
         onText("")
         return runOn(backup())
@@ -42,7 +42,7 @@ object Ai {
             if (!Store.backupReady) throw e
             null
         }
-        if (first != null && !Refusal.looksLike(first)) return first
+        if (first != null && first.isNotBlank() && !Refusal.looksLike(first)) return first
         if (!Store.backupReady) return first.orEmpty()
         return LlmClient.complete(backup(), prompt, maxTokens, temperature).text
     }

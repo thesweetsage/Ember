@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material.icons.outlined.AutoFixHigh
 import androidx.compose.material.icons.outlined.Draw
 import androidx.compose.material.icons.outlined.Edit
@@ -248,6 +249,18 @@ fun ChatScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 item { IconChip(Icons.Outlined.Person, persona?.name ?: "No persona") { pickPersona = true } }
+                item {
+                    val spicy = chat?.useBackup == true && Store.backupReady
+                    Row(
+                        Modifier.height(34.dp).clip(RoundedCornerShape(17.dp))
+                            .background(if (spicy) EmberColors.Red else Chip).clickable { vm.toggleSpicy() }.padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Filled.Whatshot, null, tint = Cream, modifier = Modifier.size(15.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(if (spicy) "Spicy on" else "Spicy", color = Cream, fontSize = 13.sp, fontWeight = if (spicy) FontWeight.SemiBold else FontWeight.Medium)
+                    }
+                }
                 item { IconChip(Icons.Outlined.Rule, "Rules · ${Store.rules.count { it.enabled }} on") { openRules() } }
                 if (chat?.direction.isNullOrBlank()) {
                     item { IconChip(Icons.Outlined.Edit, "Direction") { editDirection = true } }
@@ -414,7 +427,7 @@ private fun MessageItem(m: Message, isLast: Boolean, streaming: Boolean, vm: Cha
                     .combinedClickable(onClick = {}, onLongClick = { if (!busy) menu = true })
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
-                if (streaming && m.text.isEmpty()) Text("…", color = Cream, fontSize = 18.sp)
+                if (streaming && m.text.isEmpty()) Text(if (vm.thinking) "Thinking…" else "…", color = Cream, fontSize = if (vm.thinking) 14.sp else 18.sp)
                 else Text(formatStory(m.text), color = Cream, fontSize = textSize.sp, lineHeight = (textSize * 1.48f).sp)
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {

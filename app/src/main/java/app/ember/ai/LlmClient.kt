@@ -19,6 +19,8 @@ data class Endpoint(val baseUrl: String, val key: String, val model: String)
 sealed interface StreamEvent {
     data class Text(val text: String) : StreamEvent
     data class Usage(val input: Long, val output: Long) : StreamEvent
+    /** The model is reasoning silently before it writes. */
+    data object Thinking : StreamEvent
 }
 
 /** The provider blocked the request on content grounds (e.g. DeepSeek's "Content Exists Risk"). */
@@ -83,6 +85,8 @@ object LlmClient {
         try {
             conn.outputStream.use { it.write(body(ep.model, messages, maxTokens, temperature, true).toByteArray()) }
             if (conn.responseCode !in 200..299) fail(conn)
+            var wrote = false
+            var finish: String? = null
             conn.inputStream.bufferedReader().use { reader ->
                 while (true) {
                     val line = reader.readLine() ?: break
@@ -90,12 +94,34 @@ object LlmClient {
                     val data = line.removePrefix("data:").trim()
                     if (data == "[DONE]") break
                     val o = runCatching { JSONObject(data) }.getOrNull() ?: continue
+                    // Errors can arrive in the middle of a stream (OpenRouter does this).
+                    o.optJSONObject("error")?.let { err ->
+                        val msg = err.optString("message").ifBlank { "The provider stopped with an error." }
+                        val low = msg.lowercase()
+                        if (low.contains("moderation") || low.contains("flagged") || low.contains("content") && low.contains("polic")) {
+                            throw ContentBlockedException("The model's provider blocked this reply.\n$msg")
+                        }
+                        throw IOException(msg)
+                    }
                     usageOf(o)?.let { emit(it) }
                     val choices = o.optJSONArray("choices") ?: continue
                     if (choices.length() == 0) continue
-                    val delta = choices.optJSONObject(0)?.optJSONObject("delta") ?: continue
+                    val choice = choices.optJSONObject(0) ?: continue
+                    choice.optString("finish_reason").takeIf { it.isNotBlank() && it != "null" }?.let { finish = it }
+                    val delta = choice.optJSONObject("delta") ?: continue
                     val content = delta.opt("content")
-                    if (content is String && content.isNotEmpty()) emit(StreamEvent.Text(content))
+                    if (content is String && content.isNotEmpty()) { wrote = true; emit(StreamEvent.Text(content)) }
+                    val reasoning = delta.opt("reasoning") ?: delta.opt("reasoning_content")
+                    if (!wrote && reasoning is String && reasoning.isNotEmpty()) emit(StreamEvent.Thinking)
+                }
+            }
+            if (!wrote) {
+                when (finish) {
+                    "content_filter" -> throw ContentBlockedException("The model's provider filtered this reply.")
+                    "length" -> throw IOException(
+                        "The model spent its whole length allowance thinking and never wrote the reply. " +
+                            "Try again, or pick a model that doesn't think first."
+                    )
                 }
             }
         } finally {

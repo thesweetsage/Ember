@@ -33,6 +33,9 @@ class ChatViewModel : ViewModel() {
         private set
     var streamingId by mutableStateOf<String?>(null)
         private set
+    /** True while a "thinking" model reasons before writing. */
+    var thinking by mutableStateOf(false)
+        private set
     var error by mutableStateOf<String?>(null)
     var info by mutableStateOf<String?>(null)
     private var job: Job? = null
@@ -104,6 +107,14 @@ class ChatViewModel : ViewModel() {
     }
 
     /** 0 means Auto: the model picks the length to fit the scene. */
+    /** The spicy button: write this chat with the backup model (e.g. DeepSeek) until switched off. */
+    fun toggleSpicy() {
+        if (!Store.backupReady) { info = "Set up a backup model in Settings to use the spicy button."; return }
+        val on = !(chat?.useBackup ?: false)
+        updateChat { it.copy(useBackup = on) }
+        info = if (on) "Spicy on: ${Store.settings.backupModel} writes this chat." else "Spicy off: back to ${Store.settings.model}."
+    }
+
     fun setLength(words: Int) = updateChat { it.copy(replyWords = if (words <= 0) 0 else words.coerceIn(30, 2000)) }
 
     /** Sends your message (if any) and gets the character's reply. Empty send lets the character carry on. */
@@ -242,7 +253,7 @@ class ChatViewModel : ViewModel() {
                 val (primary, fallback) = eps
                 val blocked = try {
                     streamInto(cid, primary, prompt, maxTokens, temp, ::show)
-                    Refusal.looksLike(written)
+                    written.isBlank() || Refusal.looksLike(written)
                 } catch (e: ContentBlockedException) {
                     if (fallback == null) throw e
                     true
@@ -264,6 +275,7 @@ class ChatViewModel : ViewModel() {
                 Store.persistChat(cid)
                 busy = false
                 streamingId = null
+                thinking = false
             }
             maybeSummarise(cid)
         }
@@ -276,8 +288,9 @@ class ChatViewModel : ViewModel() {
         val buf = StringBuilder()
         LlmClient.stream(ep, prompt, maxTokens, temp).collect { ev ->
             when (ev) {
-                is StreamEvent.Text -> { buf.append(ev.text); onText(buf.toString()) }
+                is StreamEvent.Text -> { thinking = false; buf.append(ev.text); onText(buf.toString()) }
                 is StreamEvent.Usage -> addUsage(chatId, ev.input, ev.output)
+                is StreamEvent.Thinking -> thinking = true
             }
         }
     }
@@ -411,7 +424,7 @@ class ChatViewModel : ViewModel() {
                 val (primary, fallback) = eps
                 val blocked = try {
                     streamInto(ch.id, primary, prompt, PromptBuilder.maxTokens(wfmWords), temperature(ch), ::show)
-                    Refusal.looksLike(written)
+                    written.isBlank() || Refusal.looksLike(written)
                 } catch (e: ContentBlockedException) {
                     if (fallback == null) throw e
                     true
