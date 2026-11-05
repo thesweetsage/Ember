@@ -140,8 +140,9 @@ object PromptBuilder {
             }
             append("Dialogue: plain and natural, only what the moment needs, no speeches or poetic lines. ")
             append("Show $charName's body reacting, what they notice about $userName, and their thoughts. ")
-            if (replyWords <= 0) append("Length: fit the moment, usually 200 to 300 words, longer for big scenes. ")
+            if (replyWords <= 0) append("Length: fit the moment, usually 200 to 300 words, up to about 450 for big scenes, never more. ")
             else append("Length: about $replyWords words. ")
+            append("Write only $charName's part and stop at the first moment $userName could respond; never write $userName's actions, words or thoughts. ")
             append("Short paragraphs. End on a complete sentence.")
             if (!extraInstruction.isNullOrBlank()) append("\n").append(extraInstruction)
         })
@@ -195,7 +196,8 @@ object PromptBuilder {
             append("Dialogue: plain and natural, no speeches or poetic lines. ")
             if (words <= 0) append("Length: let the notes set it; a small moment stays short. Never pad. ")
             else append("Length: about $words words. ")
-            append("Short paragraphs. Only write $userName's reply. End on a complete sentence.")
+            append("Write only $userName's part and stop there; never write $charName's actions, words or reactions. ")
+            append("Short paragraphs. End on a complete sentence.")
         })
         return out
     }

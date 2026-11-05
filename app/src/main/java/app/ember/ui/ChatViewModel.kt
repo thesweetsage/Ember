@@ -254,7 +254,7 @@ class ChatViewModel : ViewModel() {
             try {
                 val (primary, fallback) = eps
                 val blocked = try {
-                    streamInto(cid, primary, prompt, maxTokens, temp, ::show)
+                    streamInto(cid, primary, prompt, maxTokens, temp, wordLimit(ch.replyWords, 500), ::show)
                     written.isBlank() || Refusal.looksLike(written)
                 } catch (e: ContentBlockedException) {
                     if (fallback == null) throw e
@@ -262,7 +262,7 @@ class ChatViewModel : ViewModel() {
                 }
                 if (blocked && fallback != null) {
                     show("")
-                    streamInto(cid, fallback, prompt, maxTokens, temp, ::show)
+                    streamInto(cid, fallback, prompt, maxTokens, temp, wordLimit(ch.replyWords, 500), ::show)
                     info = "The main model refused, so the backup model wrote this reply."
                 } else if (blocked) {
                     info = "This looks like a refusal. Add a backup model in Settings to retry these automatically."
@@ -284,17 +284,52 @@ class ChatViewModel : ViewModel() {
     }
 
     /** Streams one request, passing the text so far to [onText], and adds the token usage to the chat. */
+    /** Safety stop: Auto uses [autoLimit] words; a fixed length allows 60% extra. */
+    private fun wordLimit(words: Int, autoLimit: Int) = if (words <= 0) autoLimit else (words * 1.6).toInt() + 40
+
+    private class RunawayStop : Exception()
+
+    /**
+     * Streams one request, passing the text so far to [onText], and adds the token usage to the chat.
+     * If the reply runs far past [wordLimit] (a model that won't stop), it's cut off there.
+     * A reply that was cut off is trimmed back to its last complete sentence.
+     */
     private suspend fun streamInto(
-        chatId: String, ep: Endpoint, prompt: List<ChatMsg>, maxTokens: Int?, temp: Double, onText: (String) -> Unit,
+        chatId: String, ep: Endpoint, prompt: List<ChatMsg>, maxTokens: Int?, temp: Double,
+        wordLimit: Int, onText: (String) -> Unit,
     ) {
         val buf = StringBuilder()
-        LlmClient.stream(ep, prompt, maxTokens, temp).collect { ev ->
-            when (ev) {
-                is StreamEvent.Text -> { thinking = false; buf.append(ev.text); onText(buf.toString()) }
-                is StreamEvent.Usage -> addUsage(chatId, ev.input, ev.output)
-                is StreamEvent.Thinking -> thinking = true
+        var words = 0
+        var cut = false
+        try {
+            LlmClient.stream(ep, prompt, maxTokens, temp).collect { ev ->
+                when (ev) {
+                    is StreamEvent.Text -> {
+                        thinking = false
+                        buf.append(ev.text)
+                        words += ev.text.count { it == ' ' || it == '\n' }
+                        onText(buf.toString())
+                        if (words > wordLimit) throw RunawayStop()
+                    }
+                    is StreamEvent.Usage -> addUsage(chatId, ev.input, ev.output)
+                    is StreamEvent.Thinking -> thinking = true
+                }
             }
+        } catch (e: RunawayStop) {
+            cut = true
         }
+        val text = buf.toString().trimEnd()
+        if (text.isNotEmpty() && (cut || !endsCleanly(text))) onText(trimToLastSentence(text))
+    }
+
+    private fun endsCleanly(t: String): Boolean = t.last() in ".!?…\"”’_*)"
+
+    /** Drops an unfinished sentence at the end. */
+    private fun trimToLastSentence(t: String): String {
+        val re = Regex("[.!?…][\"”’_*)]*(?=\\s|$)")
+        val last = re.findAll(t).lastOrNull() ?: return t
+        val trimmed = t.substring(0, last.range.last + 1).trimEnd()
+        return if (trimmed.length > t.length / 3) trimmed else t
     }
 
     private fun addUsage(chatId: String, input: Long, output: Long) {
@@ -430,7 +465,7 @@ class ChatViewModel : ViewModel() {
             try {
                 val (primary, fallback) = eps
                 val blocked = try {
-                    streamInto(ch.id, primary, prompt, PromptBuilder.maxTokens(wfmWords), temperature(ch), ::show)
+                    streamInto(ch.id, primary, prompt, PromptBuilder.maxTokens(wfmWords), temperature(ch), wordLimit(wfmWords, 500), ::show)
                     written.isBlank() || Refusal.looksLike(written)
                 } catch (e: ContentBlockedException) {
                     if (fallback == null) throw e
@@ -438,7 +473,7 @@ class ChatViewModel : ViewModel() {
                 }
                 if (blocked && fallback != null) {
                     show("")
-                    streamInto(ch.id, fallback, prompt, PromptBuilder.maxTokens(wfmWords), temperature(ch), ::show)
+                    streamInto(ch.id, fallback, prompt, PromptBuilder.maxTokens(wfmWords), temperature(ch), wordLimit(wfmWords, 500), ::show)
                 }
                 if (rewrite) wfmChange = ""
             } catch (e: CancellationException) {
