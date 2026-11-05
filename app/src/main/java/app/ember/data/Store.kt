@@ -100,7 +100,7 @@ object Store {
         condenseRulesOnce()
         markGroundSeen()
         settings = read("settings.json")?.let { runCatching { Json.settings(JSONObject(it)) }.getOrNull() } ?: Settings()
-        app.ember.ai.PromptBuilder.historyBudgetChars = settings.contextChars
+        app.ember.ai.PromptBuilder.historyBudgetChars = budgetFor(settings.contextChars)
         chats = chatDir.listFiles().orEmpty().filter { it.name.endsWith(".json") }.mapNotNull { f ->
             runCatching { Json.chat(JSONObject(f.readText())) }.getOrNull()
         }
@@ -324,6 +324,9 @@ object Store {
         saveCharacters()
     }
 
+    /** Light mode (0) sends what isn't summarised yet, capped at 30k characters. */
+    private fun budgetFor(contextChars: Int) = if (contextChars <= 0) 30_000 else contextChars
+
     /** Pins one character to the top of the library (null unpins). */
     fun setPinned(id: String?) = updateSettings(settings.copy(pinnedCharacterId = id))
 
@@ -433,7 +436,7 @@ object Store {
     fun resetWfmRules() = updateWfmRules(DEFAULT_WFM_RULES)
     fun updateSettings(s: Settings) {
         settings = s
-        app.ember.ai.PromptBuilder.historyBudgetChars = s.contextChars
+        app.ember.ai.PromptBuilder.historyBudgetChars = budgetFor(s.contextChars)
         saveSettings()
     }
 

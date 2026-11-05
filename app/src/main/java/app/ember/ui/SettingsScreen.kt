@@ -219,7 +219,8 @@ fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit) {
 
             SettingsGroup("Context sent with each message") {
                 val options = listOf(
-                    Triple(30_000, "Short", "About 8k tokens · cheapest"),
+                    Triple(0, "Light", "Last 6 messages word for word + summaries · cheapest"),
+                    Triple(30_000, "Short", "About 8k tokens"),
                     Triple(60_000, "Medium", "About 15k tokens · recommended"),
                     Triple(90_000, "Long", "About 23k tokens · remembers the most word for word"),
                 )

@@ -25,6 +25,8 @@ import kotlinx.coroutines.launch
 
 /** How many of the newest messages always stay out of the summaries. */
 private const val KEEP_RECENT = 10
+/** In Light context mode, only this many newest messages stay word for word. */
+private const val LIGHT_KEEP_RECENT = 6
 
 class ChatViewModel : ViewModel() {
     var characterId by mutableStateOf("")
@@ -320,26 +322,31 @@ class ChatViewModel : ViewModel() {
     /** Every [Settings.summariseEvery] messages, folds the oldest unsummarised block into a summary. */
     private fun maybeSummarise(chatId: String) {
         if (summarising) return
-        val every = Store.settings.summariseEvery
+        // Light context keeps only the last 6 messages word for word and summarises every 10.
+        val light = Store.settings.contextChars <= 0
+        val every = if (light) 10 else Store.settings.summariseEvery
+        val keep = if (light) LIGHT_KEEP_RECENT else KEEP_RECENT
         if (every <= 0) return
-        val ch = Store.chat(chatId) ?: return
-        val start = ch.coveredUntil
-        val end = start + every
-        if (ch.messages.size - KEEP_RECENT < end) return
-        val ctx = context(ch) ?: return
-        val eps = endpoints(ch) ?: return
         summarising = true
         viewModelScope.launch {
             try {
-                val block = ch.messages.subList(start, end)
-                val prompt = PromptBuilder.forSummary(ctx, block)
-                val result = try {
-                    LlmClient.complete(eps.first, prompt, null, 0.4)
-                        .takeIf { !Refusal.looksLike(it.text) } ?: eps.second?.let { LlmClient.complete(it, prompt, null, 0.4) }
-                } catch (e: ContentBlockedException) {
-                    eps.second?.let { LlmClient.complete(it, prompt, null, 0.4) }
-                }
-                if (result != null && result.text.isNotBlank() && !Refusal.looksLike(result.text)) {
+                // Catch up a few blocks at a time if the chat is far behind (e.g. after switching to Light).
+                repeat(3) {
+                    val ch = Store.chat(chatId) ?: return@launch
+                    val start = ch.coveredUntil
+                    val end = start + every
+                    if (ch.messages.size - keep < end) return@launch
+                    val ctx = context(ch) ?: return@launch
+                    val eps = endpoints(ch) ?: return@launch
+                    val prompt = PromptBuilder.forSummary(ctx, ch.messages.subList(start, end))
+                    val result = try {
+                        LlmClient.complete(eps.first, prompt, null, 0.4)
+                            .takeIf { it.text.isNotBlank() && !Refusal.looksLike(it.text) }
+                            ?: eps.second?.let { LlmClient.complete(it, prompt, null, 0.4) }
+                    } catch (e: ContentBlockedException) {
+                        eps.second?.let { LlmClient.complete(it, prompt, null, 0.4) }
+                    }
+                    if (result == null || result.text.isBlank() || Refusal.looksLike(result.text)) return@launch
                     Store.updateChat(chatId) { c ->
                         if (c.coveredUntil != start) c
                         else c.copy(

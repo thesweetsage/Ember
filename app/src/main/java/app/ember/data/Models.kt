@@ -119,7 +119,7 @@ data class Settings(
     val voiceBaseUrl: String = "https://api.groq.com/openai/v1",
     val voiceModel: String = "whisper-large-v3-turbo",
     val voiceLanguage: String = "en",
-    /** Characters of recent chat sent with each message: 30k short, 60k medium, 90k long. */
+    /** Recent chat sent with each message: 0 = Light (last ~6 messages + summaries), 30k short, 60k medium, 90k long. */
     val contextChars: Int = 60_000,
     /** Optional prices per million tokens, in euros, for the cost counter. */
     val priceIn: Double = 0.0,
