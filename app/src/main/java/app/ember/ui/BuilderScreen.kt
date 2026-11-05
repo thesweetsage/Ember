@@ -129,10 +129,13 @@ class BuilderViewModel : ViewModel() {
         }
         messages = messages + BuildMsg(false, "")
         val idx = messages.lastIndex
+        // The opening message is real story prose, so it goes to your main writer; everything else to the backup.
+        val openingPhase = text.contains("opening", ignoreCase = true) ||
+            ("Background" in draft && "Opening message" !in draft)
         busy = true; error = null
         job = viewModelScope.launch {
             try {
-                Ai.stream(prompt, null, 1.0) { t -> messages = messages.toMutableList().also { if (idx < it.size) it[idx] = BuildMsg(false, t) } }
+                Ai.stream(prompt, null, 1.0, preferBackup = Ai.creativeOnBackup && !openingPhase) { t -> messages = messages.toMutableList().also { if (idx < it.size) it[idx] = BuildMsg(false, t) } }
             } catch (e: CancellationException) {
                 // stopped
             } catch (e: Exception) {

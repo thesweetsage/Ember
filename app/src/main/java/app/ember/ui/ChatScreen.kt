@@ -137,6 +137,8 @@ fun ChatScreen(
     var menu by remember { mutableStateOf(false) }
     var customLength by remember { mutableStateOf(false) }
     var confirmNewChat by remember { mutableStateOf(false) }
+    var pickingModel by remember { mutableStateOf(false) }
+    val onOpenRouter = Store.settings.baseUrl.contains("openrouter", ignoreCase = true)
     var pickPersona by remember { mutableStateOf(false) }
     var editDirection by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
@@ -156,6 +158,14 @@ fun ChatScreen(
         }
     }
 
+    if (pickingModel) {
+        ModelPicker(Store.settings.model, onPick = { id, pIn, pOut ->
+            Store.updateSettings(Store.settings.copy(model = id, priceIn = pIn ?: Store.settings.priceIn, priceOut = pOut ?: Store.settings.priceOut))
+            if (chat?.useBackup == true) vm.toggleSpicy()
+            pickingModel = false
+        }, onDismiss = { pickingModel = false })
+    }
+
     Box(Modifier.fillMaxSize().background(EmberColors.BgDeep)) {
         val bg = character.chatBg ?: character.avatar
         if (bg != null) {
@@ -172,7 +182,10 @@ fun ChatScreen(
                 Column(Modifier.weight(1f)) {
                     Text(character.name, color = Cream, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     val model = if (chat?.useBackup == true && Store.backupReady) Store.settings.backupModel else Store.settings.model
-                    Text(model, color = Cream.copy(alpha = 0.8f), fontSize = 12.sp, maxLines = 1)
+                    Text(
+                        model + if (onOpenRouter) "  ▾" else "", color = Cream.copy(alpha = 0.8f), fontSize = 12.sp, maxLines = 1,
+                        modifier = if (onOpenRouter) Modifier.clickable { pickingModel = true } else Modifier,
+                    )
                 }
                 RoundIcon(Icons.Filled.RestartAlt, "Start fresh, keep this chat", onClick = { confirmNewChat = true })
                 Spacer(Modifier.width(6.dp))
@@ -182,6 +195,7 @@ fun ChatScreen(
                 Box {
                     IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "More", tint = Cream) }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        if (onOpenRouter) DropdownMenuItem(text = { Text("Switch model…") }, onClick = { menu = false; pickingModel = true })
                         DropdownMenuItem(text = { Text("Start fresh (keep this chat)") }, onClick = { menu = false; confirmNewChat = true })
                         DropdownMenuItem(text = { Text("Chat archives") }, onClick = { menu = false; openArchives() })
                         DropdownMenuItem(text = { Text("Search chat history") }, onClick = { menu = false; openSearch() })

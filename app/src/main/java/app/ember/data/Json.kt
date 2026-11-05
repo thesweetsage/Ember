@@ -135,7 +135,7 @@ object Json {
         .put("autoSwitchDefault", s.autoSwitchDefault).put("summariseEvery", s.summariseEvery)
         .put("writeForMeWords", s.writeForMeWords).put("defaultPersonaId", nul(s.defaultPersonaId))
         .put("pinnedCharacterId", nul(s.pinnedCharacterId))
-        .put("voiceBaseUrl", s.voiceBaseUrl).put("voiceModel", s.voiceModel).put("voiceLanguage", s.voiceLanguage).put("contextChars", s.contextChars).put("wfmUseBackup", s.wfmUseBackup)
+        .put("voiceBaseUrl", s.voiceBaseUrl).put("voiceModel", s.voiceModel).put("voiceLanguage", s.voiceLanguage).put("contextChars", s.contextChars).put("wfmUseBackup", s.wfmUseBackup).put("creativeUseBackup", s.creativeUseBackup)
         .put("priceIn", s.priceIn).put("priceOut", s.priceOut)
         .put("legacyUserName", s.legacyUserName).put("legacyUserDescription", s.legacyUserDescription)
 
@@ -156,6 +156,7 @@ object Json {
             voiceLanguage = if (o.has("voiceLanguage")) o.str("voiceLanguage") else d.voiceLanguage,
             contextChars = o.optInt("contextChars", d.contextChars),
             wfmUseBackup = o.optBoolean("wfmUseBackup", true),
+            creativeUseBackup = o.optBoolean("creativeUseBackup", true),
             priceIn = o.optDouble("priceIn", 0.0), priceOut = o.optDouble("priceOut", 0.0),
             // Older versions stored "userName"/"userDescription"; they become your first persona.
             legacyUserName = o.str("legacyUserName").ifEmpty { o.str("userName") },

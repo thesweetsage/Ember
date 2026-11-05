@@ -12,9 +12,16 @@ object Ai {
         if (!Store.hasApiKey) throw IOException("Add your API key in Settings first.")
     }
 
-    /** Streams a reply, retrying with the backup model if the main one refuses. */
-    suspend fun stream(prompt: List<ChatMsg>, maxTokens: Int?, temperature: Double, onText: (String) -> Unit): String {
+    /** True when Ideas and the builder should go to the backup model (DeepSeek) first. */
+    val creativeOnBackup get() = Store.settings.creativeUseBackup && Store.backupReady
+
+    /**
+     * Streams a reply. With [preferBackup] the backup model writes first and the main one is the fallback;
+     * otherwise the main model writes and the backup takes over if it refuses.
+     */
+    suspend fun stream(prompt: List<ChatMsg>, maxTokens: Int?, temperature: Double, preferBackup: Boolean = false, onText: (String) -> Unit): String {
         check()
+        val (firstEp, secondEp) = if (preferBackup && Store.backupReady) backup() to main() else main() to backup()
         suspend fun runOn(ep: Endpoint): String {
             val buf = StringBuilder()
             LlmClient.stream(ep, prompt, maxTokens, temperature).collect { ev ->
@@ -23,7 +30,7 @@ object Ai {
             return buf.toString()
         }
         val first = try {
-            runOn(main())
+            runOn(firstEp)
         } catch (e: ContentBlockedException) {
             if (!Store.backupReady) throw e
             null
@@ -31,19 +38,20 @@ object Ai {
         if (first != null && first.isNotBlank() && !Refusal.looksLike(first)) return first
         if (!Store.backupReady) return first.orEmpty()
         onText("")
-        return runOn(backup())
+        return runOn(secondEp)
     }
 
-    suspend fun complete(prompt: List<ChatMsg>, maxTokens: Int?, temperature: Double): String {
+    suspend fun complete(prompt: List<ChatMsg>, maxTokens: Int?, temperature: Double, preferBackup: Boolean = false): String {
         check()
+        val (firstEp, secondEp) = if (preferBackup && Store.backupReady) backup() to main() else main() to backup()
         val first = try {
-            LlmClient.complete(main(), prompt, maxTokens, temperature).text
+            LlmClient.complete(firstEp, prompt, maxTokens, temperature).text
         } catch (e: ContentBlockedException) {
             if (!Store.backupReady) throw e
             null
         }
         if (first != null && first.isNotBlank() && !Refusal.looksLike(first)) return first
         if (!Store.backupReady) return first.orEmpty()
-        return LlmClient.complete(backup(), prompt, maxTokens, temperature).text
+        return LlmClient.complete(secondEp, prompt, maxTokens, temperature).text
     }
 }

@@ -59,6 +59,7 @@ fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit) {
     var model by rememberSaveable { mutableStateOf(s.model) }
     var newKey by rememberSaveable { mutableStateOf("") }
     var backupUrl by rememberSaveable { mutableStateOf(s.backupBaseUrl) }
+    var picking by remember { mutableStateOf(false) }
     var backupModel by rememberSaveable { mutableStateOf(s.backupModel) }
     var newBackupKey by rememberSaveable { mutableStateOf("") }
     var voiceUrl by rememberSaveable { mutableStateOf(s.voiceBaseUrl) }
@@ -139,6 +140,18 @@ fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit) {
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, capitalization = KeyboardCapitalization.None))
             EmberField("Model name", model, { model = it; status = null }, singleLine = true, placeholder = "deepseek-chat",
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None))
+            if (baseUrl.contains("openrouter", ignoreCase = true)) {
+                OutlinedButton(onClick = { picking = true }, shape = RoundedCornerShape(24.dp)) {
+                    Text("Choose from OpenRouter models…", color = EmberColors.Text)
+                }
+            }
+            if (picking) {
+                ModelPicker(model, onPick = { id, pIn, pOut ->
+                    model = id; status = null
+                    if (pIn != null && pOut != null) { priceIn = "%.2f".format(java.util.Locale.US, pIn); priceOut = "%.2f".format(java.util.Locale.US, pOut) }
+                    picking = false; commit()
+                }, onDismiss = { picking = false })
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 OutlinedButton(
                     onClick = {
@@ -237,13 +250,19 @@ fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit) {
                 fontSize = 12.5.sp, color = EmberColors.Muted,
             )
 
-            SettingsGroup("Write for me") {
+            SettingsGroup("Jobs for the backup model") {
                 ToggleRow(
-                    "Use the backup model for my drafts", Store.settings.wfmUseBackup,
+                    "Write for me drafts", Store.settings.wfmUseBackup,
                     sub = if (Store.backupReady) "Drafts written by ${Store.settings.backupModel}; chat replies stay on ${Store.settings.model}"
                     else "Set up a backup model above first",
-                    divider = false,
+                    divider = true,
                 ) { on -> Store.updateSettings(Store.settings.copy(wfmUseBackup = on)) }
+                ToggleRow(
+                    "Ideas and Build with AI", Store.settings.creativeUseBackup,
+                    sub = if (Store.backupReady) "Concepts and character sections by ${Store.settings.backupModel}; the opening message by ${Store.settings.model}"
+                    else "Set up a backup model above first",
+                    divider = false,
+                ) { on -> Store.updateSettings(Store.settings.copy(creativeUseBackup = on)) }
             }
 
             SettingsGroup("Defaults for new chats") {
