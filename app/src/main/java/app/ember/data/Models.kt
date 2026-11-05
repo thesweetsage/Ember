@@ -145,11 +145,11 @@ val DEFAULT_GROUND_RULES = listOf(
     ),
     GroundRule(
         "Natural dialogue",
-        "Write dialogue the way real people talk: short, plain, imperfect lines. People hesitate, trail off, interrupt, joke, deflect, mumble and say ordinary things like \"Okay. Night, then.\" Never write speeches, monologues or polished declarations; nobody explains their feelings in perfect paragraphs. Most lines are one or two sentences, and a character rarely says more than three sentences before an action, a pause or a reaction breaks it up."
+        "Write dialogue the way real people talk. Most lines are brief and plain: people hesitate, trail off, interrupt, joke, deflect and say ordinary things like \"Okay. Night, then.\" When a moment truly matters, a character can say more, but it still sounds spoken, with restarts, pauses and plain words: never a polished speech, a perfectly structured monologue or an eloquent explanation of their feelings."
     ),
     GroundRule(
         "More prose than talk",
-        "Dialogue is the smaller part of every reply. Most of it is narration: body language, small actions, the setting, sensation and inner thoughts. Let silences, glances and gestures carry meaning instead of words."
+        "Balance dialogue with narration: body language, small actions, sensation and inner thoughts. In most replies dialogue is the smaller part, and silences, glances and gestures carry meaning too. Longer conversations are fine when the scene is about talking, as long as they stay natural."
     ),
     GroundRule(
         "Flowing sentences",
