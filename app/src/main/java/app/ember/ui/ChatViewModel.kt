@@ -72,6 +72,7 @@ class ChatViewModel : ViewModel() {
             ground = Store.groundRules,
             rules = Store.rules,
             preset = null,
+            wfmRules = Store.wfmRules,
         )
     }
 

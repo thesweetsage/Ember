@@ -16,6 +16,7 @@ data class PromptContext(
     val ground: List<GroundRule>,
     val rules: List<Rule>,
     val preset: Preset?,
+    val wfmRules: List<GroundRule> = emptyList(),
 )
 
 /**
@@ -101,7 +102,10 @@ object PromptBuilder {
     fun forCharacter(p: PromptContext, history: List<Message>, replyWords: Int, extraInstruction: String? = null): List<ChatMsg> {
         val charName = p.character.name.ifBlank { "the character" }
         val userName = p.persona?.name?.ifBlank { null } ?: "the user"
-        val fill = { s: String -> s.replace("{{char}}", charName).replace("{{user}}", userName) }
+        val fill = { s: String ->
+            s.replace("{{char}}", charName).replace("{{user}}", userName)
+                .replace("{{character}}", charName).replace("{{persona}}", userName)
+        }
 
         val system = buildString {
             append("You are writing an ongoing interactive story with the user. You write as $charName; the user writes as $userName.\n\n")
@@ -115,6 +119,12 @@ object PromptBuilder {
         val out = conversation(system, trimHistory(p.chat, history), flip = false, fill = fill)
         out.add(ChatMsg("system", buildString {
             append("Write $charName's next reply now, following every ground rule. ")
+            append("Stay exactly true to $charName as the character card describes them. ")
+            p.character.personality.trim().takeIf { it.isNotEmpty() }?.let {
+                append("Reminder of who $charName is: ").append(fill(it.take(700)))
+                append(if (it.length > 700) "… " else " ")
+            }
+            append("Keep the dialogue natural, short and human, like real people talking, never a speech; most of the reply is narration, body language and inner thought. ")
             if (replyWords <= 0) {
                 append("Choose the length yourself to fit the moment: usually around 200 to 300 words, and longer ")
                 append("(up to about 700 words) for important, emotional or intimate scenes that need room for detail and inner thoughts. ")
@@ -136,12 +146,20 @@ object PromptBuilder {
         val charName = p.character.name.ifBlank { "the character" }
         val userName = p.persona?.name?.ifBlank { null } ?: "the user's character"
         // Names are swapped so every ground rule now applies to the user's side.
-        val fill = { s: String -> s.replace("{{char}}", userName).replace("{{user}}", charName) }
+        val fill = { s: String ->
+            s.replace("{{char}}", userName).replace("{{user}}", charName)
+                .replace("{{character}}", charName).replace("{{persona}}", userName)
+        }
 
         val system = buildString {
             append("You are helping the user write their own part in an ongoing interactive story. ")
             append("You write only as $userName. $charName is played by someone else.\n\n")
             sharedSections(p, fill)
+            val wfm = p.wfmRules.filter { it.text.isNotBlank() }
+            if (wfm.isNotEmpty()) {
+                append("\n# Rules for writing as $userName (always follow)\n")
+                wfm.forEach { append("- ${fill(it.text.trim())}\n") }
+            }
             append("\n# $userName (the character you write)\n")
             append(p.persona?.description?.trim()?.let(fill)?.ifBlank { null } ?: "No description given; infer from the story.")
             append("\n")
@@ -150,10 +168,15 @@ object PromptBuilder {
         }
         val out = conversation(system, trimHistory(p.chat, history), flip = true, fill = fill)
         out.add(ChatMsg("system", buildString {
-            append("Write $userName's next reply now, following every ground rule, as polished novel prose. ")
+            append("Write $userName's next reply now, following every ground rule and every rule for writing as $userName, as polished novel prose. ")
+            p.persona?.description?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                append("Stay exactly true to who $userName is: ").append(fill(it.take(700)))
+                append(if (it.length > 700) "… " else " ")
+            }
+            append("Keep her dialogue natural, short and human, never a speech. ")
             if (notes.isNotBlank()) {
                 append("Base it on these notes from the user. Include every action and line of dialogue they mention, ")
-                append("in a sensible order, and expand them into full, beautiful writing:\n")
+                append("in a sensible order, and expand them into full writing without adding big actions or moves they didn't ask for:\n")
                 append(notes.trim()).append("\n")
             } else {
                 append("Decide what $userName does and says next, true to their character and to the scene.\n")

@@ -58,6 +58,8 @@ fun RulesScreen(onBack: () -> Unit) {
     var editGround by remember { mutableStateOf<Int?>(null) }
     var editRule by remember { mutableStateOf<Rule?>(null) }
     var confirmReset by remember { mutableStateOf(false) }
+    var editWfm by remember { mutableStateOf(false) }
+    var confirmResetWfm by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = EmberColors.Bg,
@@ -96,7 +98,7 @@ fun RulesScreen(onBack: () -> Unit) {
             itemsIndexed(Store.groundRules) { i, g ->
                 Row(
                     Modifier.fillMaxWidth().background(EmberColors.Surface, RoundedCornerShape(14.dp))
-                        .clickable { editGround = i }.padding(14.dp),
+                        .clickable { editWfm = false; editGround = i }.padding(14.dp),
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(g.title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
@@ -109,9 +111,44 @@ fun RulesScreen(onBack: () -> Unit) {
             }
             item {
                 Row {
-                    TextButton(onClick = { editGround = -1 }) { Text("+ Add ground rule", color = EmberColors.RedSoft) }
+                    TextButton(onClick = { editWfm = false; editGround = -1 }) { Text("+ Add ground rule", color = EmberColors.RedSoft) }
                     Spacer(Modifier.weight(1f))
                     TextButton(onClick = { confirmReset = true }) { Text("Reset to original", color = EmberColors.Muted) }
+                }
+            }
+
+            item {
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text("Write for me rules", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.weight(1f))
+                    Text("When it writes as you", fontSize = 13.sp, color = EmberColors.Dim)
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Used only for Write for me drafts, on top of the ground rules. {{persona}} is your character and {{character}} is the one you're chatting with. Tap to edit.",
+                    fontSize = 13.sp, color = EmberColors.Muted,
+                )
+            }
+            itemsIndexed(Store.wfmRules) { i, g ->
+                Row(
+                    Modifier.fillMaxWidth().background(EmberColors.Surface, RoundedCornerShape(14.dp))
+                        .clickable { editWfm = true; editGround = i }.padding(14.dp),
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(g.title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(2.dp))
+                        Text(g.text, fontSize = 13.5.sp, color = EmberColors.Muted, lineHeight = 19.sp)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Outlined.Edit, "Edit", tint = EmberColors.RedSoft, modifier = Modifier.size(18.dp))
+                }
+            }
+            item {
+                Row {
+                    TextButton(onClick = { editWfm = true; editGround = -1 }) { Text("+ Add rule", color = EmberColors.RedSoft) }
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = { confirmResetWfm = true }) { Text("Reset to original", color = EmberColors.Muted) }
                 }
             }
 
@@ -173,13 +210,15 @@ fun RulesScreen(onBack: () -> Unit) {
     }
 
     editGround?.let { i ->
-        val g = if (i < 0) GroundRule("", "") else Store.groundRules.getOrNull(i)
+        val source = if (editWfm) Store.wfmRules else Store.groundRules
+        val saveList: (List<GroundRule>) -> Unit = { if (editWfm) Store.updateWfmRules(it) else Store.updateGroundRules(it) }
+        val g = if (i < 0) GroundRule("", "") else source.getOrNull(i)
         if (g != null) {
             var title by remember(i) { mutableStateOf(g.title) }
             var text by remember(i) { mutableStateOf(g.text) }
             AlertDialog(
                 onDismissRequest = { editGround = null },
-                title = { Text(if (i < 0) "New ground rule" else "Edit ground rule") },
+                title = { Text((if (i < 0) "New " else "Edit ") + if (editWfm) "Write for me rule" else "ground rule") },
                 text = {
                     Column(
                         Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()),
@@ -196,9 +235,9 @@ fun RulesScreen(onBack: () -> Unit) {
                     TextButton(onClick = {
                         if (text.isNotBlank()) {
                             val updated = GroundRule(title.trim().ifBlank { text.trim().take(30) }, text.trim())
-                            Store.updateGroundRules(
-                                if (i < 0) Store.groundRules + updated
-                                else Store.groundRules.mapIndexed { j, x -> if (j == i) updated else x }
+                            saveList(
+                                if (i < 0) source + updated
+                                else source.mapIndexed { j, x -> if (j == i) updated else x }
                             )
                         }
                         editGround = null
@@ -207,7 +246,7 @@ fun RulesScreen(onBack: () -> Unit) {
                 dismissButton = {
                     Row {
                         if (i >= 0) TextButton(onClick = {
-                            Store.updateGroundRules(Store.groundRules.filterIndexed { j, _ -> j != i })
+                            saveList(source.filterIndexed { j, _ -> j != i })
                             editGround = null
                         }) { Text("Delete", color = EmberColors.RedSoft) }
                         TextButton(onClick = { editGround = null }) { Text("Cancel") }
@@ -254,11 +293,22 @@ fun RulesScreen(onBack: () -> Unit) {
         )
     }
 
+    if (confirmResetWfm) {
+        AlertDialog(
+            onDismissRequest = { confirmResetWfm = false },
+            title = { Text("Reset Write for me rules?") },
+            text = { Text("They go back to the original four, with their original wording.") },
+            confirmButton = { TextButton(onClick = { Store.resetWfmRules(); confirmResetWfm = false }) { Text("Reset") } },
+            dismissButton = { TextButton(onClick = { confirmResetWfm = false }) { Text("Cancel") } },
+            containerColor = EmberColors.Surface,
+        )
+    }
+
     if (confirmReset) {
         AlertDialog(
             onDismissRequest = { confirmReset = false },
             title = { Text("Reset ground rules?") },
-            text = { Text("The ground rules go back to the original 17, with their original wording. Ground rules you added or deleted are lost or restored. Your own rules are not touched.") },
+            text = { Text("The ground rules go back to the original 20, with their original wording. Ground rules you added or deleted are lost or restored. Your own rules are not touched.") },
             confirmButton = { TextButton(onClick = { Store.resetGroundRules(); confirmReset = false }) { Text("Reset") } },
             dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Cancel") } },
             containerColor = EmberColors.Surface,

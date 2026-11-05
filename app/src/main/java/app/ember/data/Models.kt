@@ -144,6 +144,14 @@ val DEFAULT_GROUND_RULES = listOf(
         "Put spoken words in double quotes and weave them into the narration, with the action, expression and tone around them."
     ),
     GroundRule(
+        "Natural dialogue",
+        "Write dialogue the way real people talk: short, plain, imperfect lines. People hesitate, trail off, interrupt, joke, deflect, mumble and say ordinary things like \"Okay. Night, then.\" Never write speeches, monologues or polished declarations; nobody explains their feelings in perfect paragraphs. Most lines are one or two sentences, and a character rarely says more than three sentences before an action, a pause or a reaction breaks it up."
+    ),
+    GroundRule(
+        "More prose than talk",
+        "Dialogue is the smaller part of every reply. Most of it is narration: body language, small actions, the setting, sensation and inner thoughts. Let silences, glances and gestures carry meaning instead of words."
+    ),
+    GroundRule(
         "Flowing sentences",
         "Vary sentence length and rhythm. Do not write strings of short, clipped sentences like \"He said. He walked. He stopped.\" Connect actions with detail, sensation and motive so the prose flows."
     ),
@@ -162,6 +170,10 @@ val DEFAULT_GROUND_RULES = listOf(
     GroundRule(
         "Make sense",
         "Stay logical and consistent with the character card, the memories and everything already established in the story. No random events, sudden personality changes, contradictions or nonsense."
+    ),
+    GroundRule(
+        "True to the character",
+        "Every word, action and thought must fit {{char}}'s character card: personality, temperament, voice, vocabulary, confidence and history. Never soften, sharpen or rewrite who they are. A terse character stays terse, a shy one stays shy, a cold one doesn't suddenly gush. They change only gradually, and only for a reason the story has earned."
     ),
     GroundRule(
         "Fiction between adults",
@@ -198,5 +210,27 @@ val DEFAULT_GROUND_RULES = listOf(
     GroundRule(
         "Length",
         "Stay close to the requested word count and always end on a complete sentence."
+    ),
+)
+
+/**
+ * Extra rules used only for "Write for me" drafts. {{persona}} is your character, {{character}} the one you're chatting with.
+ */
+val DEFAULT_WFM_RULES = listOf(
+    GroundRule(
+        "Exactly her",
+        "Write {{persona}} exactly as her persona describes her: her temperament, confidence, voice, habits and limits. If she is sweet, shy or easily flustered, she stays that way: she blushes, hesitates, gets tongue-tied and second-guesses herself. She never turns bold, seductive, cocky or forward unless her persona or the user's notes say so."
+    ),
+    GroundRule(
+        "Follow the notes",
+        "Write what the user's notes describe and nothing more. Don't add big actions, decisions, confessions, kisses or moves she didn't ask for; small natural details like a glance, a blush, a fidget or a short thought are fine."
+    ),
+    GroundRule(
+        "Her voice",
+        "Her dialogue sounds like a real person: simple, natural, a little awkward when she's nervous. Keep her lines short; never a speech."
+    ),
+    GroundRule(
+        "Her side only",
+        "Only write {{persona}}. Never decide what {{character}} says, does, thinks or feels, and don't describe their reaction to her."
     ),
 )

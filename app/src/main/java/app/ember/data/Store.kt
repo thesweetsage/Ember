@@ -57,6 +57,8 @@ object Store {
         private set
     var groundRules by mutableStateOf(DEFAULT_GROUND_RULES)
         private set
+    var wfmRules by mutableStateOf(DEFAULT_WFM_RULES)
+        private set
     var settings by mutableStateOf(Settings())
         private set
     var hasApiKey by mutableStateOf(false)
@@ -92,6 +94,7 @@ object Store {
         groundRules = read("ground.json")?.let { Json.parseList(it) { o -> Json.ground(o) } }
             ?.takeIf { it.isNotEmpty() }?.let { withNewGroundRules(it) } ?: DEFAULT_GROUND_RULES
         markGroundSeen()
+        wfmRules = read("wfm_rules.json")?.let { Json.parseList(it) { o -> Json.ground(o) } } ?: DEFAULT_WFM_RULES
         settings = read("settings.json")?.let { runCatching { Json.settings(JSONObject(it)) }.getOrNull() } ?: Settings()
         chats = chatDir.listFiles().orEmpty().filter { it.name.endsWith(".json") }.mapNotNull { f ->
             runCatching { Json.chat(JSONObject(f.readText())) }.getOrNull()
@@ -403,6 +406,11 @@ object Store {
     fun preset(id: String?): Preset? = id?.let { pid -> presets.firstOrNull { it.id == pid } }
     fun updateGroundRules(list: List<GroundRule>) { groundRules = list; saveGround() }
     fun resetGroundRules() = updateGroundRules(DEFAULT_GROUND_RULES)
+    fun updateWfmRules(list: List<GroundRule>) {
+        wfmRules = list
+        write(File(dir, "wfm_rules.json"), Json.list(list) { Json.ground(it) })
+    }
+    fun resetWfmRules() = updateWfmRules(DEFAULT_WFM_RULES)
     fun updateSettings(s: Settings) { settings = s; saveSettings() }
 
     // ---------- backup & restore ----------
