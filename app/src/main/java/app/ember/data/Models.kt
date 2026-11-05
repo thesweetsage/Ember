@@ -150,5 +150,5 @@ val DEFAULT_GROUND_RULES = listOf(
  */
 val DEFAULT_WFM_RULES = listOf(
     GroundRule("Exactly her", "Write {{persona}} exactly as her persona describes her. If she's sweet or shy, she stays that way unless the notes say otherwise."),
-    GroundRule("Only the notes", "She says only the lines in the notes and does only what they describe; the rest is her body language, what she notices and her thoughts. Never write {{character}}'s actions, words or reactions."),
+    GroundRule("Follow the notes", "Include every action, thought and line from the user's notes, in order, skipping none. Her thoughts in the notes become her inner thoughts. Add only small connecting details; nothing she didn't ask for. Never write {{character}}'s actions, words or reactions."),
 )

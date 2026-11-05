@@ -110,6 +110,10 @@ object PromptBuilder {
         else out.add(ChatMsg("user", note))
     }
 
+    /** Splits the user's Write for me notes into numbered beats, one per sentence or line. */
+    fun noteBeats(notes: String): List<String> =
+        notes.trim().split(Regex("(?<=[.!?])\\s+|\\n+")).map { it.trim().trimEnd('.') }.filter { it.isNotEmpty() }
+
     /** Readable copy of a prompt, for "See what's sent". */
     fun describe(prompt: List<ChatMsg>): String =
         prompt.joinToString("\n\n────────\n\n") { m -> "[" + m.role.uppercase() + "]\n" + m.content }
@@ -184,8 +188,12 @@ object PromptBuilder {
                 append("Stay true to who $userName is: ").append(fill(it.take(500))).append(if (it.length > 500) "… " else " ")
             }
             if (notes.isNotBlank()) {
-                append("Her notes (she says only these lines and does only these things; the rest is her body language, what she notices and her thoughts):\n")
-                append(notes.trim()).append("\n")
+                val beats = noteBeats(notes)
+                append("Turn ALL of these notes into her reply. Write every beat below, in this order, and skip none: ")
+                append("each action happens, each thought becomes her inner thought (keep close to the user's wording), ")
+                append("and each line she speaks is said (lightly polished at most). Add only small connecting details ")
+                append("such as a breath, a glance or a blush; never new actions, feelings, lines or moves that aren't in the notes.\n")
+                beats.forEachIndexed { i, b -> append("${i + 1}. ").append(b).append("\n") }
             } else {
                 append("Decide what $userName does and says next, true to her and the scene. ")
             }
@@ -194,7 +202,7 @@ object PromptBuilder {
                 append("Rewrite it with this change: ").append(change.trim()).append(". Keep everything else.\n")
             }
             append("Dialogue: plain and natural, no speeches or poetic lines. ")
-            if (words <= 0) append("Length: let the notes set it; a small moment stays short. Never pad. ")
+            if (words <= 0) append("Length: whatever it takes to cover every beat in the notes, and no more. Never pad. ")
             else append("Length: about $words words. ")
             append("Write only $userName's part and stop there; never write $charName's actions, words or reactions. ")
             append("Split it into short paragraphs separated by blank lines, never one block of text. End on a complete sentence.")

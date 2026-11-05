@@ -98,6 +98,7 @@ object Store {
             ?.takeIf { it.isNotEmpty() }?.let { withNewGroundRules(it) } ?: DEFAULT_GROUND_RULES
         wfmRules = read("wfm_rules.json")?.let { Json.parseList(it) { o -> Json.ground(o) } } ?: DEFAULT_WFM_RULES
         condenseRulesOnce()
+        updateWfmRulesV3()
         markGroundSeen()
         settings = read("settings.json")?.let { runCatching { Json.settings(JSONObject(it)) }.getOrNull() } ?: Settings()
         app.ember.ai.PromptBuilder.historyBudgetChars = budgetFor(settings.contextChars)
@@ -138,6 +139,16 @@ object Store {
         saveGround()
         write(File(dir, "wfm_rules.json"), Json.list(wfmRules) { Json.ground(it) })
         prefs.edit().putInt("rulesVersion", 2).apply()
+    }
+
+    /** Version 3: the Write for me rule "Only the notes" became "Follow the notes" (every beat, in order). */
+    private fun updateWfmRulesV3() {
+        if (prefs.getInt("rulesVersion", 1) >= 3) return
+        val replacement = DEFAULT_WFM_RULES.first { it.title == "Follow the notes" }
+        if (wfmRules.any { it.title == "Only the notes" }) {
+            updateWfmRules(wfmRules.map { if (it.title == "Only the notes") replacement else it })
+        }
+        prefs.edit().putInt("rulesVersion", 3).apply()
     }
 
     private fun markGroundSeen() {
