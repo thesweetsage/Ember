@@ -1,7 +1,12 @@
 package app.ember
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import app.ember.ui.CostScreen
+import app.ember.ui.LockScreen
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
@@ -33,11 +38,27 @@ import app.ember.ui.RulesScreen
 import app.ember.ui.SearchScreen
 import app.ember.ui.SettingsScreen
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
+    /** Shown over the app until you unlock, when the fingerprint lock is on. */
+    private var locked by mutableStateOf(false)
+    private var leftAt = 0L
+
+    override fun onStop() {
+        super.onStop()
+        leftAt = System.currentTimeMillis()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Lock again after being away for more than 30 seconds (not for quick trips to the photo picker).
+        if (Store.settings.lockEnabled && leftAt > 0 && System.currentTimeMillis() - leftAt > 30_000) locked = true
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         Store.init(applicationContext)
+        locked = Store.settings.lockEnabled
         setContent {
             EmberTheme {
                 Box(Modifier.fillMaxSize().background(EmberColors.Bg)) {
@@ -116,6 +137,7 @@ class MainActivity : ComponentActivity() {
                                 openSearch = { nav.navigate("search/$id") },
                                 openRules = { nav.navigate("rules") },
                                 openSettings = { nav.navigate("settings") },
+                                openCosts = { nav.navigate("costs") },
                             )
                         }
                         composable("memory/{id}", arguments = idArg) { entry ->
@@ -134,9 +156,11 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("rules") { RulesScreen(onBack = { nav.popBackStack() }) }
                         composable("settings") {
-                            SettingsScreen(onBack = { nav.popBackStack() }, openPersonas = { nav.navigate("personas") })
+                            SettingsScreen(onBack = { nav.popBackStack() }, openPersonas = { nav.navigate("personas") }, openCosts = { nav.navigate("costs") })
                         }
+                        composable("costs") { CostScreen(onBack = { nav.popBackStack() }) }
                     }
+                    if (locked) LockScreen(this@MainActivity) { locked = false }
                 }
             }
         }

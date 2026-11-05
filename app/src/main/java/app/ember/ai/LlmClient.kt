@@ -28,6 +28,11 @@ class ContentBlockedException(message: String) : IOException(message)
 
 data class Completion(val text: String, val input: Long, val output: Long)
 
+/** Which character a request is for, so the spending log can group it. Add it to a coroutine's context. */
+class UsageTag(val tag: String) : kotlin.coroutines.AbstractCoroutineContextElement(Key) {
+    companion object Key : kotlin.coroutines.CoroutineContext.Key<UsageTag>
+}
+
 /** Talks to any OpenAI-compatible chat API (DeepSeek, OpenRouter, xAI and others use this format). */
 object LlmClient {
 
@@ -60,6 +65,7 @@ object LlmClient {
             // Some OpenRouter providers apply a small default cap, so give plenty of room explicitly,
             // and keep the thinking part bounded so there's always room left for the reply itself.
             o.put("max_tokens", 16_000)
+            o.put("usage", JSONObject().put("include", true))
             o.put("reasoning", if (lightThinking) JSONObject().put("effort", "low") else JSONObject().put("max_tokens", 6_000))
         }
         if (stream) o.put("stream_options", JSONObject().put("include_usage", true))
@@ -89,7 +95,15 @@ object LlmClient {
         return StreamEvent.Usage(u.optLong("prompt_tokens", 0), u.optLong("completion_tokens", 0))
     }
 
+    /** OpenRouter reports the exact cost of each request; other providers don't. */
+    private fun costOf(o: JSONObject): Double? =
+        o.optJSONObject("usage")?.let { u -> if (u.has("cost") && !u.isNull("cost")) u.optDouble("cost").takeIf { !it.isNaN() } else null }
+
+    private fun record(ep: Endpoint, tag: UsageTag?, u: StreamEvent.Usage, cost: Double?) =
+        runCatching { app.ember.data.Store.recordUsage(ep.model.trim(), tag?.tag.orEmpty(), u.input, u.output, cost) }
+
     fun stream(ep: Endpoint, messages: List<ChatMsg>, maxTokens: Int?, temperature: Double): Flow<StreamEvent> = flow {
+      val tag = kotlinx.coroutines.currentCoroutineContext()[UsageTag]
       // If the model thinks so long it never writes, try once more with light thinking before giving up.
       for (attempt in 0..1) {
         val conn = open(ep, stream = true)
@@ -115,7 +129,7 @@ object LlmClient {
                         }
                         throw IOException(msg)
                     }
-                    usageOf(o)?.let { emit(it) }
+                    usageOf(o)?.let { record(ep, tag, it, costOf(o)); emit(it) }
                     val choices = o.optJSONArray("choices") ?: continue
                     if (choices.length() == 0) continue
                     val choice = choices.optJSONObject(0) ?: continue
@@ -153,6 +167,7 @@ object LlmClient {
                 val o = JSONObject(conn.inputStream.bufferedReader().readText())
                 val text = o.getJSONArray("choices").getJSONObject(0).getJSONObject("message").optString("content", "")
                 val u = usageOf(o)
+                if (u != null) record(ep, coroutineContext[UsageTag], u, costOf(o))
                 Completion(text.trim(), u?.input ?: 0, u?.output ?: 0)
             } finally {
                 conn.disconnect()

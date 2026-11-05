@@ -69,6 +69,10 @@ object Store {
         private set
     private var activeChats by mutableStateOf(mapOf<String, String>())
 
+    /** Spending log, one row per month, model and character. */
+    var usage by mutableStateOf(listOf<UsageRow>())
+        private set
+
     /** The exact text of the last request sent to the model, for "See what's sent". */
     var lastPrompt by mutableStateOf<String?>(null)
 
@@ -110,9 +114,38 @@ object Store {
         hasApiKey = prefs.contains("apiKey")
         hasBackupKey = prefs.contains("backupKey")
         hasVoiceKey = prefs.contains("voiceKey")
+        usage = read("usage.json")?.let { Json.parseList(it) { o -> Json.usage(o) } } ?: emptyList()
         migrateLegacyUser()
         addStarterPresets()
     }
+
+    // ---------- spending ----------
+
+    fun monthKey(time: Long = System.currentTimeMillis()): String =
+        java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.US).format(java.util.Date(time))
+
+    /** Price per million tokens (in, out) for a model, from Settings, if known. */
+    fun priceFor(model: String): Pair<Double, Double>? = when {
+        model == settings.model && (settings.priceIn > 0 || settings.priceOut > 0) -> settings.priceIn to settings.priceOut
+        model == settings.backupModel && model.isNotBlank() -> settings.backupPriceIn to settings.backupPriceOut
+        else -> null
+    }
+
+    /** Adds one request's tokens and cost to this month's log. [cost] is what the provider reported, if it did. */
+    @Synchronized
+    fun recordUsage(model: String, tag: String, input: Long, output: Long, cost: Double?) {
+        if (!::dir.isInitialized || input + output <= 0) return
+        val c = cost ?: priceFor(model)?.let { (pi, po) -> input * pi / 1e6 + output * po / 1e6 } ?: 0.0
+        val month = monthKey()
+        val list = usage.toMutableList()
+        val i = list.indexOfFirst { it.month == month && it.model == model && it.tag == tag }
+        if (i < 0) list.add(UsageRow(month, model, tag, input, output, c))
+        else list[i] = list[i].let { it.copy(input = it.input + input, output = it.output + output, cost = it.cost + c) }
+        usage = list
+        write(File(dir, "usage.json"), Json.list(list) { Json.usage(it) })
+    }
+
+    fun spentThisMonth(): Double = monthKey().let { m -> usage.filter { it.month == m }.sumOf { it.cost } }
 
     /** Adds built-in ground rules introduced after you edited your copy, at their usual position. */
     private fun withNewGroundRules(saved: List<GroundRule>): List<GroundRule> {

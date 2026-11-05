@@ -49,13 +49,14 @@ object Json {
     // ----- message / chat -----
     fun message(m: Message): JSONObject = JSONObject()
         .put("id", m.id).put("fromUser", m.fromUser).put("sel", m.sel)
-        .put("versions", JSONArray(m.versions))
+        .put("versions", JSONArray(m.versions)).apply { if (m.chapter) put("chapter", true) }
 
     fun message(o: JSONObject): Message {
         val versions = o.strings("versions").ifEmpty { listOf("") }
         return Message(
             id = o.str("id"), fromUser = o.optBoolean("fromUser", false),
             versions = versions, sel = o.optInt("sel", 0).coerceIn(0, versions.size - 1),
+            chapter = o.optBoolean("chapter", false),
         )
     }
 
@@ -69,6 +70,7 @@ object Json {
         .put("temperature", nul(c.temperature)).put("useBackup", c.useBackup).put("autoSwitch", c.autoSwitch)
         .put("tintFromPhoto", c.tintFromPhoto).put("bubbleOpacity", c.bubbleOpacity.toDouble())
         .put("textSize", c.textSize).put("textSizeV2", true).put("tokensIn", c.tokensIn).put("tokensOut", c.tokensOut)
+        .put("scene", c.scene).put("sceneOn", c.sceneOn).put("sceneAt", c.sceneAt)
         .put("createdAt", c.createdAt).put("updatedAt", c.updatedAt)
         .put("messages", arr(c.messages) { message(it) })
 
@@ -89,6 +91,7 @@ object Json {
         // The old default was 16; chats still on it move to the new, calmer 15.
         textSize = o.optInt("textSize", 15).let { if (it == 16 && !o.optBoolean("textSizeV2")) 15 else it },
         tokensIn = o.optLong("tokensIn", 0), tokensOut = o.optLong("tokensOut", 0),
+        scene = o.str("scene"), sceneOn = o.optBoolean("sceneOn", true), sceneAt = o.optInt("sceneAt", 0),
         createdAt = o.optLong("createdAt", o.optLong("updatedAt", 0L)),
         updatedAt = o.optLong("updatedAt", 0L),
     )
@@ -129,6 +132,10 @@ object Json {
     fun ground(g: GroundRule): JSONObject = JSONObject().put("title", g.title).put("text", g.text)
     fun ground(o: JSONObject) = GroundRule(o.str("title"), o.str("text"))
 
+    fun usage(u: UsageRow): JSONObject = JSONObject().put("month", u.month).put("model", u.model).put("tag", u.tag)
+        .put("in", u.input).put("out", u.output).put("cost", u.cost)
+    fun usage(o: JSONObject) = UsageRow(o.str("month"), o.str("model"), o.str("tag"), o.optLong("in"), o.optLong("out"), o.optDouble("cost", 0.0))
+
     // ----- settings -----
     fun settings(s: Settings): JSONObject = JSONObject()
         .put("baseUrl", s.baseUrl).put("model", s.model).put("temperature", s.temperature)
@@ -138,6 +145,8 @@ object Json {
         .put("pinnedCharacterId", nul(s.pinnedCharacterId))
         .put("voiceBaseUrl", s.voiceBaseUrl).put("voiceModel", s.voiceModel).put("voiceLanguage", s.voiceLanguage).put("contextChars", s.contextChars).put("wfmUseBackup", s.wfmUseBackup).put("creativeUseBackup", s.creativeUseBackup)
         .put("priceIn", s.priceIn).put("priceOut", s.priceOut)
+        .put("backupPriceIn", s.backupPriceIn).put("backupPriceOut", s.backupPriceOut)
+        .put("monthlyBudget", s.monthlyBudget).put("lockEnabled", s.lockEnabled)
         .put("legacyUserName", s.legacyUserName).put("legacyUserDescription", s.legacyUserDescription)
 
     fun settings(o: JSONObject): Settings {
@@ -159,6 +168,8 @@ object Json {
             wfmUseBackup = o.optBoolean("wfmUseBackup", true),
             creativeUseBackup = o.optBoolean("creativeUseBackup", true),
             priceIn = o.optDouble("priceIn", 0.0), priceOut = o.optDouble("priceOut", 0.0),
+            backupPriceIn = o.optDouble("backupPriceIn", d.backupPriceIn), backupPriceOut = o.optDouble("backupPriceOut", d.backupPriceOut),
+            monthlyBudget = o.optDouble("monthlyBudget", 0.0), lockEnabled = o.optBoolean("lockEnabled", false),
             // Older versions stored "userName"/"userDescription"; they become your first persona.
             legacyUserName = o.str("legacyUserName").ifEmpty { o.str("userName") },
             legacyUserDescription = o.str("legacyUserDescription").ifEmpty { o.str("userDescription") },

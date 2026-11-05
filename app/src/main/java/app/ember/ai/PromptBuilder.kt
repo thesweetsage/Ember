@@ -77,6 +77,10 @@ object PromptBuilder {
             append("\n# The story so far (earlier parts, summarised)\n")
             chat.summaries.sortedBy { it.from }.forEach { append(fill(it.text.trim())).append("\n\n") }
         }
+        if (chat.sceneOn && chat.scene.isNotBlank()) {
+            append("\n# Where things stand right now (keep consistent with this)\n")
+            append(fill(chat.scene.trim())).append("\n")
+        }
         if (chat.direction.isNotBlank()) {
             append("\n# Scene direction from the user (steer the story this way)\n")
             append(fill(chat.direction.trim())).append("\n")
@@ -214,6 +218,23 @@ object PromptBuilder {
     }
 
     /** Asks for a short summary of one block of the chat. */
+    /** Scene tracker: a tiny, cheap request that updates where, when, what they're wearing and the mood. */
+    fun forScene(p: PromptContext, current: String, recent: List<Message>): List<ChatMsg> {
+        val charName = p.character.name.ifBlank { "the character" }
+        val userName = p.persona?.name?.ifBlank { null } ?: "the user"
+        val transcript = recent.joinToString("\n\n") { (if (it.fromUser) "$userName: " else "$charName: ") + it.text.take(1500) }
+        return listOf(
+            ChatMsg(
+                "system",
+                "You track continuity for a private, fictional story between adults. Using the latest messages, update the scene card. " +
+                    "Reply with exactly these four lines and nothing else, each under 20 words, plain and factual:\n" +
+                    "Place: ...\nTime: ...\nWearing: $charName: ...; $userName: ...\nMood: ...\n" +
+                    "Wearing means what each has on right now, including anything removed. If something isn't known, keep what the old card says.",
+            ),
+            ChatMsg("user", "Old card:\n${current.ifBlank { "(none yet)" }}\n\nLatest messages:\n$transcript"),
+        )
+    }
+
     fun forSummary(p: PromptContext, block: List<Message>): List<ChatMsg> {
         val charName = p.character.name.ifBlank { "the character" }
         val userName = p.persona?.name?.ifBlank { null } ?: "the user"

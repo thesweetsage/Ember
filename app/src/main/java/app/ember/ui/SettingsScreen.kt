@@ -52,7 +52,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit, openCosts: () -> Unit) {
     val context = LocalContext.current
     val s = Store.settings
     var baseUrl by rememberSaveable { mutableStateOf(s.baseUrl) }
@@ -71,6 +71,9 @@ fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit) {
     var wfmWords by rememberSaveable { mutableStateOf(s.writeForMeWords.toString()) }
     var priceIn by rememberSaveable { mutableStateOf(if (s.priceIn > 0) s.priceIn.toString() else "") }
     var priceOut by rememberSaveable { mutableStateOf(if (s.priceOut > 0) s.priceOut.toString() else "") }
+    var bPriceIn by rememberSaveable { mutableStateOf(s.backupPriceIn.toString()) }
+    var bPriceOut by rememberSaveable { mutableStateOf(s.backupPriceOut.toString()) }
+    var lockStatus by remember { mutableStateOf<String?>(null) }
     var status by rememberSaveable { mutableStateOf<String?>(null) }
     var backupStatus by rememberSaveable { mutableStateOf<String?>(null) }
     var testing by rememberSaveable { mutableStateOf(false) }
@@ -93,6 +96,8 @@ fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit) {
                 writeForMeWords = wfmWords.toIntOrNull()?.let { if (it <= 0) 0 else it.coerceIn(20, 2000) } ?: 0,
                 priceIn = priceIn.replace(',', '.').toDoubleOrNull() ?: 0.0,
                 priceOut = priceOut.replace(',', '.').toDoubleOrNull() ?: 0.0,
+                backupPriceIn = bPriceIn.replace(',', '.').toDoubleOrNull() ?: 0.0,
+                backupPriceOut = bPriceOut.replace(',', '.').toDoubleOrNull() ?: 0.0,
             )
         )
         if (newKey.isNotBlank()) { Store.setApiKey(newKey); newKey = "" }
@@ -126,6 +131,20 @@ fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit) {
                     "Your personas", Store.persona(s.defaultPersonaId)?.name?.let { "Default: $it" } ?: "None yet",
                     divider = false, onClick = openPersonas,
                 )
+            }
+
+            SettingsGroup("Spending and privacy") {
+                SettingRow(
+                    "Spending", "$" + "%.2f".format(Locale.US, Store.spentThisMonth()) + " this month",
+                    sub = "By model and by character, with an optional monthly budget", onClick = { commit(); openCosts() },
+                )
+                ToggleRow(
+                    "Fingerprint lock", Store.settings.lockEnabled,
+                    sub = lockStatus ?: "Ask for your fingerprint (or screen lock) when opening Ember", divider = false,
+                ) { on ->
+                    if (on && !canLock(context)) lockStatus = "Set up a fingerprint or screen lock on your phone first."
+                    else { lockStatus = null; Store.updateSettings(Store.settings.copy(lockEnabled = on)) }
+                }
             }
 
             SectionLabel("Main model")
@@ -291,6 +310,14 @@ fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit) {
                 EmberField("$ per 1M input", priceIn, { priceIn = it }, singleLine = true, modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
                 EmberField("$ per 1M output", priceOut, { priceOut = it }, singleLine = true, modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+            }
+            Text("Backup model prices (DeepSeek's by default). OpenRouter reports its own costs, so these are only for providers that don't.",
+                fontSize = 13.sp, color = EmberColors.Muted)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                EmberField("Backup $ per 1M input", bPriceIn, { bPriceIn = it }, singleLine = true, modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                EmberField("Backup $ per 1M output", bPriceOut, { bPriceOut = it }, singleLine = true, modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
             }
 

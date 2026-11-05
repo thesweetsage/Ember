@@ -34,6 +34,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.CompareArrows
+import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
@@ -82,6 +84,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.ember.data.Chat
 import app.ember.data.Message
@@ -138,6 +141,25 @@ fun ChatScreen(
     var customLength by remember { mutableStateOf(false) }
     var confirmNewChat by remember { mutableStateOf(false) }
     var pickingModel by remember { mutableStateOf(false) }
+    var moving by remember { mutableStateOf(false) }
+    var exportAsk by remember { mutableStateOf(false) }
+    var exportAll by remember { mutableStateOf(false) }
+    var budgetSeen by rememberSaveable { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val exportScope = androidx.compose.runtime.rememberCoroutineScope()
+    val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/epub+zip")
+    ) { uri ->
+        if (uri != null) exportScope.launch {
+            val list = if (exportAll) Store.chatsFor(characterId) else listOfNotNull(Store.activeChat(characterId))
+            vm.info = try {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    app.ember.data.BookExport.export(context, uri, character, list)
+                }
+                "Book saved. Open it in Kobo, Google Play Books or any e-reader."
+            } catch (e: Exception) { vm.error = e.message ?: "Couldn't export the book."; null }
+        }
+    }
     val onOpenRouter = Store.settings.baseUrl.contains("openrouter", ignoreCase = true)
     var pickPersona by remember { mutableStateOf(false) }
     var editDirection by remember { mutableStateOf(false) }
@@ -156,6 +178,22 @@ fun ChatScreen(
             val total = listState.layoutInfo.totalItemsCount
             if (total > 0) listState.scrollToItem(total - 1, Int.MAX_VALUE / 4)
         }
+    }
+
+    if (moving) {
+        MoveItAlongSheet(character.name, onPick = { instruction, chapter -> moving = false; vm.nudge(instruction, chapter) }, onDismiss = { moving = false })
+    }
+    if (vm.pickingCompare) {
+        ModelPicker(Store.settings.model, onPick = { id, _, _ -> vm.pickingCompare = false; vm.compare(id) }, onDismiss = { vm.pickingCompare = false })
+    }
+    if (vm.compareModel != null) {
+        CompareScreen(vm, messages.lastOrNull()?.text.orEmpty(), textSize.value)
+    }
+    if (exportAsk) {
+        ExportBookDialog(character.name, Store.chatsFor(characterId).size, onPick = { all ->
+            exportAsk = false; exportAll = all
+            exportLauncher.launch(character.name.ifBlank { "Ember story" }.replace(Regex("[\\\\/:*?\"<>|]"), "") + ".epub")
+        }, onDismiss = { exportAsk = false })
     }
 
     if (pickingModel) {
@@ -196,6 +234,7 @@ fun ChatScreen(
                     IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "More", tint = Cream) }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                         if (onOpenRouter) DropdownMenuItem(text = { Text("Switch model…") }, onClick = { menu = false; pickingModel = true })
+                        DropdownMenuItem(text = { Text("Export as a book…") }, onClick = { menu = false; exportAsk = true })
                         DropdownMenuItem(text = { Text("Start fresh (keep this chat)") }, onClick = { menu = false; confirmNewChat = true })
                         DropdownMenuItem(text = { Text("Chat archives") }, onClick = { menu = false; openArchives() })
                         DropdownMenuItem(text = { Text("Search chat history") }, onClick = { menu = false; openSearch() })
@@ -244,6 +283,21 @@ fun ChatScreen(
                 }
             }
 
+            val budget = Store.settings.monthlyBudget
+            if (budget > 0 && !budgetSeen && Store.spentThisMonth() >= budget) {
+                Row(
+                    Modifier.padding(horizontal = 12.dp, vertical = 4.dp).fillMaxWidth()
+                        .background(Color(0xE6401A18), RoundedCornerShape(12.dp)).padding(start = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "You've spent $" + "%.2f".format(Store.spentThisMonth()) + " this month, past your $" + "%.2f".format(budget) + " budget.",
+                        color = Cream, fontSize = 13.sp, modifier = Modifier.weight(1f).padding(vertical = 10.dp),
+                    )
+                    IconButton(onClick = { budgetSeen = true }) { Icon(Icons.Filled.Close, "Dismiss", tint = Cream) }
+                }
+            }
+
             (vm.error ?: vm.info)?.let { note ->
                 val isError = vm.error != null
                 Row(
@@ -275,6 +329,7 @@ fun ChatScreen(
                         Text(if (spicy) "Spicy on" else "Spicy", color = Cream, fontSize = 13.sp, fontWeight = if (spicy) FontWeight.SemiBold else FontWeight.Medium)
                     }
                 }
+                item { IconChip(Icons.Filled.FastForward, "Move it along") { if (!vm.busy) moving = true } }
                 item { IconChip(Icons.Outlined.Rule, "Rules · ${Store.rules.count { it.enabled }} on") { openRules() } }
                 if (chat?.direction.isNullOrBlank()) {
                     item { IconChip(Icons.Outlined.Edit, "Direction") { editDirection = true } }
@@ -469,6 +524,9 @@ private fun MessageItem(m: Message, isLast: Boolean, streaming: Boolean, vm: Cha
                     RoundAction(Icons.Outlined.AutoFixHigh, "Rewrite with notes") { rewriting = true }
                     RoundAction(Icons.Outlined.Edit, "Edit reply") { editing = true }
                     RoundAction(Icons.AutoMirrored.Filled.ArrowForward, "Continue reply") { vm.continueLast() }
+                    if (Store.settings.baseUrl.contains("openrouter", ignoreCase = true)) {
+                        RoundAction(Icons.Filled.CompareArrows, "Compare with another model") { vm.pickingCompare = true }
+                    }
                     RoundAction(Icons.Filled.PushPin, "Pin to memory") { pinning = true }
                 }
                 if (showSwipe) {

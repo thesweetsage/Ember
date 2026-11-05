@@ -56,6 +56,7 @@ fun MemoryScreen(characterId: String, onBack: () -> Unit) {
     var editPin by remember { mutableStateOf<Pin?>(null) }
     var editSummary by remember { mutableStateOf<Summary?>(null) }
     var editDirection by remember { mutableStateOf(false) }
+    var editScene by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = EmberColors.Bg,
@@ -71,6 +72,34 @@ fun MemoryScreen(characterId: String, onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Scene tracker", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text("Updated every 6 messages by your backup model · tap to edit", fontSize = 12.5.sp, color = EmberColors.Dim)
+                    }
+                    androidx.compose.material3.Switch(
+                        checked = chat.sceneOn,
+                        onCheckedChange = { on -> Store.updateChat(chat.id) { it.copy(sceneOn = on) } },
+                        colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = EmberColors.Red),
+                    )
+                }
+            }
+            if (chat.sceneOn) item {
+                Column(
+                    Modifier.fillMaxWidth().background(EmberColors.Surface, RoundedCornerShape(14.dp)).clickable { editScene = true }.padding(14.dp),
+                ) {
+                    Text(
+                        chat.scene.ifBlank { "Nothing yet. It fills in after the first couple of messages." },
+                        fontSize = 14.5.sp, lineHeight = 21.sp, color = if (chat.scene.isBlank()) EmberColors.Muted else EmberColors.Text,
+                    )
+                }
+                TextButton(onClick = { vm.updateSceneNow() }, enabled = !vm.sceneUpdating) {
+                    Text(if (vm.sceneUpdating) "Updating…" else "Update now", color = EmberColors.RedSoft)
+                }
+            }
+
+            item {
+                Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text("Pinned", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     Text("Sent with every reply", fontSize = 13.sp, color = EmberColors.Dim)
@@ -190,6 +219,13 @@ fun MemoryScreen(characterId: String, onBack: () -> Unit) {
         )
     }
 
+    if (editScene) {
+        TextDialog(
+            title = "Scene", initial = chat.scene,
+            onSave = { t -> Store.updateChat(chat.id) { it.copy(scene = t.trim(), sceneAt = it.messages.size) }; editScene = false },
+            onDismiss = { editScene = false },
+        )
+    }
     if (editDirection) {
         TextDialog(
             title = "Scene direction", initial = chat.direction,

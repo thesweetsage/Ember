@@ -13,6 +13,7 @@ import app.ember.ai.PromptBuilder
 import app.ember.ai.PromptContext
 import app.ember.ai.Refusal
 import app.ember.ai.StreamEvent
+import app.ember.ai.UsageTag
 import app.ember.data.Character
 import app.ember.data.Chat
 import app.ember.data.Message
@@ -27,6 +28,8 @@ import kotlinx.coroutines.launch
 private const val KEEP_RECENT = 10
 /** In Light context mode, only this many newest messages stay word for word. */
 private const val LIGHT_KEEP_RECENT = 6
+/** The scene tracker refreshes every this many messages. */
+private const val SCENE_EVERY = 6
 
 class ChatViewModel : ViewModel() {
     var characterId by mutableStateOf("")
@@ -132,6 +135,23 @@ class ChatViewModel : ViewModel() {
         runReply(reply.id, 0, current.messages, base = "", extra = null)
     }
 
+    /**
+     * "Move it along": the character writes a new reply that pushes the story forward the way you picked
+     * (a time skip, a new place, a twist…). [chapter] marks it as a new chapter for book export.
+     */
+    fun nudge(instruction: String, chapter: Boolean) {
+        if (busy || instruction.isBlank()) return
+        val ch = chat ?: return
+        val reply = Message(fromUser = false, versions = listOf(""), chapter = chapter)
+        Store.putChat(ch.copy(messages = ch.messages + reply), persist = false)
+        runReply(
+            reply.id, 0, ch.messages, base = "",
+            extra = "Story direction from the user for this reply: ${instruction.trim()} " +
+                "This reply moves the story on, so it doesn't need to answer the last message line by line. " +
+                "Still write only ${character?.name ?: "the character"}'s part and end where the user can respond.",
+        )
+    }
+
     /** Writes a new version of the last reply; older versions stay available to swipe back to. */
     fun regenerate() {
         if (busy) return
@@ -214,7 +234,7 @@ class ChatViewModel : ViewModel() {
         val i = ch.messages.indexOfFirst { it.id == messageId }
         if (i < 0) return@updateChat ch
         val size = i + 1
-        ch.copy(messages = ch.messages.take(size), summaries = ch.summaries.filter { it.to <= size })
+        ch.copy(messages = ch.messages.take(size), summaries = ch.summaries.filter { it.to <= size }, sceneAt = minOf(ch.sceneAt, size))
     }
 
     fun pin(text: String) {
@@ -242,7 +262,7 @@ class ChatViewModel : ViewModel() {
 
         busy = true; error = null; info = null
         streamingId = messageId
-        job = viewModelScope.launch {
+        job = viewModelScope.launch(UsageTag(characterId)) {
             var written = ""
             fun show(text: String) {
                 written = text
@@ -293,6 +313,7 @@ class ChatViewModel : ViewModel() {
                 thinking = false
             }
             maybeSummarise(cid)
+            maybeUpdateScene(cid)
         }
     }
 
@@ -389,6 +410,94 @@ class ChatViewModel : ViewModel() {
         }
     }
 
+    // ----- side by side -----
+
+    /** Choosing the second model for "Side by side". */
+    var pickingCompare by mutableStateOf(false)
+    var compareModel by mutableStateOf<String?>(null)
+        private set
+    var compareText by mutableStateOf("")
+        private set
+    var compareBusy by mutableStateOf(false)
+        private set
+    var compareError by mutableStateOf<String?>(null)
+        private set
+    private var compareJob: Job? = null
+
+    /** Writes the last reply again with [model] (on your main provider), next to the current one, without changing the chat. */
+    fun compare(model: String) {
+        if (busy || compareBusy) return
+        val ch = chat ?: return
+        val last = ch.messages.lastOrNull() ?: return
+        if (last.fromUser || !Store.hasApiKey) return
+        val ctx = context(ch) ?: return
+        val prompt = PromptBuilder.forCharacter(ctx, ch.messages.dropLast(1), ch.replyWords, null)
+        val ep = Endpoint(Store.settings.baseUrl, Store.apiKey(), model)
+        compareModel = model; compareText = ""; compareError = null; compareBusy = true
+        compareJob = viewModelScope.launch(UsageTag(characterId)) {
+            try {
+                streamInto(ch.id, ep, prompt, null, temperature(ch), wordLimit(ch.replyWords, 500)) { compareText = it.trimStart() }
+                if (compareText.isBlank()) compareError = "$model sent back an empty reply."
+            } catch (e: CancellationException) {
+                // closed
+            } catch (e: Exception) {
+                compareError = e.message ?: "Something went wrong."
+            } finally {
+                compareBusy = false; thinking = false
+                Store.persistChat(ch.id)
+            }
+        }
+    }
+
+    /** Keeps the compared reply as a new swipe on the last message (and shows it), or just closes. */
+    fun closeCompare(keepNew: Boolean) {
+        compareJob?.cancel()
+        val ch = chat
+        val last = ch?.messages?.lastOrNull()
+        if (keepNew && ch != null && last != null && !last.fromUser && compareText.isNotBlank()) {
+            val text = compareText
+            Store.updateMessage(ch.id, last.id, persist = true) { it.copy(versions = it.versions + text, sel = it.versions.size) }
+        }
+        compareModel = null; compareText = ""; compareError = null; compareBusy = false
+    }
+
+    // ----- scene tracker -----
+
+    private var sceneBusy = false
+    var sceneUpdating by mutableStateOf(false)
+        private set
+
+    /**
+     * Keeps the scene card current. To stay cheap it only runs every [SCENE_EVERY] messages, reads just
+     * the last few messages, and uses the backup model (DeepSeek) when there is one.
+     */
+    private fun maybeUpdateScene(chatId: String, force: Boolean = false) {
+        if (sceneBusy) return
+        val ch = Store.chat(chatId) ?: return
+        if (!ch.sceneOn && !force) return
+        val due = ch.messages.size - ch.sceneAt >= SCENE_EVERY || (ch.scene.isBlank() && ch.messages.size >= 2)
+        if (!due && !force) return
+        val ctx = context(ch) ?: return
+        val ep = if (Store.backupReady) backupEndpoint() else if (Store.hasApiKey) mainEndpoint() else return
+        val prompt = PromptBuilder.forScene(ctx, ch.scene, ch.messages.takeLast(6))
+        sceneBusy = true; sceneUpdating = true
+        viewModelScope.launch(UsageTag(characterId)) {
+            try {
+                val r = LlmClient.complete(ep, prompt, null, 0.3)
+                val text = r.text.trim().lines().map { it.trim() }.filter { it.isNotEmpty() }.take(6).joinToString("\n")
+                if (text.isNotBlank() && !Refusal.looksLike(text)) {
+                    Store.updateChat(chatId) { it.copy(scene = text, sceneAt = it.messages.size) }
+                }
+            } catch (e: Exception) {
+                if (force) error = e.message
+            } finally {
+                sceneBusy = false; sceneUpdating = false
+            }
+        }
+    }
+
+    fun updateSceneNow() { chat?.id?.let { maybeUpdateScene(it, force = true) } }
+
     // ----- memory -----
 
     /** Every [Settings.summariseEvery] messages, folds the oldest unsummarised block into a summary. */
@@ -400,7 +509,7 @@ class ChatViewModel : ViewModel() {
         val keep = if (light) LIGHT_KEEP_RECENT else KEEP_RECENT
         if (every <= 0) return
         summarising = true
-        viewModelScope.launch {
+        viewModelScope.launch(UsageTag(characterId)) {
             try {
                 // Catch up a few blocks at a time if the chat is far behind (e.g. after switching to Light).
                 repeat(3) {
@@ -446,7 +555,7 @@ class ChatViewModel : ViewModel() {
         val eps = endpoints(ch) ?: run { error = "Add your API key in Settings first."; return }
         summarising = true
         info = "Writing a summary…"
-        viewModelScope.launch {
+        viewModelScope.launch(UsageTag(characterId)) {
             try {
                 val prompt = PromptBuilder.forSummary(ctx, ch.messages.subList(start, end))
                 val r = LlmClient.complete(eps.first, prompt, null, 0.4)
@@ -497,7 +606,7 @@ class ChatViewModel : ViewModel() {
         wfmDrafts = wfmDrafts + ""
         wfmSel = idx
         wfmBusy = true; wfmError = null
-        wfmJob = viewModelScope.launch {
+        wfmJob = viewModelScope.launch(UsageTag(characterId)) {
             var written = ""
             fun show(t: String) {
                 written = t.trimStart()

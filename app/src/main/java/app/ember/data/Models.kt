@@ -33,6 +33,8 @@ data class Message(
     val fromUser: Boolean,
     val versions: List<String>,
     val sel: Int = 0,
+    /** Starts a new chapter when the chat is exported as a book (set by time skips and scene changes). */
+    val chapter: Boolean = false,
 ) {
     val text: String get() = versions.getOrElse(sel) { "" }
 }
@@ -60,6 +62,11 @@ data class Chat(
     val textSize: Int = 15,
     val tokensIn: Long = 0,
     val tokensOut: Long = 0,
+    /** Scene tracker: a few short lines (place, time, clothes, mood) kept up to date and sent with each reply. */
+    val scene: String = "",
+    val sceneOn: Boolean = true,
+    /** Message count when the scene was last updated. */
+    val sceneAt: Int = 0,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 ) {
@@ -128,10 +135,20 @@ data class Settings(
     /** Optional prices per million tokens, in euros, for the cost counter. */
     val priceIn: Double = 0.0,
     val priceOut: Double = 0.0,
+    /** Backup model prices per million tokens (DeepSeek's by default), used when the provider doesn't report the cost. */
+    val backupPriceIn: Double = 0.28,
+    val backupPriceOut: Double = 0.42,
+    /** Monthly spending warning; 0 = off. */
+    val monthlyBudget: Double = 0.0,
+    /** Ask for fingerprint (or screen lock) when opening the app. */
+    val lockEnabled: Boolean = false,
     /** Kept only to move an old single "your character" into a persona. */
     val legacyUserName: String = "",
     val legacyUserDescription: String = "",
 )
+
+/** Spending for one model and one character (tag = character id, or "" for Ideas, builder and other) in one month (yyyy-MM). */
+data class UsageRow(val month: String, val model: String, val tag: String, val input: Long, val output: Long, val cost: Double)
 
 /** One built-in writing rule. Title is shown in the app; text is what the model receives. */
 data class GroundRule(val title: String, val text: String)

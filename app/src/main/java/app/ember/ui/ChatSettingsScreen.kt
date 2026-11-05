@@ -42,6 +42,7 @@ fun ChatSettingsScreen(
     openSearch: () -> Unit,
     openRules: () -> Unit,
     openSettings: () -> Unit,
+    openCosts: () -> Unit = {},
 ) {
     val character = Store.character(characterId)
     val chat = Store.activeChat(characterId)
@@ -110,7 +111,7 @@ fun ChatSettingsScreen(
                     }
                 }
                 HorizontalDivider(color = EmberColors.Line)
-                SettingRow("Cost of this chat", costLabel(chat), sub = "${chat.tokensIn + chat.tokensOut} tokens used")
+                SettingRow("Cost of this chat", costLabel(chat), sub = "${chat.tokensIn + chat.tokensOut} tokens used · tap for monthly spending", onClick = openCosts)
                 SettingRow("See what's sent", sub = "The exact instructions and chat in the last request", divider = false) { showPrompt = true }
             }
 
