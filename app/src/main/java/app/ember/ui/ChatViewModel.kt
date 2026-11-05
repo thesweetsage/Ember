@@ -318,8 +318,32 @@ class ChatViewModel : ViewModel() {
         } catch (e: RunawayStop) {
             cut = true
         }
-        val text = buf.toString().trimEnd()
-        if (text.isNotEmpty() && (cut || !endsCleanly(text))) onText(trimToLastSentence(text))
+        var text = buf.toString().trimEnd()
+        if (text.isNotEmpty() && (cut || !endsCleanly(text))) text = trimToLastSentence(text)
+        val laidOut = paragraphize(text)
+        if (laidOut != buf.toString()) onText(laidOut)
+    }
+
+    /**
+     * If a reply arrives as one solid block, splits it into paragraphs: a new one at each line of
+     * dialogue, and after every three sentences of narration. Replies that already have paragraphs are left alone.
+     */
+    private fun paragraphize(t: String): String {
+        if (t.contains('\n') || t.split(' ').size < 70) return t
+        val sentences = Regex("(?<=[.!?…][\"”’_*)]?)\\s+(?=[\"“_*A-Z])").split(t).map { it.trim() }.filter { it.isNotEmpty() }
+        if (sentences.size < 4) return t
+        val paras = ArrayList<StringBuilder>()
+        var count = 0
+        var talk = false
+        for (sent in sentences) {
+            val speaks = sent.contains('"') || sent.contains('“')
+            val cur = paras.lastOrNull()
+            // A speaker's lines stay together; narration groups up to three sentences.
+            val join = cur != null && (if (speaks) talk && count < 3 else count < 3 && !(talk && count >= 2))
+            if (join) { cur!!.append(' ').append(sent); count++; talk = talk || speaks }
+            else { paras.add(StringBuilder(sent)); count = 1; talk = speaks }
+        }
+        return paras.joinToString("\n\n")
     }
 
     private fun endsCleanly(t: String): Boolean = t.last() in ".!?…\"”’_*)"

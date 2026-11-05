@@ -143,7 +143,7 @@ object PromptBuilder {
             if (replyWords <= 0) append("Length: fit the moment, usually 200 to 300 words, up to about 450 for big scenes, never more. ")
             else append("Length: about $replyWords words. ")
             append("Write only $charName's part and stop at the first moment $userName could respond; never write $userName's actions, words or thoughts. ")
-            append("Short paragraphs. End on a complete sentence.")
+            append("Split it into short paragraphs separated by blank lines, never one block of text. End on a complete sentence.")
             if (!extraInstruction.isNullOrBlank()) append("\n").append(extraInstruction)
         })
         return out
@@ -197,7 +197,7 @@ object PromptBuilder {
             if (words <= 0) append("Length: let the notes set it; a small moment stays short. Never pad. ")
             else append("Length: about $words words. ")
             append("Write only $userName's part and stop there; never write $charName's actions, words or reactions. ")
-            append("Short paragraphs. End on a complete sentence.")
+            append("Split it into short paragraphs separated by blank lines, never one block of text. End on a complete sentence.")
         })
         return out
     }
