@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Person
@@ -115,7 +116,7 @@ fun LibraryScreen(
                 IconButton(onClick = { pickTags = true }) {
                     Icon(Icons.Outlined.Sell, "Filter by tags", tint = if (tagFilter.isEmpty()) EmberColors.Text else EmberColors.RedSoft)
                 }
-                IconButton(onClick = openWrapped) { Icon(androidx.compose.material.icons.Icons.Outlined.AutoAwesome, "Ember Wrapped", tint = EmberColors.Text) }
+                IconButton(onClick = openWrapped) { Icon(Icons.Outlined.AutoAwesome, "Ember Wrapped", tint = EmberColors.Text) }
                 IconButton(onClick = openRules) { Icon(Icons.Outlined.Rule, "Rules", tint = EmberColors.Text) }
                 IconButton(onClick = openSettings) { Icon(Icons.Outlined.Settings, "Settings", tint = EmberColors.Text) }
             }
