@@ -96,8 +96,9 @@ object Store {
         } ?: emptyList()
         groundRules = read("ground.json")?.let { Json.parseList(it) { o -> Json.ground(o) } }
             ?.takeIf { it.isNotEmpty() }?.let { withNewGroundRules(it) } ?: DEFAULT_GROUND_RULES
-        markGroundSeen()
         wfmRules = read("wfm_rules.json")?.let { Json.parseList(it) { o -> Json.ground(o) } } ?: DEFAULT_WFM_RULES
+        condenseRulesOnce()
+        markGroundSeen()
         settings = read("settings.json")?.let { runCatching { Json.settings(JSONObject(it)) }.getOrNull() } ?: Settings()
         app.ember.ai.PromptBuilder.historyBudgetChars = settings.contextChars
         chats = chatDir.listFiles().orEmpty().filter { it.name.endsWith(".json") }.mapNotNull { f ->
@@ -122,6 +123,21 @@ object Store {
             if (isNew && out.none { it.title == d.title }) out.add(i.coerceAtMost(out.size), d)
         }
         return out
+    }
+
+    /**
+     * Version 2 replaced the long ground rules with a short, condensed set. The old lists are kept as
+     * ground_old.json / wfm_rules_old.json inside the app folder (and in backups), just in case.
+     */
+    private fun condenseRulesOnce() {
+        if (prefs.getInt("rulesVersion", 1) >= 2) return
+        File(dir, "ground.json").takeIf { it.exists() }?.copyTo(File(dir, "ground_old.json"), overwrite = true)
+        File(dir, "wfm_rules.json").takeIf { it.exists() }?.copyTo(File(dir, "wfm_rules_old.json"), overwrite = true)
+        groundRules = DEFAULT_GROUND_RULES
+        wfmRules = DEFAULT_WFM_RULES
+        saveGround()
+        write(File(dir, "wfm_rules.json"), Json.list(wfmRules) { Json.ground(it) })
+        prefs.edit().putInt("rulesVersion", 2).apply()
     }
 
     private fun markGroundSeen() {

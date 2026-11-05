@@ -297,7 +297,7 @@ fun RulesScreen(onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { confirmResetWfm = false },
             title = { Text("Reset Write for me rules?") },
-            text = { Text("They go back to the original four, with their original wording.") },
+            text = { Text("They go back to the original two, with their original wording.") },
             confirmButton = { TextButton(onClick = { Store.resetWfmRules(); confirmResetWfm = false }) { Text("Reset") } },
             dismissButton = { TextButton(onClick = { confirmResetWfm = false }) { Text("Cancel") } },
             containerColor = EmberColors.Surface,
@@ -308,7 +308,7 @@ fun RulesScreen(onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { confirmReset = false },
             title = { Text("Reset ground rules?") },
-            text = { Text("The ground rules go back to the original 20, with their original wording. Ground rules you added or deleted are lost or restored. Your own rules are not touched.") },
+            text = { Text("The ground rules go back to the original 10, with their original wording. Ground rules you added or deleted are lost or restored. Your own rules are not touched.") },
             confirmButton = { TextButton(onClick = { Store.resetGroundRules(); confirmReset = false }) { Text("Reset") } },
             dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Cancel") } },
             containerColor = EmberColors.Surface,

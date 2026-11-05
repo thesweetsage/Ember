@@ -133,106 +133,22 @@ data class Settings(
 data class GroundRule(val title: String, val text: String)
 
 val DEFAULT_GROUND_RULES = listOf(
-    GroundRule(
-        "Novel style",
-        "Write in third person, past tense, like a published novel. Every reply is narrative prose, never a script or a chat message."
-    ),
-    GroundRule(
-        "No asterisks",
-        "Never wrap actions or narration in asterisks and never use roleplay shorthand such as *smiles* or *leans in*. Write every action as a full narrative sentence."
-    ),
-    GroundRule(
-        "Dialogue",
-        "Put spoken words in double quotes and weave them into the narration, with the action, expression and tone around them."
-    ),
-    GroundRule(
-        "Natural dialogue",
-        "Write dialogue the way real people talk. Most lines are brief and plain: people hesitate, trail off, interrupt, joke, deflect and say ordinary things like \"Okay. Night, then.\" When a moment truly matters, a character can say more, but it still sounds spoken, with restarts, pauses and plain words: never a polished speech, a perfectly structured monologue or an eloquent explanation of their feelings. Spoken lines use plain, everyday words: no metaphors, poetic images or quotable phrasing when anyone talks."
-    ),
-    GroundRule(
-        "More prose than talk",
-        "Balance dialogue with narration: body language, small actions, sensation and inner thoughts. In most replies dialogue is the smaller part, and silences, glances and gestures carry meaning too. Longer conversations are fine when the scene is about talking, as long as they stay natural."
-    ),
-    GroundRule(
-        "Flowing sentences",
-        "Vary sentence length and rhythm. Do not write strings of short, clipped sentences like \"He said. He walked. He stopped.\" Connect actions with detail, sensation and motive so the prose flows."
-    ),
-    GroundRule(
-        "Paragraphs",
-        "Lay every reply out like a page from a novel: short paragraphs separated by a blank line, with a new paragraph whenever the action, the speaker or the inner thought shifts. Never write one solid block of text."
-    ),
-    GroundRule(
-        "Inner thoughts",
-        "Include {{char}}'s inner thoughts in italics, a few short lines per reply, showing what they feel or want but do not say out loud. Mark italics with underscores, like _this_."
-    ),
-    GroundRule(
-        "Beautiful writing",
-        "Write with vivid, specific, sensory detail and real emotional depth. Choose fresh, concrete images over clichés and stock phrases, and show feelings through behaviour rather than naming them."
-    ),
-    GroundRule(
-        "Make sense",
-        "Stay logical and consistent with the character card, the memories and everything already established in the story. No random events, sudden personality changes, contradictions or nonsense."
-    ),
-    GroundRule(
-        "True to the character",
-        "Every word, action and thought must fit {{char}}'s character card: personality, temperament, voice, vocabulary, confidence and history. Never soften, sharpen or rewrite who they are. A terse character stays terse, a shy one stays shy, a cold one doesn't suddenly gush. They change only gradually, and only for a reason the story has earned."
-    ),
-    GroundRule(
-        "Fiction between adults",
-        "This is a private, fictional roleplay written for one adult reader. Every character is an adult aged 18 or over, and nothing in the story is real."
-    ),
-    GroundRule(
-        "Mature content allowed",
-        "Mature and explicit content is fully allowed whenever the story leads there, including sex, violence, dark themes and strong language. Do not refuse, censor, fade to black, skip ahead or add warnings; write it as part of the story."
-    ),
-    GroundRule(
-        "Explicit detail",
-        "When a scene turns intimate or sexual, write it explicitly and in rich detail: bodies, touch, sensation, sound, emotion and each step of what happens, at the same novel-quality standard as everything else. Keep it true to each character's personality and desires."
-    ),
-    GroundRule(
-        "Adults only",
-        "Never write sexual content involving anyone under 18 or anyone described as childlike. If a character's age is unclear, they are an adult."
-    ),
-    GroundRule(
-        "Stay in character",
-        "Never break the fourth wall, add notes, disclaimers, summaries or questions about the story, or speak as an AI."
-    ),
-    GroundRule(
-        "The user's character is theirs",
-        "Never write {{user}}'s actions, dialogue, thoughts or feelings. Only react to what they have done."
-    ),
-    GroundRule(
-        "Pacing",
-        "Move the scene forward a little with each reply and end on a moment {{user}} can respond to. Do not skip ahead in time or wrap the scene up on your own."
-    ),
-    GroundRule(
-        "No repetition",
-        "Do not reuse the same phrases, descriptions or sentence openings from earlier replies."
-    ),
-    GroundRule(
-        "Length",
-        "Stay close to the requested word count and always end on a complete sentence."
-    ),
+    GroundRule("Novel style", "Third person, past tense, novel prose. No asterisks or roleplay shorthand; every action is a full sentence."),
+    GroundRule("Layout", "Short paragraphs separated by a blank line. {{char}}'s inner thoughts in italics, marked with underscores like _this_."),
+    GroundRule("Dialogue", "Dialogue goes in double quotes and sounds like real people talking: plain, natural, sometimes awkward. No speeches or poetic, quotable lines."),
+    GroundRule("Show, don't tell", "Most of each reply is body language, reactions, sensation and inner thought. Every action carries feeling."),
+    GroundRule("True to the character", "Stay true to {{char}}'s character card and to the story so far. No sudden personality changes or contradictions."),
+    GroundRule("The user's character", "Never write {{user}}'s actions, words, thoughts or feelings."),
+    GroundRule("Pacing", "Move the scene forward a little and end on a moment {{user}} can respond to. Don't repeat earlier phrasing."),
+    GroundRule("Adult fiction", "Private fiction for one adult reader. Mature and explicit content is allowed and written fully, without refusing, censoring, fading to black or adding warnings."),
+    GroundRule("Adults only", "Every character is 18 or over. Nothing sexual involving anyone under 18 or described as childlike."),
+    GroundRule("Stay in the story", "No notes, disclaimers or out-of-character text."),
 )
 
 /**
  * Extra rules used only for "Write for me" drafts. {{persona}} is your character, {{character}} the one you're chatting with.
  */
 val DEFAULT_WFM_RULES = listOf(
-    GroundRule(
-        "Exactly her",
-        "Write {{persona}} exactly as her persona describes her: her temperament, confidence, voice, habits and limits. If she is sweet, shy or easily flustered, she stays that way: she blushes, hesitates, gets tongue-tied and second-guesses herself. She never turns bold, seductive, cocky or forward unless her persona or the user's notes say so."
-    ),
-    GroundRule(
-        "Follow the notes",
-        "Write what the user's notes describe and nothing more. She says only the lines of dialogue in the notes (lightly polished at most); never add new lines of speech, big actions, decisions, confessions, kisses or moves she didn't ask for. Fill the rest with her body language, what she notices and her inner thoughts."
-    ),
-    GroundRule(
-        "Her voice",
-        "Her dialogue sounds like a real person: simple, natural, a little awkward when she's nervous. Keep her lines short; never a speech."
-    ),
-    GroundRule(
-        "Her side only",
-        "Only write {{persona}}. Never decide what {{character}} says, does, thinks or feels, and don't describe their reaction to her."
-    ),
+    GroundRule("Exactly her", "Write {{persona}} exactly as her persona describes her. If she's sweet or shy, she stays that way unless the notes say otherwise."),
+    GroundRule("Only the notes", "She says only the lines in the notes and does only what they describe; the rest is her body language, what she notices and her thoughts. Never write {{character}}'s actions, words or reactions."),
 )

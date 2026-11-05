@@ -134,23 +134,15 @@ object PromptBuilder {
         }
         val out = conversation(system, trimHistory(p.chat, history), flip = false, fill = fill)
         attachInstruction(out, buildString {
-            append("Write $charName's next reply now, following every ground rule. ")
-            append("Stay exactly true to $charName as the character card describes them. ")
+            append("Write $charName's next reply, following the rules. ")
             p.character.personality.trim().takeIf { it.isNotEmpty() }?.let {
-                append("Reminder of who $charName is: ").append(fill(it.take(700)))
-                append(if (it.length > 700) "… " else " ")
+                append("Stay true to who $charName is: ").append(fill(it.take(500))).append(if (it.length > 500) "… " else " ")
             }
-            append("Dialogue for this reply: real people talking, never a written speech. Each line of dialogue says only what this moment needs. Once the point is made, stop the talking and show the reaction instead; do not keep a character speaking for paragraph after paragraph. A character can say more when the moment truly calls for it, like a confession or a fight, but it still sounds spoken: plain words, restarts, pauses, hesitations. ")
-            append("Every reply must show, in full flowing sentences: (1) $charName's body reacting, such as the face, the jaw, the brows, the hands, the breath, the posture and the small tells they can't hide; (2) what $charName notices about $userName in this moment (her expression, her hands, the way she said something) and what it does to them; (3) $charName's inner thoughts in italics. Every action carries feeling: never a bare, flat line like \"He reached for his tea.\" Show how and why. ")
-            append("Spoken lines are plain, everyday words. No metaphors, poetic images, aphorisms or clever, quotable phrasing when anyone speaks; that kind of language never comes out of a real person's mouth. Say it the way a real person would: \"I missed you. It was weird here without you.\" Never: \"The quiet had a name in it now.\" Keep any lyrical writing for the narration, and keep even that grounded. ")
-            if (replyWords <= 0) {
-                append("Choose the length yourself to fit the moment: usually around 200 to 300 words, and longer ")
-                append("(up to about 700 words) for important, emotional or intimate scenes that need room for detail and inner thoughts. ")
-            } else {
-                append("Aim for about $replyWords words and no more than ${replyWords + replyWords / 5}. ")
-            }
-            append("Format it like a page from a novel: split it into short paragraphs separated by a blank line, starting a new paragraph whenever the action, the speaker or the inner thought shifts. Never write one solid block of text. ")
-            append("End on a complete sentence.")
+            append("Dialogue: plain and natural, only what the moment needs, no speeches or poetic lines. ")
+            append("Show $charName's body reacting, what they notice about $userName, and their thoughts. ")
+            if (replyWords <= 0) append("Length: fit the moment, usually 200 to 300 words, longer for big scenes. ")
+            else append("Length: about $replyWords words. ")
+            append("Short paragraphs. End on a complete sentence.")
             if (!extraInstruction.isNullOrBlank()) append("\n").append(extraInstruction)
         })
         return out
@@ -186,33 +178,24 @@ object PromptBuilder {
         }
         val out = conversation(system, trimHistory(p.chat, history), flip = true, fill = fill)
         attachInstruction(out, buildString {
-            append("Write $userName's next reply now, following every ground rule and every rule for writing as $userName, as polished novel prose. ")
+            append("Write $userName's next reply, following the rules. ")
             p.persona?.description?.trim()?.takeIf { it.isNotEmpty() }?.let {
-                append("Stay exactly true to who $userName is: ").append(fill(it.take(700)))
-                append(if (it.length > 700) "… " else " ")
+                append("Stay true to who $userName is: ").append(fill(it.take(500))).append(if (it.length > 500) "… " else " ")
             }
-            append("Her dialogue: she says ONLY the lines in the notes. You may lightly polish their wording, but never add new lines of speech she didn't ask for; if the notes give her one line, she says one line. Fill the rest of the reply with her body language, what she notices about $charName in this moment and what it does to her, and her inner thoughts in italics, in full flowing sentences. Never pad with extra dialogue or extra actions. ")
-            append("Spoken lines are plain, everyday words. No metaphors, poetic images, aphorisms or clever, quotable phrasing when anyone speaks; that kind of language never comes out of a real person's mouth. Say it the way a real person would: \"I missed you. It was weird here without you.\" Never: \"The quiet had a name in it now.\" Keep any lyrical writing for the narration, and keep even that grounded. ")
             if (notes.isNotBlank()) {
-                append("Base it on these notes from the user. Include every action and line of dialogue they mention, ")
-                append("in a sensible order, and expand them into full writing without adding big actions or moves they didn't ask for:\n")
+                append("Her notes (she says only these lines and does only these things; the rest is her body language, what she notices and her thoughts):\n")
                 append(notes.trim()).append("\n")
             } else {
-                append("Decide what $userName does and says next, true to their character and to the scene.\n")
+                append("Decide what $userName does and says next, true to her and the scene. ")
             }
             if (!draft.isNullOrBlank() && !change.isNullOrBlank()) {
-                append("\nHere is the current draft:\n").append(draft.trim()).append("\n")
-                append("Rewrite it with this change: ").append(change.trim())
-                append(". Keep everything else unless the change says otherwise.\n")
+                append("\nCurrent draft:\n").append(draft.trim()).append("\n")
+                append("Rewrite it with this change: ").append(change.trim()).append(". Keep everything else.\n")
             }
-            if (words <= 0) {
-                append("Let the notes set the length: a single small action and line of dialogue makes a short reply (about 60 to 150 words), ")
-                append("and only a big, emotional moment with a lot in the notes goes longer (up to about 400 words). Never pad to reach a length. ")
-            } else {
-                append("Aim for about $words words. ")
-            }
-            append("Format it like a page from a novel: split it into short paragraphs separated by a blank line, starting a new paragraph whenever the action, the speaker or the inner thought shifts. Never write one solid block of text. ")
-            append("Only write $userName's reply, nothing else. End on a complete sentence.")
+            append("Dialogue: plain and natural, no speeches or poetic lines. ")
+            if (words <= 0) append("Length: let the notes set it; a small moment stays short. Never pad. ")
+            else append("Length: about $words words. ")
+            append("Short paragraphs. Only write $userName's reply. End on a complete sentence.")
         })
         return out
     }
