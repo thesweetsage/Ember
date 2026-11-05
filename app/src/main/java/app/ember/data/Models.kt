@@ -57,7 +57,7 @@ data class Chat(
     val autoSwitch: Boolean = true,
     val tintFromPhoto: Boolean = true,
     val bubbleOpacity: Float = 0.85f,
-    val textSize: Int = 16,
+    val textSize: Int = 15,
     val tokensIn: Long = 0,
     val tokensOut: Long = 0,
     val createdAt: Long = System.currentTimeMillis(),

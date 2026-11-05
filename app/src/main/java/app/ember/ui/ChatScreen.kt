@@ -131,7 +131,7 @@ fun ChatScreen(
     val replyWords = chat?.replyWords ?: character.replyWords
     val persona = Store.personaFor(chat, character)
     val pal = chatPalette(chat, character.tint)
-    val textSize = (chat?.textSize ?: 16).sp
+    val textSize = (chat?.textSize ?: 15).sp
 
     var input by rememberSaveable { mutableStateOf("") }
     var menu by remember { mutableStateOf(false) }
@@ -432,17 +432,22 @@ private fun MessageItem(m: Message, isLast: Boolean, streaming: Boolean, vm: Cha
     val clipboard = LocalClipboardManager.current
     val busy = vm.busy
 
+    // Bubbles take about three quarters of the screen, like Tipsy, so the background stays visible.
+    val screenW = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
     Column(Modifier.fillMaxWidth(), horizontalAlignment = if (m.fromUser) Alignment.End else Alignment.Start) {
         Box {
             Box(
-                Modifier.widthIn(max = if (m.fromUser) 300.dp else 360.dp)
+                Modifier.widthIn(max = (screenW * if (m.fromUser) 0.72f else 0.78f).dp)
                     .clip(if (m.fromUser) RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp) else RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp))
                     .background(if (m.fromUser) pal.user else pal.bubble)
                     .combinedClickable(onClick = {}, onLongClick = { if (!busy) menu = true })
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(horizontal = 14.dp, vertical = 11.dp)
             ) {
                 if (streaming && m.text.isEmpty()) Text(if (vm.thinking) "Thinking…" else "…", color = Cream, fontSize = if (vm.thinking) 14.sp else 18.sp)
-                else Text(formatStory(m.text), color = Cream, fontSize = textSize.sp, lineHeight = (textSize * 1.48f).sp)
+                else Text(
+                    formatStory(m.text), color = Cream, fontSize = textSize.sp, lineHeight = (textSize * 1.38f).sp,
+                    letterSpacing = 0.sp,
+                )
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(text = { Text("Edit") }, onClick = { menu = false; editing = true })

@@ -68,7 +68,7 @@ object Json {
         })
         .put("temperature", nul(c.temperature)).put("useBackup", c.useBackup).put("autoSwitch", c.autoSwitch)
         .put("tintFromPhoto", c.tintFromPhoto).put("bubbleOpacity", c.bubbleOpacity.toDouble())
-        .put("textSize", c.textSize).put("tokensIn", c.tokensIn).put("tokensOut", c.tokensOut)
+        .put("textSize", c.textSize).put("textSizeV2", true).put("tokensIn", c.tokensIn).put("tokensOut", c.tokensOut)
         .put("createdAt", c.createdAt).put("updatedAt", c.updatedAt)
         .put("messages", arr(c.messages) { message(it) })
 
@@ -86,7 +86,8 @@ object Json {
         useBackup = o.optBoolean("useBackup", false), autoSwitch = o.optBoolean("autoSwitch", true),
         tintFromPhoto = o.optBoolean("tintFromPhoto", true),
         bubbleOpacity = o.optDouble("bubbleOpacity", 0.85).toFloat(),
-        textSize = o.optInt("textSize", 16),
+        // The old default was 16; chats still on it move to the new, calmer 15.
+        textSize = o.optInt("textSize", 15).let { if (it == 16 && !o.optBoolean("textSizeV2")) 15 else it },
         tokensIn = o.optLong("tokensIn", 0), tokensOut = o.optLong("tokensOut", 0),
         createdAt = o.optLong("createdAt", o.optLong("updatedAt", 0L)),
         updatedAt = o.optLong("updatedAt", 0L),
