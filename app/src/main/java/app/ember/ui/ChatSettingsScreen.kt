@@ -218,5 +218,5 @@ fun costLabel(chat: Chat): String {
     val s = Store.settings
     if (s.priceIn <= 0 && s.priceOut <= 0) return "Set prices in Settings"
     val euros = chat.tokensIn / 1_000_000.0 * s.priceIn + chat.tokensOut / 1_000_000.0 * s.priceOut
-    return "€" + "%.3f".format(euros)
+    return "$" + "%.3f".format(euros)
 }

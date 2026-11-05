@@ -99,6 +99,7 @@ object Store {
         markGroundSeen()
         wfmRules = read("wfm_rules.json")?.let { Json.parseList(it) { o -> Json.ground(o) } } ?: DEFAULT_WFM_RULES
         settings = read("settings.json")?.let { runCatching { Json.settings(JSONObject(it)) }.getOrNull() } ?: Settings()
+        app.ember.ai.PromptBuilder.historyBudgetChars = settings.contextChars
         chats = chatDir.listFiles().orEmpty().filter { it.name.endsWith(".json") }.mapNotNull { f ->
             runCatching { Json.chat(JSONObject(f.readText())) }.getOrNull()
         }
@@ -414,7 +415,11 @@ object Store {
         write(File(dir, "wfm_rules.json"), Json.list(list) { Json.ground(it) })
     }
     fun resetWfmRules() = updateWfmRules(DEFAULT_WFM_RULES)
-    fun updateSettings(s: Settings) { settings = s; saveSettings() }
+    fun updateSettings(s: Settings) {
+        settings = s
+        app.ember.ai.PromptBuilder.historyBudgetChars = s.contextChars
+        saveSettings()
+    }
 
     // ---------- backup & restore ----------
 

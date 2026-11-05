@@ -27,19 +27,20 @@ data class PromptContext(
 object PromptBuilder {
 
     /** Roughly how much recent chat (in characters) is sent with each request. */
-    private const val HISTORY_BUDGET_CHARS = 90_000
+    /** How much recent chat (in characters) is sent; set in Settings → Context sent. */
+    var historyBudgetChars = 60_000
 
+    /**
+     * Keeps the most recent messages that fit the budget. Older messages are dropped 10 at a time, so the
+     * start of the request stays identical between replies and the provider's cache discount keeps applying.
+     */
     private fun trimHistory(chat: Chat, history: List<Message>): List<Message> {
         val skip = chat.coveredUntil.coerceAtMost(maxOf(0, history.size - 4))
         val recent = history.drop(skip)
-        val kept = ArrayList<Message>()
-        var used = 0
-        for (m in recent.asReversed()) {
-            if (kept.isNotEmpty() && used + m.text.length > HISTORY_BUDGET_CHARS) break
-            kept.add(m); used += m.text.length
-        }
-        kept.reverse()
-        return kept
+        var start = 0
+        fun size(from: Int) = recent.subList(from, recent.size).sumOf { it.text.length }
+        while (start < recent.size - 2 && size(start) > historyBudgetChars) start += 10
+        return recent.subList(start.coerceAtMost(maxOf(0, recent.size - 2)), recent.size)
     }
 
     private fun StringBuilder.sharedSections(p: PromptContext, fill: (String) -> String) {

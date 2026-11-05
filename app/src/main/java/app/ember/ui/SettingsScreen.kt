@@ -217,6 +217,25 @@ fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit) {
                 TextButton(onClick = { Store.setVoiceKey("") }) { Text("Remove voice key", color = EmberColors.RedSoft) }
             }
 
+            SettingsGroup("Context sent with each message") {
+                val options = listOf(
+                    Triple(30_000, "Short", "About 8k tokens · cheapest"),
+                    Triple(60_000, "Medium", "About 15k tokens · recommended"),
+                    Triple(90_000, "Long", "About 23k tokens · remembers the most word for word"),
+                )
+                options.forEachIndexed { i, (chars, label, sub) ->
+                    val on = Store.settings.contextChars == chars
+                    SettingRow(label + if (on) "  ✓" else "", sub = sub, divider = i < options.lastIndex) {
+                        Store.updateSettings(Store.settings.copy(contextChars = chars))
+                    }
+                }
+            }
+            Text(
+                "How much recent chat is sent with every reply. Anything older is still covered by summaries and pinned memories. " +
+                    "Sending less costs less; the provider also charges much less for the part that's the same as last time.",
+                fontSize = 12.5.sp, color = EmberColors.Muted,
+            )
+
             SettingsGroup("Defaults for new chats") {
                 ToggleRow("Switch to backup on refusal", autoSwitch, divider = true) { autoSwitch = it }
                 Column(Modifier.padding(vertical = 12.dp)) {
@@ -240,9 +259,9 @@ fun SettingsScreen(onBack: () -> Unit, openPersonas: () -> Unit) {
                 fontSize = 13.sp, color = EmberColors.Muted,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                EmberField("€ per 1M input", priceIn, { priceIn = it }, singleLine = true, modifier = Modifier.weight(1f),
+                EmberField("$ per 1M input", priceIn, { priceIn = it }, singleLine = true, modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
-                EmberField("€ per 1M output", priceOut, { priceOut = it }, singleLine = true, modifier = Modifier.weight(1f),
+                EmberField("$ per 1M output", priceOut, { priceOut = it }, singleLine = true, modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
             }
 
