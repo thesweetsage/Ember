@@ -415,6 +415,44 @@ class ChatViewModel : ViewModel() {
         }
     }
 
+    // ----- what next? -----
+
+    /** Three directions for the next reply: (title, description). */
+    var whatNext by mutableStateOf(listOf<Pair<String, String>>())
+        private set
+    var whatNextBusy by mutableStateOf(false)
+        private set
+    var whatNextError by mutableStateOf<String?>(null)
+        private set
+
+    fun suggestWhatNext(more: Boolean) {
+        if (whatNextBusy) return
+        val ch = chat ?: return
+        val ctx = context(ch) ?: return
+        val ep = if (Store.backupReady && Store.settings.creativeUseBackup) backupEndpoint()
+            else if (Store.hasApiKey) mainEndpoint() else { whatNextError = "Add your API key in Settings first."; return }
+        val avoid = if (more) whatNext.map { "${it.first} | ${it.second}" } else emptyList()
+        if (!more) whatNext = emptyList()
+        whatNextBusy = true; whatNextError = null
+        viewModelScope.launch(UsageTag(characterId)) {
+            try {
+                val r = LlmClient.complete(ep, PromptBuilder.forWhatNext(ctx, ch.messages.takeLast(8), avoid), null, 1.0)
+                val got = r.text.lines().map { it.trim().replace(Regex("^(\\d+[.)]|[-*•])\\s*"), "").replace("**", "") }
+                    .filter { "|" in it }
+                    .map { it.substringBefore("|").trim() to it.substringAfter("|").trim() }
+                    .filter { it.first.isNotBlank() && it.second.isNotBlank() }.take(3)
+                if (got.isEmpty()) whatNextError = "No ideas came back. Try again."
+                whatNext = if (more) whatNext + got else got
+            } catch (e: Exception) {
+                whatNextError = e.message ?: "Couldn't get ideas."
+            } finally {
+                whatNextBusy = false
+            }
+        }
+    }
+
+    fun clearWhatNext() { whatNext = emptyList(); whatNextError = null }
+
     // ----- side by side -----
 
     /** Choosing the second model for "Side by side". */

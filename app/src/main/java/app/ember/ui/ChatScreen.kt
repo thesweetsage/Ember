@@ -49,6 +49,7 @@ import androidx.compose.material.icons.outlined.AutoFixHigh
 import androidx.compose.material.icons.outlined.Draw
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Rule
 import androidx.compose.material.icons.outlined.ShortText
@@ -144,6 +145,7 @@ fun ChatScreen(
     var confirmNewChat by remember { mutableStateOf(false) }
     var pickingModel by remember { mutableStateOf(false) }
     var moving by remember { mutableStateOf(false) }
+    var whatNextOpen by remember { mutableStateOf(false) }
     var exportAsk by remember { mutableStateOf(false) }
     var scenario by remember { mutableStateOf(false) }
     var variant by remember { mutableStateOf(false) }
@@ -189,6 +191,8 @@ fun ChatScreen(
     if (variant) VariantDialog(character, onReady = { variant = false; openNewDraft() }, onDismiss = { variant = false })
 
     if (playlist) PlaylistDialog(characterId, onDismiss = { playlist = false })
+
+    if (whatNextOpen) WhatNextSheet(vm, onDismiss = { whatNextOpen = false })
 
     if (moving) {
         MoveItAlongSheet(character.name, onPick = { instruction, chapter -> moving = false; vm.nudge(instruction, chapter) }, onDismiss = { moving = false }, group = character.isGroup)
@@ -342,6 +346,7 @@ fun ChatScreen(
                         Text(if (spicy) "Spicy on" else "Spicy", color = Cream, fontSize = 13.sp, fontWeight = if (spicy) FontWeight.SemiBold else FontWeight.Medium)
                     }
                 }
+                item { IconChip(Icons.Outlined.Explore, "What next?") { if (!vm.busy && messages.isNotEmpty()) whatNextOpen = true } }
                 item { IconChip(Icons.Filled.FastForward, "Move it along") { if (!vm.busy) moving = true } }
                 item { IconChip(Icons.Outlined.Rule, "Rules · ${Store.rules.count { it.enabled }} on") { openRules() } }
                 if (chat?.direction.isNullOrBlank()) {

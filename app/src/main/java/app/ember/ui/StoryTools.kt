@@ -201,3 +201,42 @@ fun ExportBookDialog(characterName: String, chatCount: Int, onPick: (all: Boolea
         containerColor = EmberColors.Surface,
     )
 }
+
+/** "What next?": three directions written for this exact moment; tap one to steer the next reply. */
+@Composable
+fun WhatNextSheet(vm: ChatViewModel, onDismiss: () -> Unit) {
+    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    androidx.compose.runtime.LaunchedEffect(Unit) { if (vm.whatNext.isEmpty()) vm.suggestWhatNext(more = false) }
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet, containerColor = EmberColors.Bg) {
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp).padding(bottom = 16.dp).navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("What could happen next", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text("Written for this moment. Tap one and the next reply goes that way.", fontSize = 13.sp, color = EmberColors.Muted)
+            if (vm.whatNext.isEmpty() && vm.whatNextBusy) Text("Thinking…", color = EmberColors.Muted, modifier = Modifier.padding(vertical = 12.dp))
+            vm.whatNext.forEach { (title, what) ->
+                Column(
+                    Modifier.fillMaxWidth().background(EmberColors.Surface, RoundedCornerShape(14.dp))
+                        .border(1.dp, EmberColors.Line, RoundedCornerShape(14.dp))
+                        .clickable {
+                            onDismiss()
+                            vm.nudge("$title: $what", chapter = false)
+                            vm.clearWhatNext()
+                        }.padding(horizontal = 14.dp, vertical = 12.dp),
+                ) {
+                    Text(title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text(what, fontSize = 13.5.sp, lineHeight = 19.sp, color = EmberColors.TextSoft)
+                }
+            }
+            vm.whatNextError?.let { Text(it, color = EmberColors.RedSoft, fontSize = 13.sp) }
+            if (vm.whatNext.isNotEmpty()) {
+                OutlinedButton(
+                    onClick = { vm.suggestWhatNext(more = true) }, enabled = !vm.whatNextBusy,
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
+                ) { Text(if (vm.whatNextBusy) "Thinking…" else "3 more", color = EmberColors.Text) }
+            }
+        }
+    }
+}

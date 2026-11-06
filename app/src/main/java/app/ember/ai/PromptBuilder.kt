@@ -279,6 +279,32 @@ object PromptBuilder {
         )
     }
 
+    /** "What next?": three directions for the next reply, fitted to this exact moment. Lines of "Title | one sentence". */
+    fun forWhatNext(p: PromptContext, recent: List<Message>, avoid: List<String>): List<ChatMsg> {
+        val charName = p.character.name.ifBlank { "the character" }
+        val userName = p.persona?.name?.ifBlank { null } ?: "the user"
+        val fill = { t: String -> t.replace("{{char}}", charName).replace("{{user}}", userName) }
+        val transcript = recent.joinToString("\n\n") { (if (it.fromUser) "$userName: " else "$charName: ") + it.text.take(1800) }
+        val sys = buildString {
+            append("You help steer a private, fictional interactive story between adults; dark and explicit themes are allowed. ")
+            append("Suggest 3 different directions the very next reply from $charName could take, growing naturally out of this exact moment. ")
+            if (p.character.isGroup) append("$charName is a group of several characters; directions can bring in or focus on particular members. ")
+            append("Make them clearly different from each other: for example one tender or emotional, one tense or dramatic, one bold or spicy, ")
+            append("unless the moment suggests better options. Each must fit who the character is and where the story is. ")
+            append("Never decide what $userName does, says or feels. ")
+            append("Reply with exactly 3 lines, each like this: Short title | One sentence describing what happens. No numbering, nothing else.")
+        }
+        val user = buildString {
+            append("The character:\n")
+            append(fill(p.character.description.ifBlank { p.character.personality.take(800) }).trim()).append("\n")
+            if (p.chat.sceneOn && p.chat.scene.isNotBlank()) append("\nWhere things stand:\n${fill(p.chat.scene)}\n")
+            if (p.chat.direction.isNotBlank()) append("\nThe user's long-term direction for the story: ${fill(p.chat.direction)}\n")
+            append("\nLatest messages:\n$transcript")
+            if (avoid.isNotEmpty()) append("\n\nDon't repeat these:\n" + avoid.joinToString("\n"))
+        }
+        return listOf(ChatMsg("system", sys), ChatMsg("user", user))
+    }
+
     fun forSummary(p: PromptContext, block: List<Message>): List<ChatMsg> {
         val charName = p.character.name.ifBlank { "the character" }
         val userName = p.persona?.name?.ifBlank { null } ?: "the user"
