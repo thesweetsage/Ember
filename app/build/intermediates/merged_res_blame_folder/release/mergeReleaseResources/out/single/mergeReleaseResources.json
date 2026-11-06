@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "app.ember.app-release-59:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "app.ember.app-main-60:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "app.ember.app-release-59:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "app.ember.app-main-60:/drawable/ic_launcher_foreground.xml"
+    }
+]
