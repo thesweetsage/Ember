@@ -81,7 +81,7 @@ object PromptBuilder {
             append("\n# Where things stand right now (keep consistent with this)\n")
             append(fill(chat.scene.trim())).append("\n")
             if (chat.meters.isNotEmpty()) {
-                append("How ${p.character.name.ifBlank { "the character" }} feels toward her (0 to 100): ")
+                append(fill("How {{char}} feels toward {{user}} (0 to 100): "))
                 append(app.ember.data.METERS.joinToString(", ") { "${it.lowercase()} ${chat.meters[it] ?: 0}" })
                 append(". Let feelings grow or shift gradually from here; don't jump ahead of them.\n")
             }
