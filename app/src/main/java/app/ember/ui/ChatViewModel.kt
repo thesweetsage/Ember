@@ -51,9 +51,9 @@ class ChatViewModel : ViewModel() {
     var wfmNotes by mutableStateOf("")
     var wfmChange by mutableStateOf("")
     var wfmDrafts by mutableStateOf(listOf<String>())
+        private set
     /** Which model wrote each draft, so you can compare them as you swipe. */
     var wfmDraftModels by mutableStateOf(listOf<String>())
-        private set
         private set
     var wfmSel by mutableStateOf(0)
     /** Draft length in words; 0 means Auto, -1 means not set yet. */
