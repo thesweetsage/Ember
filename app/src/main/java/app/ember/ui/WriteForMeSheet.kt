@@ -55,6 +55,8 @@ fun WriteForMeSheet(vm: ChatViewModel, personaName: String, onSent: () -> Unit) 
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var customLength by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
+    var modelMenu by remember { mutableStateOf(false) }
+    var picking by remember { mutableStateOf(false) }
     val draft = vm.wfmDrafts.getOrNull(vm.wfmSel)
 
     ModalBottomSheet(
@@ -76,21 +78,49 @@ fun WriteForMeSheet(vm: ChatViewModel, personaName: String, onSent: () -> Unit) 
                     modifier = Modifier.background(EmberColors.Field, RoundedCornerShape(14.dp)).padding(horizontal = 10.dp, vertical = 5.dp),
                 )
             }
-            // Which model writes your drafts; tap to switch between your main and backup models.
+            // Which model writes your drafts: tap to switch between the backup, the main model, or any OpenRouter model.
             val s = Store.settings
-            val usingBackup = s.wfmUseBackup && Store.backupReady
+            val onOpenRouter = s.baseUrl.contains("openrouter", ignoreCase = true)
+            val writer = when {
+                s.wfmModel.isNotBlank() && onOpenRouter -> s.wfmModel
+                s.wfmUseBackup && Store.backupReady -> s.backupModel
+                else -> s.model
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Written by ", fontSize = 13.sp, color = EmberColors.Muted)
-                TextButton(
-                    onClick = {
-                        if (Store.backupReady) Store.updateSettings(s.copy(wfmUseBackup = !s.wfmUseBackup))
-                        else vm.wfmError = "Set up a backup model in Settings to switch."
-                    },
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp),
-                ) {
-                    Text((if (usingBackup) s.backupModel else s.model) + "  ⇄", fontSize = 13.sp, color = EmberColors.RedSoft)
+                androidx.compose.foundation.layout.Box {
+                    TextButton(
+                        onClick = { modelMenu = true },
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp),
+                    ) { Text(writer.substringAfter('/') + "  ▾", fontSize = 13.sp, color = EmberColors.RedSoft) }
+                    androidx.compose.material3.DropdownMenu(expanded = modelMenu, onDismissRequest = { modelMenu = false }) {
+                        if (Store.backupReady) androidx.compose.material3.DropdownMenuItem(
+                            text = { Text("${s.backupModel} (backup)") },
+                            onClick = { modelMenu = false; Store.updateSettings(s.copy(wfmModel = "", wfmUseBackup = true)) },
+                        )
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text("${s.model.substringAfter('/')} (main)") },
+                            onClick = { modelMenu = false; Store.updateSettings(s.copy(wfmModel = "", wfmUseBackup = false)) },
+                        )
+                        if (onOpenRouter) {
+                            recentWfmModels().filter { it != s.model }.forEach { m ->
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text(m.substringAfter('/')) },
+                                    onClick = { modelMenu = false; Store.updateSettings(s.copy(wfmModel = m)) },
+                                )
+                            }
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = { Text("Another OpenRouter model…", color = EmberColors.RedSoft) },
+                                onClick = { modelMenu = false; picking = true },
+                            )
+                        }
+                    }
                 }
             }
+            if (vm.wfmDrafts.size > 1) Text(
+                "Switch the model and tap ↻ to write another draft with it; swipe drafts to compare.",
+                fontSize = 12.sp, color = EmberColors.Dim,
+            )
 
             Text("Your notes: what you do and say", fontSize = 13.sp, color = EmberColors.Muted)
             TextField(
@@ -117,7 +147,8 @@ fun WriteForMeSheet(vm: ChatViewModel, personaName: String, onSent: () -> Unit) 
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            "Draft ${vm.wfmSel + 1} of ${vm.wfmDrafts.size} · ${wordCount(draft)} words",
+                            "Draft ${vm.wfmSel + 1} of ${vm.wfmDrafts.size} · ${wordCount(draft)} words" +
+                                (vm.wfmDraftModels.getOrNull(vm.wfmSel)?.let { " · " + it.substringAfter('/') } ?: ""),
                             fontSize = 12.5.sp, color = EmberColors.Muted, modifier = Modifier.weight(1f),
                         )
                         if (vm.wfmDrafts.size > 1) {
@@ -181,6 +212,12 @@ fun WriteForMeSheet(vm: ChatViewModel, personaName: String, onSent: () -> Unit) 
         }
     }
 
+    if (picking) {
+        ModelPicker(Store.settings.wfmModel.ifBlank { Store.settings.model }, onPick = { id, _, _ ->
+            Store.updateSettings(Store.settings.copy(wfmModel = id)); rememberWfmModel(id); picking = false
+        }, onDismiss = { picking = false })
+    }
+
     if (editing && draft != null) {
         TextDialog(title = "Edit draft", initial = draft, onSave = { vm.editDraft(it); editing = false }, onDismiss = { editing = false })
     }
@@ -219,3 +256,10 @@ private fun DraftChip(label: String, on: Boolean, onClick: () -> Unit) {
         }
     }
 }
+
+/** The last few OpenRouter models you picked for Write for me, for quick switching. */
+private fun recentWfmModels(): List<String> = Store.settings.wfmModel.let { cur ->
+    (listOf(cur) + Store.recentWfmModels).filter { it.isNotBlank() }.distinct().take(4)
+}
+
+private fun rememberWfmModel(id: String) = Store.rememberWfmModel(id)

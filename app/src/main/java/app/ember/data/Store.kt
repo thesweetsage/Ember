@@ -293,6 +293,16 @@ object Store {
         saveTaste()
     }
 
+    // ---------- Write for me models ----------
+
+    val recentWfmModels: List<String>
+        get() = prefs.getString("recentWfmModels", "").orEmpty().split('\n').filter { it.isNotBlank() }
+
+    fun rememberWfmModel(id: String) {
+        val list = (listOf(id) + recentWfmModels).distinct().take(4)
+        prefs.edit().putString("recentWfmModels", list.joinToString("\n")).apply()
+    }
+
     // ---------- idea of the day ----------
 
     /** (date yyyy-MM-dd, idea text). */

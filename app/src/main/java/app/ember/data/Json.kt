@@ -147,7 +147,7 @@ object Json {
         .put("autoSwitchDefault", s.autoSwitchDefault).put("summariseEvery", s.summariseEvery)
         .put("writeForMeWords", s.writeForMeWords).put("defaultPersonaId", nul(s.defaultPersonaId))
         .put("pinnedCharacterId", nul(s.pinnedCharacterId))
-        .put("voiceBaseUrl", s.voiceBaseUrl).put("voiceModel", s.voiceModel).put("voiceLanguage", s.voiceLanguage).put("contextChars", s.contextChars).put("wfmUseBackup", s.wfmUseBackup).put("creativeUseBackup", s.creativeUseBackup)
+        .put("voiceBaseUrl", s.voiceBaseUrl).put("voiceModel", s.voiceModel).put("voiceLanguage", s.voiceLanguage).put("contextChars", s.contextChars).put("wfmUseBackup", s.wfmUseBackup).put("creativeUseBackup", s.creativeUseBackup).put("wfmModel", s.wfmModel)
         .put("priceIn", s.priceIn).put("priceOut", s.priceOut)
         .put("backupPriceIn", s.backupPriceIn).put("backupPriceOut", s.backupPriceOut)
         .put("monthlyBudget", s.monthlyBudget).put("lockEnabled", s.lockEnabled)
@@ -171,6 +171,7 @@ object Json {
             contextChars = o.optInt("contextChars", d.contextChars),
             wfmUseBackup = o.optBoolean("wfmUseBackup", true),
             creativeUseBackup = o.optBoolean("creativeUseBackup", true),
+            wfmModel = o.str("wfmModel"),
             priceIn = o.optDouble("priceIn", 0.0), priceOut = o.optDouble("priceOut", 0.0),
             backupPriceIn = o.optDouble("backupPriceIn", d.backupPriceIn), backupPriceOut = o.optDouble("backupPriceOut", d.backupPriceOut),
             monthlyBudget = o.optDouble("monthlyBudget", 0.0), lockEnabled = o.optBoolean("lockEnabled", false),

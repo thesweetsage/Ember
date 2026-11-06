@@ -142,6 +142,8 @@ data class Settings(
     val wfmUseBackup: Boolean = true,
     /** Ideas and the character builder use the backup model, except when writing the opening message. */
     val creativeUseBackup: Boolean = true,
+    /** A specific OpenRouter model for Write for me ("" = use the backup/main choice above). */
+    val wfmModel: String = "",
     /** Optional prices per million tokens, in euros, for the cost counter. */
     val priceIn: Double = 0.0,
     val priceOut: Double = 0.0,

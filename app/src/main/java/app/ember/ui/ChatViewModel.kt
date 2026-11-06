@@ -51,6 +51,9 @@ class ChatViewModel : ViewModel() {
     var wfmNotes by mutableStateOf("")
     var wfmChange by mutableStateOf("")
     var wfmDrafts by mutableStateOf(listOf<String>())
+    /** Which model wrote each draft, so you can compare them as you swipe. */
+    var wfmDraftModels by mutableStateOf(listOf<String>())
+        private set
         private set
     var wfmSel by mutableStateOf(0)
     /** Draft length in words; 0 means Auto, -1 means not set yet. */
@@ -582,7 +585,7 @@ class ChatViewModel : ViewModel() {
 
     fun resetWriteForMe() {
         wfmJob?.cancel()
-        wfmNotes = ""; wfmChange = ""; wfmDrafts = emptyList(); wfmSel = 0; wfmError = null
+        wfmNotes = ""; wfmChange = ""; wfmDrafts = emptyList(); wfmDraftModels = emptyList(); wfmSel = 0; wfmError = null
     }
 
     /** Writes a new draft from your notes, or a rewrite of the current draft when [rewrite] is true. */
@@ -592,7 +595,10 @@ class ChatViewModel : ViewModel() {
         val ctx = context(ch) ?: return
         val chatEps = endpoints(ch) ?: run { wfmError = "Add your API key in Settings first."; return }
         // "Model for Write for me": the backup writes your drafts, with the main model as its fallback.
-        val eps = if (Store.settings.wfmUseBackup && Store.backupReady) {
+        val s = Store.settings
+        val eps = if (s.wfmModel.isNotBlank() && Store.hasApiKey && s.baseUrl.contains("openrouter", ignoreCase = true)) {
+            Endpoint(s.baseUrl, Store.apiKey(), s.wfmModel) to (if (Store.backupReady) backupEndpoint() else null)
+        } else if (s.wfmUseBackup && Store.backupReady) {
             backupEndpoint() to (if (Store.hasApiKey) mainEndpoint() else null)
         } else chatEps
         val current = wfmDrafts.getOrNull(wfmSel)
@@ -604,6 +610,7 @@ class ChatViewModel : ViewModel() {
         Store.lastPrompt = PromptBuilder.describe(prompt)
         val idx = wfmDrafts.size
         wfmDrafts = wfmDrafts + ""
+        wfmDraftModels = wfmDraftModels.take(idx) + eps.first.model
         wfmSel = idx
         wfmBusy = true; wfmError = null
         wfmJob = viewModelScope.launch(UsageTag(characterId)) {
@@ -626,6 +633,7 @@ class ChatViewModel : ViewModel() {
                     show("")
                     streamInto(ch.id, fallback, prompt, PromptBuilder.maxTokens(wfmWords), temperature(ch), wordLimit(wfmWords, 500), ::show)
                     used = fallback
+                    wfmDraftModels = wfmDraftModels.toMutableList().also { if (idx < it.size) it[idx] = fallback.model }
                 }
                 // Far too short for the length you chose: rewrite once at the right length, same beats.
                 val got = wordCount(written)
@@ -645,6 +653,7 @@ class ChatViewModel : ViewModel() {
             } finally {
                 if (written.isBlank()) {
                     wfmDrafts = wfmDrafts.toMutableList().also { if (idx < it.size) it.removeAt(idx) }
+                    wfmDraftModels = wfmDraftModels.toMutableList().also { if (idx < it.size) it.removeAt(idx) }
                     wfmSel = (wfmDrafts.size - 1).coerceAtLeast(0)
                 }
                 Store.persistChat(ch.id)
