@@ -1,6 +1,7 @@
 package app.ember.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -95,6 +96,56 @@ fun MemoryScreen(characterId: String, onBack: () -> Unit) {
                 }
                 TextButton(onClick = { vm.updateSceneNow() }, enabled = !vm.sceneUpdating) {
                     Text(if (vm.sceneUpdating) "Updating…" else "Update now", color = EmberColors.RedSoft)
+                }
+            }
+
+            if (chat.sceneOn) item {
+                Text("How ${character?.name ?: "he"} feels about you", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("Moves gradually with the story, and he's told where things stand.", fontSize = 12.5.sp, color = EmberColors.Dim)
+                Spacer(Modifier.height(8.dp))
+                Column(
+                    Modifier.fillMaxWidth().background(EmberColors.Surface, RoundedCornerShape(14.dp)).padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    if (chat.meters.isEmpty()) Text("Fills in with the scene tracker.", fontSize = 14.sp, color = EmberColors.Muted)
+                    else app.ember.data.METERS.forEach { k ->
+                        val v = chat.meters[k] ?: 0
+                        Column {
+                            Row {
+                                Text(k, fontSize = 13.5.sp, modifier = Modifier.weight(1f))
+                                Text("$v", fontSize = 13.5.sp, color = EmberColors.Muted)
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            androidx.compose.material3.LinearProgressIndicator(
+                                progress = { v / 100f }, modifier = Modifier.fillMaxWidth().height(6.dp),
+                                color = EmberColors.Red, trackColor = EmberColors.Line,
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (chat.sceneOn) item {
+                Spacer(Modifier.height(4.dp))
+                Text("Story timeline", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("Turning points, added automatically. Tap one to jump to it; long-press to remove it.", fontSize = 12.5.sp, color = EmberColors.Dim)
+                Spacer(Modifier.height(8.dp))
+                if (chat.timeline.isEmpty()) Text("Nothing yet. First meetings, first kisses and big moments appear here.", fontSize = 14.sp, color = EmberColors.Muted)
+                chat.timeline.forEachIndexed { i, m ->
+                    Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth()
+                        .combinedClickable(
+                            onClick = { Store.focusMessageId = m.messageId; onBack() },
+                            onLongClick = { Store.updateChat(chat.id) { c -> c.copy(timeline = c.timeline.filter { it.id != m.id }) } },
+                        )) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(end = 12.dp)) {
+                            androidx.compose.foundation.layout.Box(Modifier.padding(top = 5.dp).size(10.dp).background(EmberColors.Red, androidx.compose.foundation.shape.CircleShape))
+                            if (i < chat.timeline.lastIndex) androidx.compose.foundation.layout.Box(Modifier.width(2.dp).height(30.dp).background(EmberColors.Line))
+                        }
+                        Column {
+                            Text(m.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Message ${m.at}", fontSize = 12.sp, color = EmberColors.Muted)
+                        }
+                    }
                 }
             }
 

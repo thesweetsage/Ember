@@ -28,7 +28,7 @@ object Json {
         .put("avatar", nul(c.avatar)).put("chatBg", nul(c.chatBg))
         .put("replyWords", c.replyWords).put("personaId", nul(c.personaId)).put("useBackup", c.useBackup)
         .put("tags", JSONArray(c.tags)).put("tint", nul(c.tint))
-        .put("favourite", c.favourite).put("archived", c.archived).put("createdAt", c.createdAt)
+        .put("favourite", c.favourite).put("playlist", JSONArray(c.playlist)).put("archived", c.archived).put("createdAt", c.createdAt)
 
     fun character(o: JSONObject): Character {
         val openings = o.strings("openings").ifEmpty { listOf(o.str("opening")) }
@@ -41,6 +41,7 @@ object Json {
             useBackup = o.optBoolean("useBackup", false),
             tags = if (o.optJSONArray("tags") != null) o.strings("tags") else Tags.fromLegacy(o.str("tags")),
             tint = if (o.has("tint") && !o.isNull("tint")) o.optInt("tint") else null,
+            playlist = o.strings("playlist"),
             favourite = o.optBoolean("favourite", false), archived = o.optBoolean("archived", false),
             createdAt = o.optLong("createdAt", System.currentTimeMillis()),
         )
@@ -71,6 +72,8 @@ object Json {
         .put("tintFromPhoto", c.tintFromPhoto).put("bubbleOpacity", c.bubbleOpacity.toDouble())
         .put("textSize", c.textSize).put("textSizeV2", true).put("tokensIn", c.tokensIn).put("tokensOut", c.tokensOut)
         .put("scene", c.scene).put("sceneOn", c.sceneOn).put("sceneAt", c.sceneAt)
+        .put("meters", JSONObject().apply { c.meters.forEach { (k, v) -> put(k, v) } })
+        .put("timeline", arr(c.timeline) { JSONObject().put("id", it.id).put("text", it.text).put("messageId", it.messageId).put("at", it.at) })
         .put("createdAt", c.createdAt).put("updatedAt", c.updatedAt)
         .put("messages", arr(c.messages) { message(it) })
 
@@ -92,6 +95,8 @@ object Json {
         textSize = o.optInt("textSize", 15).let { if (it == 16 && !o.optBoolean("textSizeV2")) 15 else it },
         tokensIn = o.optLong("tokensIn", 0), tokensOut = o.optLong("tokensOut", 0),
         scene = o.str("scene"), sceneOn = o.optBoolean("sceneOn", true), sceneAt = o.optInt("sceneAt", 0),
+        meters = o.optJSONObject("meters")?.let { m -> m.keys().asSequence().associateWith { m.optInt(it) } }.orEmpty(),
+        timeline = o.objects("timeline") { Milestone(it.str("id").ifEmpty { newId() }, it.str("text"), it.str("messageId"), it.optInt("at")) },
         createdAt = o.optLong("createdAt", o.optLong("updatedAt", 0L)),
         updatedAt = o.optLong("updatedAt", 0L),
     )

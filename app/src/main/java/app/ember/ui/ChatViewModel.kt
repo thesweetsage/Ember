@@ -237,7 +237,8 @@ class ChatViewModel : ViewModel() {
         val i = ch.messages.indexOfFirst { it.id == messageId }
         if (i < 0) return@updateChat ch
         val size = i + 1
-        ch.copy(messages = ch.messages.take(size), summaries = ch.summaries.filter { it.to <= size }, sceneAt = minOf(ch.sceneAt, size))
+        ch.copy(messages = ch.messages.take(size), summaries = ch.summaries.filter { it.to <= size }, sceneAt = minOf(ch.sceneAt, size),
+            timeline = ch.timeline.filter { m -> ch.messages.take(size).any { it.id == m.messageId } })
     }
 
     fun pin(text: String) {
@@ -482,14 +483,26 @@ class ChatViewModel : ViewModel() {
         if (!due && !force) return
         val ctx = context(ch) ?: return
         val ep = if (Store.backupReady) backupEndpoint() else if (Store.hasApiKey) mainEndpoint() else return
-        val prompt = PromptBuilder.forScene(ctx, ch.scene, ch.messages.takeLast(6))
+        val prompt = PromptBuilder.forScene(ctx, ch.scene, ch.messages.takeLast(6), ch.meters, ch.timeline.map { it.text })
         sceneBusy = true; sceneUpdating = true
         viewModelScope.launch(UsageTag(characterId)) {
             try {
                 val r = LlmClient.complete(ep, prompt, null, 0.3)
-                val text = r.text.trim().lines().map { it.trim() }.filter { it.isNotEmpty() }.take(6).joinToString("\n")
-                if (text.isNotBlank() && !Refusal.looksLike(text)) {
-                    Store.updateChat(chatId) { it.copy(scene = text, sceneAt = it.messages.size) }
+                val lines = r.text.trim().lines().map { it.trim().trimStart('-', '*', ' ').replace("**", "") }.filter { it.isNotEmpty() }
+                fun valueOf(key: String) = lines.firstOrNull { it.startsWith("$key:", ignoreCase = true) }?.substringAfter(':')?.trim()
+                val sceneText = lines.filter { l -> listOf("Place", "Time", "Wearing", "Mood").any { l.startsWith("$it:", ignoreCase = true) } }
+                    .joinToString("\n")
+                    .ifBlank { lines.filter { l -> app.ember.data.METERS.none { l.startsWith("$it:", true) } && !l.startsWith("Milestone:", true) }.take(4).joinToString("\n") }
+                val meters = app.ember.data.METERS.mapNotNull { k -> valueOf(k)?.let { v -> Regex("\\d+").find(v)?.value?.toIntOrNull()?.coerceIn(0, 100)?.let { k to it } } }.toMap()
+                val milestone = valueOf("Milestone")?.trim('.', '"', ' ')?.takeIf { it.isNotBlank() && !it.equals("none", true) && it.length <= 60 }
+                if (sceneText.isNotBlank() && !Refusal.looksLike(sceneText)) {
+                    Store.updateChat(chatId) { c ->
+                        val anchor = c.messages.lastOrNull { !it.fromUser } ?: c.messages.lastOrNull()
+                        val newTimeline = if (milestone != null && anchor != null && c.timeline.none { it.text.equals(milestone, true) })
+                            c.timeline + app.ember.data.Milestone(text = milestone, messageId = anchor.id, at = c.messages.size)
+                        else c.timeline
+                        c.copy(scene = sceneText, sceneAt = c.messages.size, meters = if (meters.size == 4) meters else c.meters, timeline = newTimeline)
+                    }
                 }
             } catch (e: Exception) {
                 if (force) error = e.message

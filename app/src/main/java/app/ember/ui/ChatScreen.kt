@@ -146,6 +146,7 @@ fun ChatScreen(
     var exportAsk by remember { mutableStateOf(false) }
     var scenario by remember { mutableStateOf(false) }
     var variant by remember { mutableStateOf(false) }
+    var playlist by remember { mutableStateOf(false) }
     var exportAll by remember { mutableStateOf(false) }
     var budgetSeen by rememberSaveable { mutableStateOf(false) }
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -185,6 +186,8 @@ fun ChatScreen(
 
     if (scenario) NewScenarioDialog(character, onStarted = { scenario = false; vm.error = null; vm.info = "New scenario started. Your previous chat is in the archives." }, onDismiss = { scenario = false })
     if (variant) VariantDialog(character, onReady = { variant = false; openNewDraft() }, onDismiss = { variant = false })
+
+    if (playlist) PlaylistDialog(characterId, onDismiss = { playlist = false })
 
     if (moving) {
         MoveItAlongSheet(character.name, onPick = { instruction, chapter -> moving = false; vm.nudge(instruction, chapter) }, onDismiss = { moving = false })
@@ -242,6 +245,7 @@ fun ChatScreen(
                         if (onOpenRouter) DropdownMenuItem(text = { Text("Switch model…") }, onClick = { menu = false; pickingModel = true })
                         DropdownMenuItem(text = { Text("New scenario…") }, onClick = { menu = false; scenario = true })
                         DropdownMenuItem(text = { Text("Make a variant…") }, onClick = { menu = false; variant = true })
+                        DropdownMenuItem(text = { Text("Playlist") }, onClick = { menu = false; playlist = true })
                         DropdownMenuItem(text = { Text("Export as a book…") }, onClick = { menu = false; exportAsk = true })
                         DropdownMenuItem(text = { Text("Start fresh (keep this chat)") }, onClick = { menu = false; confirmNewChat = true })
                         DropdownMenuItem(text = { Text("Chat archives") }, onClick = { menu = false; openArchives() })

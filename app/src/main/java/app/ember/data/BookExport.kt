@@ -25,12 +25,19 @@ object BookExport {
         val chapters = ArrayList<Chapter>()
         for (chat in chats.sortedBy { it.createdAt }) {
             var current = ArrayList<String>()
+            // Chapters that hold a turning point from the story timeline take its name.
+            val milestones = chat.timeline.associate { it.messageId to it.text }
+            var named: String? = null
             fun close() {
-                if (current.isNotEmpty()) chapters.add(Chapter("Chapter ${chapters.size + 1}", current))
-                current = ArrayList()
+                if (current.isNotEmpty()) {
+                    val n = chapters.size + 1
+                    chapters.add(Chapter(if (named != null) "Chapter $n: $named" else "Chapter $n", current))
+                }
+                current = ArrayList(); named = null
             }
             for (m in chat.messages) {
                 if (m.chapter) close()
+                if (named == null) named = milestones[m.id]
                 val paras = fill(m.text).replace("\r", "").split(Regex("\n\\s*\n|\n")).map { it.trim() }.filter { it.isNotEmpty() }
                 current.addAll(paras)
             }
@@ -88,7 +95,7 @@ p.first { text-indent: 0; }
                     put("OEBPS/ch${i + 1}.xhtml", page(ch.title, body.toString()))
                 }
 
-                val navItems = chapters.indices.joinToString("\n") { "<li><a href=\"ch${it + 1}.xhtml\">Chapter ${it + 1}</a></li>" }
+                val navItems = chapters.indices.joinToString("\n") { "<li><a href=\"ch${it + 1}.xhtml\">${esc(chapters[it].title)}</a></li>" }
                 put("OEBPS/nav.xhtml", """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
@@ -99,7 +106,7 @@ $navItems
 
                 val uid = "ember-" + character.id
                 val ncxPoints = chapters.indices.joinToString("\n") {
-                    "<navPoint id=\"n${it + 1}\" playOrder=\"${it + 1}\"><navLabel><text>Chapter ${it + 1}</text></navLabel><content src=\"ch${it + 1}.xhtml\"/></navPoint>"
+                    "<navPoint id=\"n${it + 1}\" playOrder=\"${it + 1}\"><navLabel><text>${esc(chapters[it].title)}</text></navLabel><content src=\"ch${it + 1}.xhtml\"/></navPoint>"
                 }
                 put("OEBPS/toc.ncx", """<?xml version="1.0" encoding="UTF-8"?>
 <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">

@@ -22,6 +22,8 @@ data class Character(
     val tags: List<String> = emptyList(),
     val tint: Int? = null,
     val favourite: Boolean = false,
+    /** Songs that fit him, as "Artist – Title" lines (from "Playlist"). */
+    val playlist: List<String> = emptyList(),
     val archived: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
 ) {
@@ -67,6 +69,10 @@ data class Chat(
     val sceneOn: Boolean = true,
     /** Message count when the scene was last updated. */
     val sceneAt: Int = 0,
+    /** Relationship meter, 0 to 100 each: Trust, Desire, Tension, Attachment. */
+    val meters: Map<String, Int> = emptyMap(),
+    /** Story timeline: turning points, oldest first. */
+    val timeline: List<Milestone> = emptyList(),
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 ) {
@@ -158,6 +164,12 @@ data class Settings(
     val legacyUserName: String = "",
     val legacyUserDescription: String = "",
 )
+
+/** A turning point in a story (first kiss, first fight…), tied to the message where it happened. */
+data class Milestone(val id: String = newId(), val text: String, val messageId: String, val at: Int)
+
+/** The relationship meter's gauges, in display order. */
+val METERS = listOf("Trust", "Desire", "Tension", "Attachment")
 
 /** Spending for one model and one character (tag = character id, or "" for Ideas, builder and other) in one month (yyyy-MM). */
 data class UsageRow(val month: String, val model: String, val tag: String, val input: Long, val output: Long, val cost: Double)

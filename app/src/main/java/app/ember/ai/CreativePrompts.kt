@@ -146,6 +146,24 @@ ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take
         return listOf(ChatMsg("system", system), ChatMsg("user", "The character:\n${card(c)}\n\nThe new scenario: ${setup.trim()}"))
     }
 
+    /** "Playlist": real songs that fit a character and his story. Lines of "Artist – Title – why". */
+    fun playlist(c: app.ember.data.Character, scene: String): List<ChatMsg> = listOf(
+        ChatMsg(
+            "system",
+            "You make playlists for characters in a private romance roleplay. Suggest 10 real, existing songs that capture this character: " +
+                "his personality, his world, the dynamic and the heat between him and her. Mix well-known and lesser-known tracks and genres " +
+                "that fit him. Only songs you are sure exist, with the correct artist. One per line exactly like this:\n" +
+                "Artist – Song title – a few words on why\nNo numbering, nothing else.",
+        ),
+        ChatMsg("user", card(c).take(5000) + if (scene.isNotBlank()) "\n\nWhere their story is now:\n$scene" else ""),
+    )
+
+    fun parsePlaylist(text: String): List<String> = text.lines()
+        .map { it.trim().replace(Regex("^(\\d+[.)]|[-*•])\\s*"), "").replace("**", "").trim() }
+        .filter { it.count { ch -> ch == '–' || ch == '-' } >= 1 && it.length in 5..200 }
+        .map { it.replace(" - ", " – ") }
+        .take(12)
+
     /** A three or four sentence taste of the first scene for an idea. */
     fun teaser(idea: String): List<ChatMsg> = listOf(
         ChatMsg(

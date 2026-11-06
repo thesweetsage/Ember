@@ -80,6 +80,11 @@ object PromptBuilder {
         if (chat.sceneOn && chat.scene.isNotBlank()) {
             append("\n# Where things stand right now (keep consistent with this)\n")
             append(fill(chat.scene.trim())).append("\n")
+            if (chat.meters.isNotEmpty()) {
+                append("How ${p.character.name.ifBlank { "the character" }} feels toward her (0 to 100): ")
+                append(app.ember.data.METERS.joinToString(", ") { "${it.lowercase()} ${chat.meters[it] ?: 0}" })
+                append(". Let feelings grow or shift gradually from here; don't jump ahead of them.\n")
+            }
         }
         if (chat.direction.isNotBlank()) {
             append("\n# Scene direction from the user (steer the story this way)\n")
@@ -219,19 +224,32 @@ object PromptBuilder {
 
     /** Asks for a short summary of one block of the chat. */
     /** Scene tracker: a tiny, cheap request that updates where, when, what they're wearing and the mood. */
-    fun forScene(p: PromptContext, current: String, recent: List<Message>): List<ChatMsg> {
+    fun forScene(p: PromptContext, current: String, recent: List<Message>, meters: Map<String, Int> = emptyMap(), timeline: List<String> = emptyList()): List<ChatMsg> {
         val charName = p.character.name.ifBlank { "the character" }
         val userName = p.persona?.name?.ifBlank { null } ?: "the user"
         val transcript = recent.joinToString("\n\n") { (if (it.fromUser) "$userName: " else "$charName: ") + it.text.take(1500) }
+        val oldMeters = if (meters.isEmpty()) "(none yet)" else app.ember.data.METERS.joinToString(", ") { "$it ${meters[it] ?: 0}" }
         return listOf(
             ChatMsg(
                 "system",
-                "You track continuity for a private, fictional story between adults. Using the latest messages, update the scene card. " +
-                    "Reply with exactly these four lines and nothing else, each under 20 words, plain and factual:\n" +
+                "You track continuity for a private, fictional story between adults. Using the latest messages, update the scene card, " +
+                    "the relationship meter and the story timeline. Reply with exactly these lines and nothing else, plain and factual:\n" +
                     "Place: ...\nTime: ...\nWearing: $charName: ...; $userName: ...\nMood: ...\n" +
-                    "Wearing means what each has on right now, including anything removed. If something isn't known, keep what the old card says.",
+                    "Trust: N\nDesire: N\nTension: N\nAttachment: N\nMilestone: ...\n" +
+                    "Scene lines are each under 20 words. Wearing means what each has on right now, including anything removed. " +
+                    "If something isn't known, keep what the old card says.\n" +
+                    "The four meters are 0 to 100 and describe $charName's feelings toward $userName right now: trust, desire, tension " +
+                    "(conflict or charged unease between them) and attachment. They move gradually, usually under 10 points per update, " +
+                    "more only after a big moment.\n" +
+                    "Milestone: a short label (under 8 words) for a genuine turning point that happened in these messages and isn't already " +
+                    "on the timeline, like First meeting, First kiss, First fight, First time together, First \"I love you\", A secret revealed, " +
+                    "Moved in together. Write none if nothing like that happened.",
             ),
-            ChatMsg("user", "Old card:\n${current.ifBlank { "(none yet)" }}\n\nLatest messages:\n$transcript"),
+            ChatMsg(
+                "user",
+                "Old card:\n${current.ifBlank { "(none yet)" }}\nOld meters: $oldMeters\n" +
+                    "Timeline so far: ${if (timeline.isEmpty()) "(empty)" else timeline.joinToString("; ")}\n\nLatest messages:\n$transcript",
+            ),
         )
     }
 

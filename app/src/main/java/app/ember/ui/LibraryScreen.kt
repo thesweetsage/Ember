@@ -81,6 +81,7 @@ fun LibraryScreen(
 ) {
     var scenarioFor by remember { mutableStateOf<Character?>(null) }
     var variantFor by remember { mutableStateOf<Character?>(null) }
+    var playlistFor by remember { mutableStateOf<String?>(null) }
     var tab by rememberSaveable { mutableStateOf(Tab.All) }
     var confirmDelete by remember { mutableStateOf<Character?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
@@ -221,6 +222,7 @@ fun LibraryScreen(
                             onDelete = { confirmDelete = c },
                             onScenario = { scenarioFor = c },
                             onVariant = { variantFor = c },
+                            onPlaylist = { playlistFor = c.id },
                         )
                     }
                 }
@@ -231,6 +233,7 @@ fun LibraryScreen(
     scenarioFor?.let { c ->
         NewScenarioDialog(c, onStarted = { id -> scenarioFor = null; openChat(id) }, onDismiss = { scenarioFor = null })
     }
+    playlistFor?.let { id -> PlaylistDialog(id, onDismiss = { playlistFor = null }) }
     variantFor?.let { c ->
         VariantDialog(c, onReady = { variantFor = null; editCharacter("new") }, onDismiss = { variantFor = null })
     }
@@ -270,6 +273,7 @@ private fun CharacterCard(
     onDelete: () -> Unit,
     onScenario: () -> Unit,
     onVariant: () -> Unit,
+    onPlaylist: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
     Box(
@@ -323,6 +327,7 @@ private fun CharacterCard(
                 )
                 DropdownMenuItem(text = { Text("New scenario…") }, onClick = { menu = false; onScenario() })
                 DropdownMenuItem(text = { Text("Make a variant…") }, onClick = { menu = false; onVariant() })
+                DropdownMenuItem(text = { Text("Playlist") }, onClick = { menu = false; onPlaylist() })
                 DropdownMenuItem(text = { Text(if (c.archived) "Unarchive" else "Archive") }, onClick = { menu = false; onArchive() })
                 DropdownMenuItem(text = { Text("Delete") }, onClick = { menu = false; onDelete() })
             }
