@@ -12,7 +12,7 @@ object CreativePrompts {
         "You help the user invent characters for her private, fictional roleplay app for adults. All characters are adults aged 18 or over. " +
             "Mature, dark and explicit themes are fully allowed. The character is usually a man (or a group of men, such as a band " +
             "or a pack, in poly and reverse harem stories) and the user's own character is the woman at the centre of the story, unless the " +
-            "tags or the user say otherwise. The user likes dominant-leaning men and concepts built " +
+            "tags or the user say otherwise. The user often likes dominant-leaning men and concepts built " +
             "around one strong hook."
 
     fun ideas(
@@ -32,30 +32,46 @@ object CreativePrompts {
             "Woman" -> "The character is a woman."
             else -> "The character can be a man or a woman; choose what suits each concept, or follow the tags."
         }
+        // Heat only when she asks for it: kink tags, or spice in her notes. Otherwise the concept is built on personality and romance.
+        val kinkAsked = tags.any { Tags.category(it) == "Kinks" } ||
+            Regex("kink|spic|smut|sex|nsfw|explicit|dom\\b|sub\\b|bdsm|dark romance", RegexOption.IGNORE_CASE).containsMatchIn(notes + " " + vein)
+        val heat = if (kinkAsked) """
+- The character is a romantic and sexual lead: attractive, magnetic and capable, someone the reader wants.
+- EVERY concept is built around the kink or spice she asked for: it is the heart of the dynamic, and the job or setting gives it a natural reason to exist.
+""".trim() else """
+- She hasn't asked for anything sexual this time, so sex and kink are NOT the basis of any concept. Build each one on personality, the emotional hook and the relationship dynamic: who he is, why he's lovable, what draws them together. Romantic tension and attraction are fine; no kinks, no sexual roles, no punishment or ownership dynamics, nothing explicit.
+- Keep the personality she describes. A gentle, kind or soft character stays gentle, kind and soft; never make him darker, more dominant or more possessive than she asked.
+""".trim()
+        val examples = if (kinkAsked) """
+- A private dog trainer on a remote estate who treats the one person he's chosen exactly like his best-behaved pet: collar, praise, rules and all.
+- A bodyguard hired to keep you safe who sets strict rules, and makes you pay for every one you break.
+- A priest struggling with feelings he has sworn never to act on.
+""".trim() else """
+- A scientist wintering at a remote Arctic research base, snowed in with you until spring.
+- A tattooed florist everyone crosses the street to avoid, who remembers your favourite flowers after one visit.
+- A paranormal investigator who comes along on dangerous ghost hunts as your protection, and won't let you out of his sight.
+- A BMX freestyle rider who lives with the fear of the next trick going wrong, and needs you there every time he drops in.
+""".trim()
         val system = """
-You invent character concepts for a private, fictional romance and erotica roleplay app for adults. All characters are adults aged 18 or over; dark and explicit themes are allowed.
+You invent character concepts for a private, fictional romance roleplay app for adults. All characters are adults aged 18 or over; dark and explicit themes are allowed when she asks for them.
 
 Write $count concepts for the CHARACTER ONLY. $who
-Think of the one-line blurb of a bestselling spicy or dark romance: the reader instantly sees why this character is desirable and where the heat and tension come from.
+Think of the one-line blurb of a bestselling romance novel: the reader instantly sees who this character is, why he's appealing and where the story's pull comes from.
 
 Rules:
-- The character is a romantic and sexual lead: attractive, magnetic and capable, someone the reader wants. Never pathetic, absurd, or creepy without being alluring.
+- The character is a romantic lead: appealing and memorable. Never pathetic or absurd.
+$heat
 - One simple, clear hook: a job, a setting or a situation, plus the dynamic. Grounded and easy to start roleplaying from the first scene. No convoluted plots, random quirky details, petty crimes, riddles or mysteries for their own sake.
-- If kink tags are chosen, or a kink is mentioned in the notes, EVERY concept is built around it: the kink is the heart of the dynamic, and the job or setting gives it a natural reason to exist.
 - Personality tags apply to every concept. Setting, occupation and trope tags must clearly show up.
-- Treat the user's notes as a requirement, not a suggestion. If a note is a short word or abbreviation, read it as the kink or theme it most likely means.
+- Treat the user's notes as a requirement, not a suggestion. If a note is a short word or abbreviation, read it as the theme it most likely means.
 - Variety comes from different jobs, settings and situations, not from weirdness.
+- Every character is a grown adult (usually late twenties to thirties). If she's inspired by a younger character from a book, anime or show, take only the personality and reimagine him as an adult in an adult life; never school settings.
 - Never involve children, child-related jobs or settings, or anything youthful.
 - The user plays her own character and decides everything about her. Never describe the user's character; if needed, call her "you" in a few words.
 - No names, no detailed world-building. One or two sentences each.
 
 Examples of the style (do not reuse these):
-- A priest struggling with feelings he has sworn never to act on.
-- A private dog trainer on a remote estate who treats the one person he's chosen exactly like his best-behaved pet: collar, praise, rules and all.
-- A bodyguard hired to keep you safe who sets strict rules, and makes you pay for every one you break.
-- A scientist wintering at a remote Arctic research base, snowed in with you until spring.
-- A paranormal investigator who comes along on dangerous ghost hunts as your protection, and won't let you out of his sight.
-- A BMX freestyle rider who lives with the fear of the next trick going wrong, and needs you there every time he drops in.
+$examples
 
 Output only the concepts, one per line, each starting with "- ".
 """.trim()
@@ -64,11 +80,12 @@ Output only the concepts, one per line, each starting with "- ".
             if (notes.isNotBlank()) append("\nAlso: ${notes.trim()}")
             if (favourites.isNotBlank()) append(
                 "\n\nThese are the characters she loves writing with most. Invent NEW, original men with the same appeal " +
-                    "(the qualities, dynamics and kinks that make these work for her), never copies, relatives or the same job and setting:\n$favourites"
+                    "(the qualities and dynamics that make these work for her), never copies, relatives or the same job and setting:\n$favourites"
             )
             if (vein.isNotBlank()) append(
-                "\n\nShe wants concepts in the vein of: ${vein.trim()}. Capture that energy, dynamic and appeal in original characters; " +
-                    "never reuse names, worlds or plots from existing books, films or shows."
+                "\n\nShe wants concepts in the vein of: ${vein.trim()}. Capture that character's personality and energy faithfully " +
+                    "(their temperament, values and how they treat people) in original adult characters; never reuse names, worlds or plots from " +
+                    "existing books, films, anime or shows."
             )
             if (liked.isNotEmpty()) append("\n\nIdeas she liked (more like these, in spirit):\n" + liked.take(12).joinToString("\n") { "- $it" })
             if (disliked.isNotEmpty()) append("\n\nIdeas she disliked (avoid what these have in common):\n" + disliked.take(12).joinToString("\n") { "- $it" })

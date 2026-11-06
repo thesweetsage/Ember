@@ -342,8 +342,8 @@ fun IdeasScreen(
                             Text("You get original men with that energy, never copies.", fontSize = 12.5.sp, color = EmberColors.Dim)
                         }
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Character", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    Text("Character", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf("Man", "Woman", "Group", "Any").forEach { g -> TagChip(g, on = vm.gender == g) { vm.gender = g } }
                     }
                     EmberField(
