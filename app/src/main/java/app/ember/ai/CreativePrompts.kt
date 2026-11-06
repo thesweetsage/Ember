@@ -26,8 +26,9 @@ object CreativePrompts {
     ): List<ChatMsg> {
         val who = when (gender) {
             "Man" -> "The character is a man."
-            "Group" -> "Each concept is a GROUP of men (a band, a crew, a pack, brothers, a team) who all fall for her: a poly or reverse harem " +
-                "story. Make the group's shared hook clear and hint at how the members differ."
+            "Group" -> "Each concept is a GROUP of men at the centre of the story (brothers, best friends, roommates, a crew, a team, a pack, " +
+                "a band, anything the tags suggest), usually all drawn to her, as in a poly or reverse harem story. Make what ties them together " +
+                "clear and hint at how the members differ. Vary the kind of group across concepts."
             "Woman" -> "The character is a woman."
             else -> "The character can be a man or a woman; choose what suits each concept, or follow the tags."
         }

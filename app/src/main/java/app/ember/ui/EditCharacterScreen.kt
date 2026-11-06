@@ -166,14 +166,14 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
 
             ToggleRow(
                 "Several characters", groupOn,
-                sub = "A band, a pack, a poly or reverse harem story: one sheet per character, plus their shared world",
+                sub = "Brothers, friends, a crew, a pack, a band, a poly or reverse harem story: one sheet per character, plus their shared world",
                 divider = false,
             ) { on ->
                 groupOn = on
                 if (on && members.isEmpty()) members = listOf(app.ember.data.Member(), app.ember.data.Member())
             }
             EmberField(if (groupOn) "Group name" else "Name", name, { name = it; error = null }, required = true,
-                placeholder = if (groupOn) "e.g. Black Halo (the band)" else "Character name", singleLine = true)
+                placeholder = if (groupOn) "e.g. The Hale brothers" else "Character name", singleLine = true)
             EmberField("Short description", description, { description = it },
                 placeholder = "One or two lines, shown at the top of the chat.", minLines = 2, maxLines = 4,
                 onImprove = { improving = Triple("Short description", description) { v: String -> description = v } })
@@ -193,7 +193,7 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
                             placeholder = "e.g. Jace", singleLine = true)
                         EmberField(
                             "Who they are", m.about, { v -> members = members.toMutableList().also { it[i] = m.copy(about = v) } },
-                            placeholder = "Looks, role in the group, personality, how they talk, what they want from you, kinks.",
+                            placeholder = "Looks, who they are to the others, personality, how they talk, what they want from you, kinks.",
                             minLines = 4, maxLines = 8,
                             onImprove = { improving = Triple("Sheet for ${m.name.ifBlank { "character ${i + 1}" }}", m.about) { v: String ->
                                 members = members.map { if (it.id == m.id) it.copy(about = v) else it }
@@ -212,7 +212,7 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
                 minLines = if (groupOn) 3 else 5, maxLines = 8,
                 onImprove = { improving = Triple(if (groupOn) "How they are together" else "Personality", personality) { v: String -> personality = v } })
             EmberField(if (groupOn) "Their world and background" else "Background", background, { background = it },
-                placeholder = if (groupOn) "What the group is, where they play or live, their history, how they met you, the setup. Paste as much as you like."
+                placeholder = if (groupOn) "What ties them together, where they live, their history, how they know you, the setup. Paste as much as you like."
                 else "Appearance, history, world, relationships, the setup between them and your character. Paste as much as you like.",
                 minLines = 7, maxLines = 9,
                 trailingInfo = "${wordCount(background)} words",
