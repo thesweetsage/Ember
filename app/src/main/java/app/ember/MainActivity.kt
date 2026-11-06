@@ -95,6 +95,7 @@ class MainActivity : FragmentActivity() {
                             IdeasScreen(
                                 buildFrom = { idea -> Store.builderSeed = idea; nav.navigate("builder") },
                                 bottomBar = { EmberBottomBar(Section.Ideas, bottom) },
+                                openChat = { nav.navigate("chat/$it") },
                             )
                         }
                         composable("builder") {

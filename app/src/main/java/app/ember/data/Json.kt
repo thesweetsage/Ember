@@ -112,7 +112,11 @@ object Json {
     fun persona(o: JSONObject) = Persona(o.str("id"), o.str("name"), o.str("description"), o.strOrNull("avatar"))
 
     fun idea(i: Idea): JSONObject = JSONObject().put("id", i.id).put("text", i.text).put("tags", JSONArray(i.tags)).put("createdAt", i.createdAt)
-    fun idea(o: JSONObject) = Idea(o.str("id"), o.str("text"), o.strings("tags"), o.optLong("createdAt", 0L))
+        .put("folder", i.folder).put("note", i.note).put("teaser", i.teaser)
+    fun idea(o: JSONObject) = Idea(
+        o.str("id"), o.str("text"), o.strings("tags"), o.optLong("createdAt", 0L),
+        folder = o.str("folder"), note = o.str("note"), teaser = o.str("teaser"),
+    )
 
     fun build(b: BuildSession): JSONObject = JSONObject()
         .put("id", b.id).put("updatedAt", b.updatedAt).put("tags", JSONArray(b.tags))

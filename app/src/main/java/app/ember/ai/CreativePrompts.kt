@@ -12,7 +12,15 @@ object CreativePrompts {
             "at the centre of the story, unless the tags or the user say otherwise. The user likes dominant-leaning men and concepts built " +
             "around one strong hook."
 
-    fun ideas(tags: List<String>, notes: String, count: Int, avoid: List<String>, gender: String): List<ChatMsg> {
+    fun ideas(
+        tags: List<String>, notes: String, count: Int, avoid: List<String>, gender: String,
+        /** "Inspired by your favourites": short cards of the characters she writes with most. */
+        favourites: String = "",
+        /** "In the vein of…": a character or trope she loves. */
+        vein: String = "",
+        liked: List<String> = emptyList(),
+        disliked: List<String> = emptyList(),
+    ): List<ChatMsg> {
         val who = when (gender) {
             "Man" -> "The character is a man."
             "Woman" -> "The character is a woman."
@@ -48,6 +56,16 @@ Output only the concepts, one per line, each starting with "- ".
         val user = buildString {
             append(if (tags.isEmpty()) "No tags chosen; surprise me." else "Tags: ${Tags.describe(tags)}")
             if (notes.isNotBlank()) append("\nAlso: ${notes.trim()}")
+            if (favourites.isNotBlank()) append(
+                "\n\nThese are the characters she loves writing with most. Invent NEW, original men with the same appeal " +
+                    "(the qualities, dynamics and kinks that make these work for her), never copies, relatives or the same job and setting:\n$favourites"
+            )
+            if (vein.isNotBlank()) append(
+                "\n\nShe wants concepts in the vein of: ${vein.trim()}. Capture that energy, dynamic and appeal in original characters; " +
+                    "never reuse names, worlds or plots from existing books, films or shows."
+            )
+            if (liked.isNotEmpty()) append("\n\nIdeas she liked (more like these, in spirit):\n" + liked.take(12).joinToString("\n") { "- $it" })
+            if (disliked.isNotEmpty()) append("\n\nIdeas she disliked (avoid what these have in common):\n" + disliked.take(12).joinToString("\n") { "- $it" })
             if (avoid.isNotEmpty()) append("\nDon't repeat these earlier ideas:\n" + avoid.joinToString("\n") { "- $it" })
         }
         return listOf(ChatMsg("system", system), ChatMsg("user", user))
@@ -126,6 +144,23 @@ ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take
             "$OPENING_RULES Reply with only the scene." +
             (persona?.let { "\n\nHer character is ${it.name}: ${it.description.take(1500)}" } ?: "")
         return listOf(ChatMsg("system", system), ChatMsg("user", "The character:\n${card(c)}\n\nThe new scenario: ${setup.trim()}"))
+    }
+
+    /** A three or four sentence taste of the first scene for an idea. */
+    fun teaser(idea: String): List<ChatMsg> = listOf(
+        ChatMsg(
+            "system",
+            "$FRAME\n\nWrite a teaser for this character concept: the first three or four sentences of the opening scene, like the first lines " +
+                "of a spicy romance novel. Third person, past tense, about him, with one line of his dialogue if it fits. Plain, natural language. " +
+                "Never describe her character beyond \"you\". Reply with only the teaser.",
+        ),
+        ChatMsg("user", idea),
+    )
+
+    /** Short cards of characters for "Inspired by your favourites". */
+    fun favouritesBrief(chars: List<app.ember.data.Character>): String = chars.joinToString("\n") { c ->
+        "- ${c.description.ifBlank { c.personality.take(200) }.trim().replace("\n", " ")}" +
+            (if (c.tags.isNotEmpty()) " (${Tags.describe(c.tags)})" else "")
     }
 
     /** Short ideas for "New scenario" or "Make a variant", fitted to this character. One per line. */

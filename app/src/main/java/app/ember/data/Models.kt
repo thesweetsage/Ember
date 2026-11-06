@@ -98,7 +98,17 @@ data class BuildSession(
 }
 
 /** A saved character concept from the Ideas tab. */
-data class Idea(val id: String = newId(), val text: String, val tags: List<String> = emptyList(), val createdAt: Long = System.currentTimeMillis())
+data class Idea(
+    val id: String = newId(),
+    val text: String,
+    val tags: List<String> = emptyList(),
+    val createdAt: Long = System.currentTimeMillis(),
+    /** Your own folder name ("" = none) and note. */
+    val folder: String = "",
+    val note: String = "",
+    /** A short preview of the first scene, if you asked for one. */
+    val teaser: String = "",
+)
 
 /** A named bundle of rules you switch on per chat. */
 data class Preset(val id: String = newId(), val name: String, val rules: List<String>)

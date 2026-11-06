@@ -66,11 +66,12 @@ private fun AiHelperDialog(
     showResult: Boolean = true,
     /** When set, a "Suggest ideas" button fills tappable ideas for the note box. */
     suggest: ((avoid: List<String>) -> List<ChatMsg>)? = null,
+    initialNote: String = "",
     onDismiss: () -> Unit,
     extra: @Composable () -> Unit = {},
     actions: @Composable (result: String) -> Unit,
 ) {
-    var note by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf(initialNote) }
     var result by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -202,7 +203,7 @@ fun ImproveFieldDialog(field: String, current: String, card: Character, onReplac
 
 /** "New scenario": the same character in a new setup, starting a fresh chat. */
 @Composable
-fun NewScenarioDialog(character: Character, onStarted: (chatCharacterId: String) -> Unit, onDismiss: () -> Unit) {
+fun NewScenarioDialog(character: Character, onStarted: (chatCharacterId: String) -> Unit, onDismiss: () -> Unit, initialSetup: String = "") {
     var keep by remember { mutableStateOf(false) }
     val persona = Store.persona(character.personaId ?: Store.settings.defaultPersonaId)
     AiHelperDialog(
@@ -213,6 +214,7 @@ fun NewScenarioDialog(character: Character, onStarted: (chatCharacterId: String)
         noteRequired = true,
         prompt = { setup -> CreativePrompts.scenario(character, setup, persona) },
         suggest = { avoid -> CreativePrompts.suggestions(character, forVariant = false, avoid = avoid) },
+        initialNote = initialSetup,
         preferBackup = false,
         onDismiss = onDismiss,
         extra = {

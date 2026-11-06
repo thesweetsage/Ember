@@ -94,6 +94,14 @@ object Store {
         presets = read("presets.json")?.let { Json.parseList(it) { o -> Json.preset(o) } } ?: emptyList()
         personas = read("personas.json")?.let { Json.parseList(it) { o -> Json.persona(o) } } ?: emptyList()
         ideas = read("ideas.json")?.let { Json.parseList(it) { o -> Json.idea(o) } } ?: emptyList()
+        dailyIdea = prefs.getString("dailyIdeaDate", null)?.let { d -> prefs.getString("dailyIdea", null)?.let { d to it } }
+        read("taste.json")?.let { t ->
+            runCatching {
+                val o = org.json.JSONObject(t)
+                fun list(k: String) = o.optJSONArray(k)?.let { a -> (0 until a.length()).map { a.optString(it) } }.orEmpty()
+                liked = list("liked"); disliked = list("disliked")
+            }
+        }
         builds = read("builds.json")?.let { Json.parseList(it) { o -> Json.build(o) } } ?: emptyList()
         customTags = read("tags.json")?.let { t ->
             runCatching { org.json.JSONArray(t).let { a -> (0 until a.length()).map { a.getString(it) } } }.getOrNull()
@@ -262,6 +270,39 @@ object Store {
 
     fun saveIdea(i: Idea) { if (ideas.none { it.id == i.id }) { ideas = listOf(i) + ideas; saveIdeas() } }
     fun deleteIdea(id: String) { ideas = ideas.filter { it.id != id }; saveIdeas() }
+    fun updateIdea(id: String, f: (Idea) -> Idea) { ideas = ideas.map { if (it.id == id) f(it) else it }; saveIdeas() }
+
+    // ---------- your taste in ideas ----------
+
+    /** Ideas you gave a thumbs up / down; the latest are fed back into idea generation. */
+    var liked by mutableStateOf(listOf<String>())
+        private set
+    var disliked by mutableStateOf(listOf<String>())
+        private set
+
+    private fun saveTaste() = write(File(dir, "taste.json"), org.json.JSONObject()
+        .put("liked", org.json.JSONArray(liked)).put("disliked", org.json.JSONArray(disliked)).toString())
+
+    fun rateIdea(text: String, up: Boolean?) {
+        liked = liked.filter { it != text }; disliked = disliked.filter { it != text }
+        when (up) {
+            true -> liked = (listOf(text) + liked).take(40)
+            false -> disliked = (listOf(text) + disliked).take(40)
+            null -> {}
+        }
+        saveTaste()
+    }
+
+    // ---------- idea of the day ----------
+
+    /** (date yyyy-MM-dd, idea text). */
+    var dailyIdea by mutableStateOf<Pair<String, String>?>(null)
+        private set
+
+    fun setDailyIdea(date: String, text: String) {
+        dailyIdea = date to text
+        prefs.edit().putString("dailyIdeaDate", date).putString("dailyIdea", text).apply()
+    }
 
     private fun saveCustomTags() = write(File(dir, "tags.json"), org.json.JSONArray(customTags).toString())
 
