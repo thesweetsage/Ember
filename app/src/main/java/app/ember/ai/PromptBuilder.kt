@@ -1,5 +1,7 @@
 package app.ember.ai
 
+import app.ember.data.isGroup
+
 import app.ember.data.Character
 import app.ember.data.Chat
 import app.ember.data.GroundRule
@@ -62,11 +64,27 @@ object PromptBuilder {
     private fun StringBuilder.characterCard(c: Character, heading: String, fill: (String) -> String) {
         append("\n# $heading\n")
         if (c.description.isNotBlank()) append("Summary: ${fill(c.description.trim())}\n\n")
-        if (c.personality.isNotBlank()) append("Personality:\n${fill(c.personality.trim())}\n\n")
-        if (c.background.isNotBlank()) append("Background:\n${fill(c.background.trim())}\n\n")
+        val members = if (c.isGroup) c.members.filter { it.name.isNotBlank() || it.about.isNotBlank() } else emptyList()
+        if (members.isNotEmpty()) {
+            append("The characters:\n")
+            members.forEach { m -> append("## ${m.name.ifBlank { "Unnamed" }}\n${fill(m.about.trim())}\n\n") }
+            if (c.personality.isNotBlank()) append("How they are together:\n${fill(c.personality.trim())}\n\n")
+            if (c.background.isNotBlank()) append("Their shared world and background:\n${fill(c.background.trim())}\n\n")
+        } else {
+            if (c.personality.isNotBlank()) append("Personality:\n${fill(c.personality.trim())}\n\n")
+            if (c.background.isNotBlank()) append("Background:\n${fill(c.background.trim())}\n\n")
+        }
         if (c.example.isNotBlank()) append("Example of how ${c.name} writes and speaks:\n${fill(c.example.trim())}\n\n")
         if (c.tags.isNotEmpty()) append("Tags: ${app.ember.data.Tags.describe(c.tags)}\n\n")
+        if (c.isGroup) append(fill(GROUP_NOTE))
     }
+
+    /** Sent with group cards so the model plays everyone, not one merged man. */
+    private const val GROUP_NOTE =
+        "This card describes SEVERAL characters, not one. Play each of them as a distinct person with their own name, voice, " +
+            "personality, body language and feelings toward {{user}}. Bring in whichever of them fit the scene, several at once when it " +
+            "makes sense, and let them interact with each other as well as with {{user}}. Never merge them into one voice, never let one " +
+            "take over the story, and keep track of who is present. Name the speaker clearly whenever several are in a scene.\n\n"
 
     private fun StringBuilder.storySections(chat: Chat, fill: (String) -> String) {
         if (chat.pins.isNotEmpty()) {
@@ -147,15 +165,21 @@ object PromptBuilder {
         }
         val out = conversation(system, trimHistory(p.chat, history), flip = false, fill = fill)
         attachInstruction(out, buildString {
-            append("Write $charName's next reply, following the rules. ")
-            p.character.personality.trim().takeIf { it.isNotEmpty() }?.let {
+            val group = p.character.isGroup
+            if (group) append("Write the next reply for the characters of $charName who are present in the scene, following the rules. Give each of them their own voice and reactions. ")
+            else append("Write $charName's next reply, following the rules. ")
+            if (group && p.character.members.isNotEmpty()) append("Stay true to each of them as their sheets describe. ")
+            else p.character.personality.trim().takeIf { it.isNotEmpty() }?.let {
                 append("Stay true to who $charName is: ").append(fill(it.take(500))).append(if (it.length > 500) "… " else " ")
             }
             append("Dialogue: plain and natural, only what the moment needs, no speeches or poetic lines. ")
             append("Show $charName's body reacting, what they notice about $userName, and their thoughts. ")
             if (replyWords <= 0) append("Length: fit the moment, usually 200 to 300 words, up to about 450 for big scenes, never more. ")
             else append("Length: about $replyWords words, between ${replyWords * 85 / 100} and ${replyWords * 115 / 100}. Reach it by deepening body language, what $charName notices and their thoughts, not by adding events. ")
-            append("Write only $charName's part and stop at the first moment $userName could respond; never write $userName's actions, words or thoughts. ")
+            append(
+                if (group) "Write only their parts and stop at the first moment $userName could respond; never write $userName's actions, words or thoughts. "
+                else "Write only $charName's part and stop at the first moment $userName could respond; never write $userName's actions, words or thoughts. "
+            )
             append("Split it into short paragraphs separated by blank lines, never one block of text. End on a complete sentence.")
             if (!extraInstruction.isNullOrBlank()) append("\n").append(extraInstruction)
         })
@@ -234,11 +258,13 @@ object PromptBuilder {
                 "system",
                 "You track continuity for a private, fictional story between adults. Using the latest messages, update the scene card, " +
                     "the relationship meter and the story timeline. Reply with exactly these lines and nothing else, plain and factual:\n" +
-                    "Place: ...\nTime: ...\nWearing: $charName: ...; $userName: ...\nMood: ...\n" +
+                    (if (p.character.isGroup) "Place: ...\nTime: ...\nWearing: each character present by name: ...; $userName: ...\nMood: ...\n"
+                    else "Place: ...\nTime: ...\nWearing: $charName: ...; $userName: ...\nMood: ...\n") +
                     "Trust: N\nDesire: N\nTension: N\nAttachment: N\nMilestone: ...\n" +
                     "Scene lines are each under 20 words. Wearing means what each has on right now, including anything removed. " +
                     "If something isn't known, keep what the old card says.\n" +
-                    "The four meters are 0 to 100 and describe $charName's feelings toward $userName right now: trust, desire, tension " +
+                    (if (p.character.isGroup) "The four meters are 0 to 100 and describe how the characters of $charName, taken together, feel toward $userName right now: trust, desire, tension "
+                    else "The four meters are 0 to 100 and describe $charName's feelings toward $userName right now: trust, desire, tension ") +
                     "(conflict or charged unease between them) and attachment. They move gradually, usually under 10 points per update, " +
                     "more only after a big moment.\n" +
                     "Milestone: a short label (under 8 words) for a genuine turning point that happened in these messages and isn't already " +

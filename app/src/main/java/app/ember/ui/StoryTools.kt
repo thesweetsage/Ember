@@ -63,6 +63,9 @@ private val NUDGES = listOf(
     Nudge("A new side of him", "A secret, a memory, something he's never shown", { n ->
         "$n reveals something new about himself, prompted naturally by the moment: a secret, a memory, a want or a side of him not shown before."
     }, false),
+    Nudge("A new side of them", "One of them reveals a secret, a memory, something never shown", { n ->
+        "One of $n reveals something new about themselves, prompted naturally by the moment: a secret, a memory, a want or a side not shown before. Show how the others react."
+    }, false),
     Nudge("Turn up the heat", "More tension, more desire", { n ->
         "Raise the tension and desire between $n and the user's character, in a way true to who $n is and to where the scene already is."
     }, false),
@@ -70,7 +73,7 @@ private val NUDGES = listOf(
 
 /** "Move it along": quick ways to push the story forward. */
 @Composable
-fun MoveItAlongSheet(characterName: String, onPick: (instruction: String, chapter: Boolean) -> Unit, onDismiss: () -> Unit) {
+fun MoveItAlongSheet(characterName: String, onPick: (instruction: String, chapter: Boolean) -> Unit, onDismiss: () -> Unit, group: Boolean = false) {
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var own by remember { mutableStateOf("") }
     var ownChapter by remember { mutableStateOf(false) }
@@ -82,9 +85,9 @@ fun MoveItAlongSheet(characterName: String, onPick: (instruction: String, chapte
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text("Move it along", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Text("$name writes the next reply in this direction.", fontSize = 13.sp, color = EmberColors.Muted)
+            Text(if (group) "The next reply goes in this direction." else "$name writes the next reply in this direction.", fontSize = 13.sp, color = EmberColors.Muted)
             Spacer(Modifier.height(4.dp))
-            NUDGES.forEach { n ->
+            NUDGES.filter { if (group) it.title != "A new side of him" else it.title != "A new side of them" }.forEach { n ->
                 Column(
                     Modifier.fillMaxWidth().background(EmberColors.Surface, RoundedCornerShape(14.dp))
                         .border(1.dp, EmberColors.Line, RoundedCornerShape(14.dp))

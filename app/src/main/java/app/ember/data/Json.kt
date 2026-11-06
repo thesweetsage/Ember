@@ -28,7 +28,8 @@ object Json {
         .put("avatar", nul(c.avatar)).put("chatBg", nul(c.chatBg))
         .put("replyWords", c.replyWords).put("personaId", nul(c.personaId)).put("useBackup", c.useBackup)
         .put("tags", JSONArray(c.tags)).put("tint", nul(c.tint))
-        .put("favourite", c.favourite).put("playlist", JSONArray(c.playlist)).put("archived", c.archived).put("createdAt", c.createdAt)
+        .put("favourite", c.favourite).put("playlist", JSONArray(c.playlist)).put("group", nul(c.group))
+        .put("members", arr(c.members) { JSONObject().put("id", it.id).put("name", it.name).put("about", it.about) }).put("archived", c.archived).put("createdAt", c.createdAt)
 
     fun character(o: JSONObject): Character {
         val openings = o.strings("openings").ifEmpty { listOf(o.str("opening")) }
@@ -42,6 +43,8 @@ object Json {
             tags = if (o.optJSONArray("tags") != null) o.strings("tags") else Tags.fromLegacy(o.str("tags")),
             tint = if (o.has("tint") && !o.isNull("tint")) o.optInt("tint") else null,
             playlist = o.strings("playlist"),
+            members = o.objects("members") { Member(it.str("id").ifEmpty { newId() }, it.str("name"), it.str("about")) },
+            group = if (o.has("group") && !o.isNull("group")) o.optBoolean("group") else null,
             favourite = o.optBoolean("favourite", false), archived = o.optBoolean("archived", false),
             createdAt = o.optLong("createdAt", System.currentTimeMillis()),
         )

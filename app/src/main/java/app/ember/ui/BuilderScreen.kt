@@ -161,10 +161,18 @@ class BuilderViewModel : ViewModel() {
         persist()
     }
 
-    fun toCharacter(): Character = Character(
+    fun toCharacter(): Character {
+        // Group cards come back with one "### Name" section per member: those become member sheets.
+        val split = app.ember.data.splitMembers(draft["Personality"].orEmpty())
+        return toCharacter(split)
+    }
+
+    private fun toCharacter(split: Pair<String, List<app.ember.data.Member>>?): Character = Character(
+        members = split?.second.orEmpty(),
+        group = if (split != null) true else null,
         name = draft["Name"]?.lines()?.firstOrNull()?.trim()?.trim('*', '"')?.take(60).orEmpty(),
         description = draft["Short description"].orEmpty(),
-        personality = draft["Personality"].orEmpty(),
+        personality = split?.first ?: draft["Personality"].orEmpty(),
         background = draft["Background"].orEmpty(),
         openings = listOf(draft["Opening message"].orEmpty()),
         example = draft["Example dialogue"].orEmpty(),

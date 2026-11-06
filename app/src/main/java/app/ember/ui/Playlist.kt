@@ -38,6 +38,7 @@ import androidx.compose.ui.window.DialogProperties
 import app.ember.ai.Ai
 import app.ember.ai.CreativePrompts
 import app.ember.data.Store
+import app.ember.data.isGroup
 import kotlinx.coroutines.launch
 
 /** "Playlist": songs that fit a character, saved with him, each opening in Spotify or YouTube. */
@@ -78,7 +79,7 @@ fun PlaylistDialog(characterId: String, onDismiss: () -> Unit) {
                     TextButton(onClick = onDismiss) { Text("Close") }
                 }
                 Text(
-                    "Real songs that fit him and your story. Tap Spotify or YouTube to play one. The AI can occasionally get a song wrong, so a search might not find it.",
+                    "Real songs that fit ${if (c.isGroup) "them" else "him"} and your story. Tap Spotify or YouTube to play one. The AI can occasionally get a song wrong, so a search might not find it.",
                     fontSize = 13.sp, color = EmberColors.Muted,
                 )
                 val songs = Store.character(characterId)?.playlist.orEmpty()
@@ -104,7 +105,7 @@ fun PlaylistDialog(characterId: String, onDismiss: () -> Unit) {
                     onClick = { make() }, enabled = !busy,
                     modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(25.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = EmberColors.Red),
-                ) { Text(if (busy) "Picking songs…" else if (songs.isEmpty()) "Make his playlist" else "New playlist", fontWeight = FontWeight.SemiBold) }
+                ) { Text(if (busy) "Picking songs…" else if (songs.isEmpty()) "Make ${if (c.isGroup) "their" else "his"} playlist" else "New playlist", fontWeight = FontWeight.SemiBold) }
             }
         }
     }

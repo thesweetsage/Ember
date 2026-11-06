@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.ember.data.Character
 import app.ember.data.Store
+import app.ember.data.isGroup
 import coil.compose.AsyncImage
 import java.io.File
 
@@ -76,11 +77,13 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
     var avatar by rememberSaveable { mutableStateOf(base.avatar) }
     var chatBg by rememberSaveable { mutableStateOf(base.chatBg) }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
+    var groupOn by rememberSaveable { mutableStateOf(base.isGroup) }
+    var members by remember { mutableStateOf(base.members) }
     /** Which field "Improve with AI" is open for: label, current text, and where the result goes. */
     var improving by remember { mutableStateOf<Triple<String, String, (String) -> Unit>?>(null) }
     fun current() = base.copy(
         name = name, description = description, personality = personality, background = background,
-        openings = openings, example = example, tags = tags,
+        openings = openings, example = example, tags = tags, group = groupOn, members = members,
     )
 
     val pickAvatar = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -99,6 +102,7 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
             background = background, openings = openings.ifEmpty { listOf("") }, example = example,
             avatar = avatar, chatBg = chatBg, replyWords = words,
             tags = tags, personaId = personaId, useBackup = useBackup,
+            group = groupOn, members = members.filter { it.name.isNotBlank() || it.about.isNotBlank() },
             tint = if (avatar != base.avatar || chatBg != base.chatBg || base.tint == null) Store.computeTint(chatBg ?: avatar) else base.tint,
         )
         Store.saveCharacter(c)
@@ -160,20 +164,59 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
                 TextButton(onClick = { chatBg = null }) { Text("Remove chat background", color = EmberColors.RedSoft) }
             }
 
-            EmberField("Name", name, { name = it; error = null }, required = true,
-                placeholder = "Character name", singleLine = true)
+            ToggleRow(
+                "Several characters", groupOn,
+                sub = "A band, a pack, a poly or reverse harem story: one sheet per character, plus their shared world",
+                divider = false,
+            ) { on ->
+                groupOn = on
+                if (on && members.isEmpty()) members = listOf(app.ember.data.Member(), app.ember.data.Member())
+            }
+            EmberField(if (groupOn) "Group name" else "Name", name, { name = it; error = null }, required = true,
+                placeholder = if (groupOn) "e.g. Black Halo (the band)" else "Character name", singleLine = true)
             EmberField("Short description", description, { description = it },
                 placeholder = "One or two lines, shown at the top of the chat.", minLines = 2, maxLines = 4,
                 onImprove = { improving = Triple("Short description", description) { v: String -> description = v } })
-            EmberField("Personality", personality, { personality = it },
-                placeholder = "Temperament, how they talk, what they want, what they hide, habits.",
-                minLines = 5, maxLines = 8,
-                onImprove = { improving = Triple("Personality", personality) { v: String -> personality = v } })
-            EmberField("Background", background, { background = it },
-                placeholder = "Appearance, history, world, relationships, the setup between them and your character. Paste as much as you like.",
+            if (groupOn) {
+                members.forEachIndexed { i, m ->
+                    Column(
+                        Modifier.fillMaxWidth().border(1.dp, EmberColors.Line, RoundedCornerShape(16.dp)).padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Character ${i + 1}", fontSize = 13.sp, color = EmberColors.RedSoft, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                            if (members.size > 1) TextButton(onClick = { members = members.filterIndexed { j, _ -> j != i } }) {
+                                Text("Remove", color = EmberColors.Muted, fontSize = 13.sp)
+                            }
+                        }
+                        EmberField("Name", m.name, { v -> members = members.toMutableList().also { it[i] = m.copy(name = v) } },
+                            placeholder = "e.g. Jace", singleLine = true)
+                        EmberField(
+                            "Who they are", m.about, { v -> members = members.toMutableList().also { it[i] = m.copy(about = v) } },
+                            placeholder = "Looks, role in the group, personality, how they talk, what they want from you, kinks.",
+                            minLines = 4, maxLines = 8,
+                            onImprove = { improving = Triple("Sheet for ${m.name.ifBlank { "character ${i + 1}" }}", m.about) { v: String ->
+                                members = members.map { if (it.id == m.id) it.copy(about = v) else it }
+                            } },
+                        )
+                    }
+                }
+                TextButton(
+                    onClick = { members = members + app.ember.data.Member() },
+                    modifier = Modifier.border(1.dp, EmberColors.Outline, RoundedCornerShape(20.dp)),
+                ) { Text("+ Add a character", color = EmberColors.TextSoft) }
+            }
+            EmberField(if (groupOn) "How they are together" else "Personality", personality, { personality = it },
+                placeholder = if (groupOn) "Optional. The dynamic between them: who leads, rivalries, how they share, how they are with you as a group."
+                else "Temperament, how they talk, what they want, what they hide, habits.",
+                minLines = if (groupOn) 3 else 5, maxLines = 8,
+                onImprove = { improving = Triple(if (groupOn) "How they are together" else "Personality", personality) { v: String -> personality = v } })
+            EmberField(if (groupOn) "Their world and background" else "Background", background, { background = it },
+                placeholder = if (groupOn) "What the group is, where they play or live, their history, how they met you, the setup. Paste as much as you like."
+                else "Appearance, history, world, relationships, the setup between them and your character. Paste as much as you like.",
                 minLines = 7, maxLines = 9,
                 trailingInfo = "${wordCount(background)} words",
-                onImprove = { improving = Triple("Background", background) { v: String -> background = v } })
+                onImprove = { improving = Triple(if (groupOn) "Their world and background" else "Background", background) { v: String -> background = v } })
             openings.forEachIndexed { i, text ->
                 EmberField(
                     if (i == 0) "Opening message" else "Alternate opening $i", text,

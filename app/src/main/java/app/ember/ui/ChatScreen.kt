@@ -85,6 +85,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import app.ember.data.isGroup
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.ember.data.Chat
 import app.ember.data.Message
@@ -190,7 +191,7 @@ fun ChatScreen(
     if (playlist) PlaylistDialog(characterId, onDismiss = { playlist = false })
 
     if (moving) {
-        MoveItAlongSheet(character.name, onPick = { instruction, chapter -> moving = false; vm.nudge(instruction, chapter) }, onDismiss = { moving = false })
+        MoveItAlongSheet(character.name, onPick = { instruction, chapter -> moving = false; vm.nudge(instruction, chapter) }, onDismiss = { moving = false }, group = character.isGroup)
     }
     if (vm.pickingCompare) {
         ModelPicker(Store.settings.model, onPick = { id, _, _ -> vm.pickingCompare = false; vm.compare(id) }, onDismiss = { vm.pickingCompare = false })

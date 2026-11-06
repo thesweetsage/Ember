@@ -22,7 +22,11 @@ data class Character(
     val tags: List<String> = emptyList(),
     val tint: Int? = null,
     val favourite: Boolean = false,
-    /** Songs that fit him, as "Artist – Title" lines (from "Playlist"). */
+    /** Several characters in one card (a band, a pack, poly). null = decide from the members and the Poly / Reverse harem tags. */
+    val group: Boolean? = null,
+    /** Group cards: one sheet per member. The card's Personality is then how they are together, Background their shared world. */
+    val members: List<Member> = emptyList(),
+    /** Songs that fit them, as "Artist – Title" lines (from "Playlist"). */
     val playlist: List<String> = emptyList(),
     val archived: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
@@ -167,6 +171,32 @@ data class Settings(
 
 /** A turning point in a story (first kiss, first fight…), tied to the message where it happened. */
 data class Milestone(val id: String = newId(), val text: String, val messageId: String, val at: Int)
+
+/** One character in a group card. */
+data class Member(val id: String = newId(), val name: String = "", val about: String = "")
+
+/**
+ * Splits "### Name" sections (how the AI writes group members) out of a text.
+ * Returns the text before the first heading and the members, or null if there are fewer than two.
+ */
+fun splitMembers(text: String): Pair<String, List<Member>>? {
+    val re = Regex("^\\s*#{2,4}\\s*([^#\\n]{1,60}?)\\s*:?\\s*$", RegexOption.MULTILINE)
+    val heads = re.findAll(text).toList()
+    if (heads.size < 2) return null
+    val intro = text.substring(0, heads.first().range.first).trim()
+    val members = heads.mapIndexed { i, m ->
+        val end = if (i + 1 < heads.size) heads[i + 1].range.first else text.length
+        Member(name = m.groupValues[1].trim(), about = text.substring(m.range.last + 1, end).trim())
+    }.filter { it.name.isNotBlank() }
+    return if (members.size >= 2) intro to members else null
+}
+
+/** Tags that mean a card is a group of characters unless you say otherwise. */
+private val GROUP_TAGS = setOf("poly", "reverse harem", "why choose", "group", "polyamory")
+
+/** True when this card holds several characters (a band, a pack, a poly or reverse harem story). */
+val Character.isGroup: Boolean
+    get() = group ?: (members.size > 1 || tags.any { Tags.name(it).trim().lowercase() in GROUP_TAGS })
 
 /** The relationship meter's gauges, in display order. */
 val METERS = listOf("Trust", "Desire", "Tension", "Attachment")

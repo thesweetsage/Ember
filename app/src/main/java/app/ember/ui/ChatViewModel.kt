@@ -14,6 +14,7 @@ import app.ember.ai.PromptContext
 import app.ember.ai.Refusal
 import app.ember.ai.StreamEvent
 import app.ember.ai.UsageTag
+import app.ember.data.isGroup
 import app.ember.data.Character
 import app.ember.data.Chat
 import app.ember.data.Message
@@ -151,7 +152,7 @@ class ChatViewModel : ViewModel() {
             reply.id, 0, ch.messages, base = "",
             extra = "Story direction from the user for this reply: ${instruction.trim()} " +
                 "This reply moves the story on, so it doesn't need to answer the last message line by line. " +
-                "Still write only ${character?.name ?: "the character"}'s part and end where the user can respond.",
+                "Still write only ${character?.name ?: "the character"}'s part${if (character?.isGroup == true) "s (the characters of this card)" else ""} and end where the user can respond.",
         )
     }
 

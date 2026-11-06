@@ -46,6 +46,7 @@ import app.ember.ai.ChatMsg
 import app.ember.ai.CreativePrompts
 import app.ember.data.Character
 import app.ember.data.Store
+import app.ember.data.isGroup
 import app.ember.data.newId
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -208,7 +209,8 @@ fun NewScenarioDialog(character: Character, onStarted: (chatCharacterId: String)
     val persona = Store.persona(character.personaId ?: Store.settings.defaultPersonaId)
     AiHelperDialog(
         title = "New scenario with ${character.name}",
-        explain = "Same man, new story: describe the setup and he gets a fresh opening scene in a new chat. Your current chat stays in the archives.",
+        explain = (if (character.isGroup) "Same people, new story: describe the setup and they get" else "Same man, new story: describe the setup and he gets") +
+            " a fresh opening scene in a new chat. Your current chat stays in the archives.",
         noteLabel = "The setup",
         notePlaceholder = "e.g. we're strangers stuck in the same cabin during a snowstorm",
         noteRequired = true,
@@ -270,11 +272,14 @@ fun VariantDialog(character: Character, onReady: () -> Unit, onDismiss: () -> Un
 /** A new character based on [c], with any sections the AI rewrote; photos are copied, never shared. */
 private fun variantOf(c: Character, parts: Map<String, String>): Character {
     fun pick(key: String, old: String) = parts[key]?.takeIf { it.isNotBlank() } ?: old
+    val split = parts["personality"]?.let { app.ember.data.splitMembers(it) }
     return c.copy(
+        members = split?.second ?: c.members.map { it.copy(id = newId()) },
+        group = if (split != null) true else c.group,
         id = newId(),
         name = pick("name", c.name).lines().first().trim().trim('*', '"').take(60),
         description = pick("short description", c.description),
-        personality = pick("personality", c.personality),
+        personality = split?.first ?: pick("personality", c.personality),
         background = pick("background", c.background),
         openings = parts["opening message"]?.takeIf { it.isNotBlank() }?.let { listOf(it) } ?: c.openings,
         example = pick("example dialogue", c.example),

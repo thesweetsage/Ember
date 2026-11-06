@@ -1,5 +1,7 @@
 package app.ember.ai
 
+import app.ember.data.isGroup
+
 import app.ember.data.Persona
 import app.ember.data.Tags
 
@@ -8,8 +10,9 @@ object CreativePrompts {
 
     private const val FRAME =
         "You help the user invent characters for her private, fictional roleplay app for adults. All characters are adults aged 18 or over. " +
-            "Mature, dark and explicit themes are fully allowed. The character is usually a man and the user's own character is the woman " +
-            "at the centre of the story, unless the tags or the user say otherwise. The user likes dominant-leaning men and concepts built " +
+            "Mature, dark and explicit themes are fully allowed. The character is usually a man (or a group of men, such as a band " +
+            "or a pack, in poly and reverse harem stories) and the user's own character is the woman at the centre of the story, unless the " +
+            "tags or the user say otherwise. The user likes dominant-leaning men and concepts built " +
             "around one strong hook."
 
     fun ideas(
@@ -23,6 +26,8 @@ object CreativePrompts {
     ): List<ChatMsg> {
         val who = when (gender) {
             "Man" -> "The character is a man."
+            "Group" -> "Each concept is a GROUP of men (a band, a crew, a pack, brothers, a team) who all fall for her: a poly or reverse harem " +
+                "story. Make the group's shared hook clear and hint at how the members differ."
             "Woman" -> "The character is a woman."
             else -> "The character can be a man or a woman; choose what suits each concept, or follow the tags."
         }
@@ -99,6 +104,7 @@ What each section should be:
 - Short description: one or two lines shown at the top of the chat.
 - Personality: rich and specific: temperament, how he talks, what he wants, what he hides, habits, how he is in intimacy and his kinks, what makes him tick. Several paragraphs.
 - Background: appearance, history, his world, relationships, and the setup between him and her character. Several paragraphs.
+- If she wants several characters in one card (a band, a pack, a poly or reverse harem story), build the whole group as one card: the Name is the group's name, Personality starts with a short paragraph on how they are together, then gives each member their own section starting with a heading line "### Their name" (then looks, temperament, voice, what they want from her, kinks), with nothing after the last member, Background covers their shared world, how each relates to the others and to her, and the setup. The opening and example dialogue include several members, each with their own voice.
 - Opening message: the first scene of the roleplay, written like a novel: third person, past tense, short paragraphs separated by blank lines, dialogue in quotes, actions as full sentences (never in asterisks), a few of his inner thoughts in italics marked with underscores like _this_. Never write her character's actions, words or thoughts; end on a moment she can respond to. 250 to 400 words. Use {{user}} for her character's name.
 - Example dialogue: a few lines of him speaking, in his voice.
 - Tags: one line per category, for example "Personality: Dominant, Protective" and "Setting: Church". Use these categories: ${Tags.categoryNames.joinToString(", ")}.
@@ -116,9 +122,14 @@ ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take
     /** The whole character as plain text, for the prompts below. */
     fun card(c: app.ember.data.Character): String = buildString {
         append("Name: ${c.name}\n")
+        if (c.isGroup) append("This card is a GROUP of several characters (not one man); treat every member as their own person.\n")
         if (c.description.isNotBlank()) append("Short description: ${c.description.trim()}\n")
         if (c.tags.isNotEmpty()) append("Tags: ${Tags.describe(c.tags)}\n")
-        append("\nPersonality:\n${c.personality.trim()}\n\nBackground:\n${c.background.trim()}\n")
+        if (c.isGroup && c.members.isNotEmpty()) {
+            append("\nThe characters:\n")
+            c.members.forEach { m -> append("### ${m.name}\n${m.about.trim()}\n\n") }
+            append("How they are together:\n${c.personality.trim()}\n\nShared world and background:\n${c.background.trim()}\n")
+        } else append("\nPersonality:\n${c.personality.trim()}\n\nBackground:\n${c.background.trim()}\n")
         if (c.opening.isNotBlank()) append("\nOpening message:\n${c.opening.trim()}\n")
         if (c.example.isNotBlank()) append("\nExample dialogue:\n${c.example.trim()}\n")
     }
@@ -131,6 +142,7 @@ ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take
             "natural language rather than purple prose. Keep the same point of view and roughly the same shape." +
             (if (isOpening) " This field is the opening scene. $OPENING_RULES" else "") +
             (if (field.contains("description", ignoreCase = true)) " This field is one or two lines only." else "") +
+            (if (c.isGroup) " This card is a group: keep every member distinct and covered; never collapse them into one man." else "") +
             " Reply with only the new text for the field: no heading, no field name, no commentary."
         val user = "The character card:\n${card(c)}\n\nField to improve: $field\nCurrent text:\n${current.ifBlank { "(empty, write it from scratch)" }}" +
             (if (note.isNotBlank()) "\n\nHer note: ${note.trim()}" else "")
@@ -140,7 +152,8 @@ ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take
     /** "New scenario": a fresh opening for an existing character in a new setup. */
     fun scenario(c: app.ember.data.Character, setup: String, persona: Persona?): List<ChatMsg> {
         val system = "$FRAME\n\nWrite the opening scene for a new roleplay with this existing character, in a new scenario she describes. " +
-            "He stays the same man at heart (same personality, voice and look) but his situation, setting and history with her change as the scenario says. " +
+            (if (c.isGroup) "They stay the same people at heart (each member keeps their personality, voice and look) but their situation, setting and history with her change as the scenario says. Bring in several of them, each with their own voice. "
+            else "He stays the same man at heart (same personality, voice and look) but his situation, setting and history with her change as the scenario says. ") +
             "$OPENING_RULES Reply with only the scene." +
             (persona?.let { "\n\nHer character is ${it.name}: ${it.description.take(1500)}" } ?: "")
         return listOf(ChatMsg("system", system), ChatMsg("user", "The character:\n${card(c)}\n\nThe new scenario: ${setup.trim()}"))
@@ -150,9 +163,11 @@ ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take
     fun playlist(c: app.ember.data.Character, scene: String): List<ChatMsg> = listOf(
         ChatMsg(
             "system",
-            "You make playlists for characters in a private romance roleplay. Suggest 10 real, existing songs that capture this character: " +
-                "his personality, his world, the dynamic and the heat between him and her. Mix well-known and lesser-known tracks and genres " +
-                "that fit him. Only songs you are sure exist, with the correct artist. One per line exactly like this:\n" +
+            "You make playlists for characters in a private romance roleplay. Suggest 10 real, existing songs that capture " +
+                (if (c.isGroup) "this group of characters as a whole: each member, their shared world, the dynamic between them and with her, and the heat. " +
+                    "Spread the songs across the members and the group, and in the reason name who it's for. Use they/them for the group, never he. "
+                else "this character: his personality, his world, the dynamic and the heat between him and her. ") +
+                "Mix well-known and lesser-known tracks and genres that fit. Only songs you are sure exist, with the correct artist. One per line exactly like this:\n" +
                 "Artist – Song title – a few words on why\nNo numbering, nothing else.",
         ),
         ChatMsg("user", card(c).take(5000) + if (scene.isNotBlank()) "\n\nWhere their story is now:\n$scene" else ""),
@@ -183,14 +198,16 @@ ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take
 
     /** Short ideas for "New scenario" or "Make a variant", fitted to this character. One per line. */
     fun suggestions(c: app.ember.data.Character, forVariant: Boolean, avoid: List<String>): List<ChatMsg> {
-        val ask = if (forVariant) {
+        val group = if (c.isGroup) " This card is a GROUP of characters (poly / reverse harem): every idea involves the whole group, never just one of them." else ""
+        val ask0 = if (forVariant) {
             "Suggest 5 different variants of this character: the same core man, changed in one bold way each (his role, the era or world, " +
                 "the dynamic with her, a darker or softer version, a supernatural twist). Each is what she'd type as 'what's different'."
         } else {
             "Suggest 5 different new scenarios for a roleplay with this same character: fresh setups for how they meet or where their story " +
                 "is now (a forced proximity, a reunion, a secret, a dangerous situation, a different relationship). Each is what she'd type as 'the setup'."
         }
-        val system = "$FRAME\n\n$ask Fit them to his personality, tags and kinks; keep each one short and punchy, under 20 words, plain language. " +
+        val ask = ask0 + group
+        val system = "$FRAME\n\n$ask Fit them to the character's personality, tags and kinks; keep each one short and punchy, under 20 words, plain language. " +
             "Reply with exactly 5 lines, one idea per line, no numbering, bullets or quotes, nothing else."
         val user = "The character:\n${card(c).take(6000)}" +
             (if (avoid.isNotEmpty()) "\n\nDon't repeat these:\n" + avoid.joinToString("\n") else "")
@@ -204,7 +221,9 @@ ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take
     /** "Make a variant": the same character reworked with her changes, as builder-style sections. */
     fun variant(c: app.ember.data.Character, changes: String): List<ChatMsg> {
         val names = listOf("Name", "Short description", "Personality", "Background", "Opening message", "Example dialogue")
-        val system = "$FRAME\n\nMake a variant of an existing character: keep what isn't affected by her changes, and rework everything that is " +
+        val system = "$FRAME\n\n" + (if (c.isGroup) "This card is a GROUP of several characters: keep every member distinct in the variant. In Personality, first write a short " +
+            "paragraph on how they are together, then give each member their own section starting with a heading line \"### Their name\". " else "") +
+            "Make a variant of an existing character: keep what isn't affected by her changes, and rework everything that is " +
             "so the whole card is consistent. Write every section, each between markers on their own lines, exactly like this:\n" +
             "[[Personality]]\n...text...\n[[/Personality]]\nUse these section names in this order: ${names.joinToString(", ")}. " +
             "Opening message: $OPENING_RULES No other text."

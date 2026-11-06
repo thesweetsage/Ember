@@ -344,7 +344,7 @@ fun IdeasScreen(
                     }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Character", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        listOf("Man", "Woman", "Any").forEach { g -> TagChip(g, on = vm.gender == g) { vm.gender = g } }
+                        listOf("Man", "Woman", "Group", "Any").forEach { g -> TagChip(g, on = vm.gender == g) { vm.gender = g } }
                     }
                     EmberField(
                         "Anything else (optional)", vm.notes, { vm.notes = it }, minLines = 2, maxLines = 4,
