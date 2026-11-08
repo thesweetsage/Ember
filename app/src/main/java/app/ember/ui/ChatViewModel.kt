@@ -366,7 +366,9 @@ class ChatViewModel : ViewModel() {
             cut = true
         }
         var text = buf.toString().trimEnd()
-        if (text.isNotEmpty() && (cut || !endsCleanly(text))) text = trimToLastSentence(text)
+        // Only a reply we cut off ourselves is trimmed. A finished reply is kept whole, even if its last line
+        // has no full stop (a text message, a trailing-off line).
+        if (text.isNotEmpty() && cut && !endsCleanly(text)) text = trimToLastSentence(text)
         val laidOut = paragraphize(text)
         if (laidOut != buf.toString()) onText(laidOut)
     }
