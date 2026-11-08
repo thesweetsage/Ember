@@ -262,6 +262,9 @@ class ChatViewModel : ViewModel() {
         }
         val prompt = PromptBuilder.forCharacter(ctx, history, ch.replyWords, extra)
         Store.lastPrompt = PromptBuilder.describe(prompt)
+        // A length typed in a note ("make it 700 words") raises the runaway stop so the reply isn't cut off.
+        val asked = requestedWords(extra)
+        val limit = wordLimit(asked ?: ch.replyWords, 500)
         val maxTokens = PromptBuilder.maxTokens(ch.replyWords)
         val temp = temperature(ch)
 
@@ -279,7 +282,7 @@ class ChatViewModel : ViewModel() {
             try {
                 val (primary, fallback) = eps
                 val blocked = try {
-                    streamInto(cid, primary, prompt, maxTokens, temp, wordLimit(ch.replyWords, 500), ::show)
+                    streamInto(cid, primary, prompt, maxTokens, temp, limit, ::show)
                     written.isBlank() || Refusal.looksLike(written)
                 } catch (e: ContentBlockedException) {
                     if (fallback == null) throw e
@@ -288,7 +291,7 @@ class ChatViewModel : ViewModel() {
                 var used = primary
                 if (blocked && fallback != null) {
                     show("")
-                    streamInto(cid, fallback, prompt, maxTokens, temp, wordLimit(ch.replyWords, 500), ::show)
+                    streamInto(cid, fallback, prompt, maxTokens, temp, limit, ::show)
                     used = fallback
                     info = "The main model refused, so the backup model wrote this reply."
                 } else if (blocked) {
@@ -303,7 +306,7 @@ class ChatViewModel : ViewModel() {
                             "Write this reply at about ${ch.replyWords} words: the same events, with deeper body language, noticing and inner thoughts.",
                     )
                     show("")
-                    streamInto(cid, used, again, maxTokens, temp, wordLimit(ch.replyWords, 500), ::show)
+                    streamInto(cid, used, again, maxTokens, temp, limit, ::show)
                 }
                 if (written.isBlank()) error = "The model sent back an empty reply. Try again."
             } catch (e: CancellationException) {
@@ -325,6 +328,11 @@ class ChatViewModel : ViewModel() {
     /** Streams one request, passing the text so far to [onText], and adds the token usage to the chat. */
     /** Safety stop: Auto uses [autoLimit] words; a fixed length allows 60% extra. */
     private fun wordLimit(words: Int, autoLimit: Int) = if (words <= 0) autoLimit else (words * 1.6).toInt() + 40
+
+    /** "700 words", "make it 700", "~700w" in a note: the length asked for, if any. */
+    private fun requestedWords(text: String?): Int? = text?.let {
+        Regex("(\\d{2,4})\\s*(?:words?|w\\b)", RegexOption.IGNORE_CASE).find(it)?.groupValues?.get(1)?.toIntOrNull()?.takeIf { n -> n in 30..3000 }
+    }
 
     private class RunawayStop : Exception()
 
@@ -654,8 +662,11 @@ class ChatViewModel : ViewModel() {
             backupEndpoint() to (if (Store.hasApiKey) mainEndpoint() else null)
         } else chatEps
         val current = wfmDrafts.getOrNull(wfmSel)
+        // A length typed in the notes or the change box ("make it 700 words") counts as the length you chose.
+        val words = (if (rewrite) requestedWords(wfmChange) else null) ?: requestedWords(wfmNotes) ?: wfmWords
+        val wfmLimit = wordLimit(words, 1200)
         val prompt = PromptBuilder.forUser(
-            ctx, ch.messages, wfmWords, wfmNotes,
+            ctx, ch.messages, words, wfmNotes,
             draft = if (rewrite) current else null,
             change = if (rewrite) wfmChange else null,
         )
@@ -674,7 +685,7 @@ class ChatViewModel : ViewModel() {
             try {
                 val (primary, fallback) = eps
                 val blocked = try {
-                    streamInto(ch.id, primary, prompt, PromptBuilder.maxTokens(wfmWords), temperature(ch), wordLimit(wfmWords, 500), ::show)
+                    streamInto(ch.id, primary, prompt, PromptBuilder.maxTokens(words), temperature(ch), wfmLimit, ::show)
                     written.isBlank() || Refusal.looksLike(written)
                 } catch (e: ContentBlockedException) {
                     if (fallback == null) throw e
@@ -683,19 +694,19 @@ class ChatViewModel : ViewModel() {
                 var used = primary
                 if (blocked && fallback != null) {
                     show("")
-                    streamInto(ch.id, fallback, prompt, PromptBuilder.maxTokens(wfmWords), temperature(ch), wordLimit(wfmWords, 500), ::show)
+                    streamInto(ch.id, fallback, prompt, PromptBuilder.maxTokens(words), temperature(ch), wfmLimit, ::show)
                     used = fallback
                     wfmDraftModels = wfmDraftModels.toMutableList().also { if (idx < it.size) it[idx] = fallback.model }
                 }
                 // Well short (under 80%) of the length you chose: rewrite once at the right length, same beats.
                 val got = wordCount(written)
-                if (wfmWords > 0 && got in 1 until wfmWords * 8 / 10) {
+                if (words > 0 && got in 1 until words * 8 / 10) {
                     val again = PromptBuilder.forUser(
-                        ctx, ch.messages, wfmWords, wfmNotes, draft = written,
-                        change = "it is only $got words; make it about $wfmWords words by deepening her body language, what she notices and her thoughts, keeping every beat and adding no new actions or lines",
+                        ctx, ch.messages, words, wfmNotes, draft = written,
+                        change = "it is only $got words; make it about $words words by deepening her body language, what she notices and her thoughts, keeping every beat and adding no new actions or lines",
                     )
                     show("")
-                    streamInto(ch.id, used, again, PromptBuilder.maxTokens(wfmWords), temperature(ch), wordLimit(wfmWords, 500), ::show)
+                    streamInto(ch.id, used, again, PromptBuilder.maxTokens(words), temperature(ch), wfmLimit, ::show)
                 }
                 if (rewrite) wfmChange = ""
             } catch (e: CancellationException) {
