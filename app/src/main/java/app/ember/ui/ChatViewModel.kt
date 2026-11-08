@@ -294,9 +294,9 @@ class ChatViewModel : ViewModel() {
                 } else if (blocked) {
                     info = "This looks like a refusal. Add a backup model in Settings to retry these automatically."
                 }
-                // Far too short for the length you chose: ask once more at the right length.
+                // Well short (under 80%) of the length you chose: ask once more at the right length.
                 val got = wordCount(written)
-                if (base.isEmpty() && ch.replyWords > 0 && got in 1 until ch.replyWords * 6 / 10) {
+                if (base.isEmpty() && ch.replyWords > 0 && got in 1 until ch.replyWords * 8 / 10) {
                     val again = PromptBuilder.forCharacter(
                         ctx, history, ch.replyWords,
                         (extra?.let { "$it\n" } ?: "") + "A first attempt came out at only $got words, far too short. " +
@@ -687,9 +687,9 @@ class ChatViewModel : ViewModel() {
                     used = fallback
                     wfmDraftModels = wfmDraftModels.toMutableList().also { if (idx < it.size) it[idx] = fallback.model }
                 }
-                // Far too short for the length you chose: rewrite once at the right length, same beats.
+                // Well short (under 80%) of the length you chose: rewrite once at the right length, same beats.
                 val got = wordCount(written)
-                if (wfmWords > 0 && got in 1 until wfmWords * 6 / 10) {
+                if (wfmWords > 0 && got in 1 until wfmWords * 8 / 10) {
                     val again = PromptBuilder.forUser(
                         ctx, ch.messages, wfmWords, wfmNotes, draft = written,
                         change = "it is only $got words; make it about $wfmWords words by deepening her body language, what she notices and her thoughts, keeping every beat and adding no new actions or lines",
