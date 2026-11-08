@@ -47,10 +47,12 @@ private data class QuickPick(val id: String, val label: String, val note: String
 
 private val QUICK_PICKS = listOf(
     QuickPick("moonshotai/kimi-k2.6", "Kimi K2.6", "Excellent prose · thinks before writing"),
-    QuickPick("minimax/minimax-m2-her", "MiniMax M2-her", "Built for roleplay · cheap"),
-    QuickPick("qwen/qwen3-235b-a22b-2507", "Qwen3 235B Instruct", "Very cheap · no thinking"),
-    QuickPick("mistralai/mistral-small-creative", "Mistral Small Creative", "Cheapest · small model"),
-    QuickPick("z-ai/glm-5.2", "GLM 5.2", "Strongest open writer · pricier"),
+    QuickPick("deepseek/deepseek-v4.1-flash", "DeepSeek V4.1 Flash", "Most used for roleplay on OpenRouter · very cheap · can tone down explicit scenes"),
+    QuickPick("z-ai/glm-5.3-flash", "GLM 5.3 Flash", "Popular roleplay pick · cheapest here"),
+    QuickPick("minimax/minimax-m3", "MiniMax M3", "Cheap · newer MiniMax"),
+    QuickPick("deepseek/deepseek-v4-pro", "DeepSeek V4 Pro", "Better memory for long stories · still cheap"),
+    QuickPick("google/gemma-4-31b-it", "Gemma 4 31B", "Cheap, steady writer"),
+    QuickPick("moonshotai/kimi-k3", "Kimi K3", "Newer Kimi"),
     QuickPick("anthropic/claude-sonnet-4.6", "Claude Sonnet 4.6", "Best prose · most expensive · strict on explicit scenes"),
 )
 
@@ -120,7 +122,10 @@ fun ModelPicker(current: String, onPick: (id: String, priceIn: Double?, priceOut
                 loadError?.let { Text(it, color = EmberColors.RedSoft, fontSize = 13.sp) }
                 LazyColumn(contentPadding = PaddingValues(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (!browsing) {
-                        items(QUICK_PICKS) { q ->
+                        // Only offer models OpenRouter actually has right now (once the list has loaded).
+                        val live = all?.map { it.id }?.toSet()
+                        val picks = QUICK_PICKS.filter { live == null || it.id in live }
+                        items(picks) { q ->
                             ModelRow(q.label, q.id, listOf(q.note, price(find(q.id))).filter { it.isNotBlank() }.joinToString("\n"), q.id == current) {
                                 val m = find(q.id); onPick(q.id, m?.priceIn, m?.priceOut)
                             }
