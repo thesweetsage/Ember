@@ -111,6 +111,7 @@ object Store {
         wfmRules = read("wfm_rules.json")?.let { Json.parseList(it) { o -> Json.ground(o) } } ?: DEFAULT_WFM_RULES
         condenseRulesOnce()
         updateWfmRulesV3()
+        updateDialogueRulesV4()
         markGroundSeen()
         settings = read("settings.json")?.let { runCatching { Json.settings(JSONObject(it)) }.getOrNull() } ?: Settings()
         app.ember.ai.PromptBuilder.historyBudgetChars = budgetFor(settings.contextChars)
@@ -181,6 +182,23 @@ object Store {
         saveGround()
         write(File(dir, "wfm_rules.json"), Json.list(wfmRules) { Json.ground(it) })
         prefs.edit().putInt("rulesVersion", 2).apply()
+    }
+
+    /**
+     * Version 4: "Dialogue" and "Show, don't tell" stop holding talkative characters back.
+     * Only rules still worded as the old defaults are updated; ones you edited stay yours.
+     */
+    private fun updateDialogueRulesV4() {
+        if (prefs.getInt("rulesVersion", 1) >= 4) return
+        val oldTexts = setOf(
+            "Dialogue goes in double quotes and sounds like real people talking: plain, natural, sometimes awkward. No speeches or poetic, quotable lines.",
+            "Most of each reply is body language, reactions, sensation and inner thought. Every action carries feeling.",
+        )
+        val fresh = DEFAULT_GROUND_RULES.associateBy { it.title }
+        if (groundRules.any { it.text in oldTexts }) {
+            updateGroundRules(groundRules.map { r -> if (r.text in oldTexts) fresh[r.title] ?: r else r })
+        }
+        prefs.edit().putInt("rulesVersion", 4).apply()
     }
 
     /** Version 3: the Write for me rule "Only the notes" became "Follow the notes" (every beat, in order). */

@@ -170,15 +170,17 @@ object PromptBuilder {
             else append("Write $charName's next reply, following the rules. ")
             if (group && p.character.members.isNotEmpty()) append("Stay true to each of them as their sheets describe. ")
             else p.character.personality.trim().takeIf { it.isNotEmpty() }?.let {
-                append("Stay true to who $charName is: ").append(fill(it.take(500))).append(if (it.length > 500) "… " else " ")
+                append("Stay true to who $charName is, including how much and how they talk: ").append(fill(it.take(900))).append(if (it.length > 900) "… " else " ")
             }
-            append("Dialogue: plain and natural, only what the moment needs, no speeches or poetic lines. ")
-            append("Show $charName's body reacting, what they notice about $userName, and their thoughts. ")
+            append("Dialogue: plain and natural, no speeches or poetic lines, and as much of it as ${if (group) "they" else charName} would really say: ")
+            append("if the card shows someone talkative, teasing or flirty, they talk, tease and banter freely, several lines in a reply. ")
+            append("Around the dialogue, show ${if (group) "their" else "$charName's"} body reacting, what they notice about $userName, and their thoughts. ")
             if (replyWords <= 0) append("Length: fit the moment, usually 200 to 300 words, up to about 450 for big scenes, never more. ")
-            else append("Length: about $replyWords words, between ${replyWords * 85 / 100} and ${replyWords * 115 / 100}. Reach it by deepening body language, what $charName notices and their thoughts, not by adding events. ")
+            else append("Length: about $replyWords words, between ${replyWords * 85 / 100} and ${replyWords * 115 / 100}. Reach it with more of what they'd naturally say and do in this moment, body language and thoughts, not by jumping to new events. ")
             append(
-                if (group) "Write only their parts and stop at the first moment $userName could respond; never write $userName's actions, words or thoughts. "
-                else "Write only $charName's part and stop at the first moment $userName could respond; never write $userName's actions, words or thoughts. "
+                (if (group) "Write only their parts" else "Write only $charName's part") +
+                    " and end when it's naturally $userName's turn (a question that needs an answer, a move that needs a reaction); " +
+                    "never write $userName's actions, words or thoughts. "
             )
             append("Split it into short paragraphs separated by blank lines, never one block of text. End on a complete sentence.")
             if (!extraInstruction.isNullOrBlank()) append("\n").append(extraInstruction)

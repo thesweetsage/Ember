@@ -210,8 +210,8 @@ data class GroundRule(val title: String, val text: String)
 val DEFAULT_GROUND_RULES = listOf(
     GroundRule("Novel style", "Third person, past tense, novel prose. No asterisks or roleplay shorthand; every action is a full sentence."),
     GroundRule("Layout", "Short paragraphs separated by a blank line. {{char}}'s inner thoughts in italics, marked with underscores like _this_."),
-    GroundRule("Dialogue", "Dialogue goes in double quotes and sounds like real people talking: plain, natural, sometimes awkward. No speeches or poetic, quotable lines."),
-    GroundRule("Show, don't tell", "Most of each reply is body language, reactions, sensation and inner thought. Every action carries feeling."),
+    GroundRule("Dialogue", "Dialogue goes in double quotes and sounds like real people talking: plain, natural, sometimes awkward. No speeches or poetic, quotable lines. How much {{char}} talks comes from the character card: a talkative, teasing or flirty character talks a lot (banter, teasing, several lines in a reply); a quiet one says little."),
+    GroundRule("Show, don't tell", "Mix dialogue with body language, reactions, sensation and inner thought, in the balance that fits {{char}}. Every action carries feeling."),
     GroundRule("True to the character", "Stay true to {{char}}'s character card and to the story so far. No sudden personality changes or contradictions."),
     GroundRule("The user's character", "Never write {{user}}'s actions, words, thoughts or feelings."),
     GroundRule("Pacing", "Move the scene forward a little and end on a moment {{user}} can respond to. Don't repeat earlier phrasing."),
