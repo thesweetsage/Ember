@@ -79,6 +79,13 @@ object PromptBuilder {
         if (c.isGroup) append(fill(GROUP_NOTE))
     }
 
+    /** Repeated right before every reply and draft, where models pay most attention. */
+    private const val NATURAL_VOICE =
+        "Make the dialogue sound like a real person talking, not a film trailer: contractions, ordinary words, small questions, " +
+            "hesitations, thoughts that trail off. No one-liner comebacks, catchphrases, aphorisms, dramatic declarations, stacked " +
+            "rhetorical questions or lines meant to sound cool. Write the prose in complete, flowing sentences, never dramatic one-word " +
+            "or fragment sentences on their own. "
+
     /** Sent with group cards so the model plays everyone, not one merged man. */
     private const val GROUP_NOTE =
         "This card describes SEVERAL characters, not one. Play each of them as a distinct person with their own name, voice, " +
@@ -172,7 +179,8 @@ object PromptBuilder {
             else p.character.personality.trim().takeIf { it.isNotEmpty() }?.let {
                 append("Stay true to who $charName is, including how much and how they talk: ").append(fill(it.take(900))).append(if (it.length > 900) "… " else " ")
             }
-            append("Dialogue: plain and natural, no speeches or poetic lines, and as much of it as ${if (group) "they" else charName} would really say: ")
+            append(NATURAL_VOICE)
+            append("Use as much dialogue as ${if (group) "they" else charName} would really say: ")
             append("if the card shows someone talkative, teasing or flirty, they talk, tease and banter freely, several lines in a reply. ")
             append("Around the dialogue, show ${if (group) "their" else "$charName's"} body reacting, what they notice about $userName, and their thoughts. ")
             if (replyWords <= 0) append("Length: fit the moment, usually 200 to 300 words, up to about 450 for big scenes, never more. ")
@@ -238,7 +246,7 @@ object PromptBuilder {
                 append("\nCurrent draft:\n").append(draft.trim()).append("\n")
                 append("Rewrite it with this change: ").append(change.trim()).append(". Keep everything else.\n")
             }
-            append("Dialogue: plain and natural, no speeches or poetic lines. ")
+            append(NATURAL_VOICE)
             if (words <= 0 && notes.isBlank()) append("Length: about 80 to 150 words. ")
             else if (words <= 0) append("Length: whatever it takes to cover every beat in the notes, and no more. Never pad. ")
             else append("Length: about $words words, between ${words * 85 / 100} and ${words * 115 / 100}. Reach it by deepening her body language, what she notices and her thoughts around the beats, never by adding new actions or lines. ")

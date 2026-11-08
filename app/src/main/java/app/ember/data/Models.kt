@@ -208,9 +208,9 @@ data class UsageRow(val month: String, val model: String, val tag: String, val i
 data class GroundRule(val title: String, val text: String)
 
 val DEFAULT_GROUND_RULES = listOf(
-    GroundRule("Novel style", "Third person, past tense, novel prose. No asterisks or roleplay shorthand; every action is a full sentence."),
+    GroundRule("Novel style", "Third person, past tense, novel prose in complete, flowing sentences. No dramatic one-word or fragment sentences standing alone for effect. No asterisks or roleplay shorthand; every action is a full sentence."),
     GroundRule("Layout", "Short paragraphs separated by a blank line. {{char}}'s inner thoughts in italics, marked with underscores like _this_."),
-    GroundRule("Dialogue", "Dialogue goes in double quotes and sounds like real people talking: plain, natural, sometimes awkward. No speeches or poetic, quotable lines. How much {{char}} talks comes from the character card: a talkative, teasing or flirty character talks a lot (banter, teasing, several lines in a reply); a quiet one says little."),
+    GroundRule("Dialogue", "Dialogue goes in double quotes and sounds like a real person mid-conversation: contractions, everyday words, half-finished thoughts, small questions, the odd hesitation or ramble. Never film-trailer lines: no one-liner comebacks, catchphrases, aphorisms, dramatic declarations, stacked rhetorical questions, or anything written to sound cool or quotable. How much {{char}} talks comes from the character card: a talkative, teasing or flirty character talks a lot; a quiet one says little."),
     GroundRule("Show, don't tell", "Mix dialogue with body language, reactions, sensation and inner thought, in the balance that fits {{char}}. Every action carries feeling."),
     GroundRule("True to the character", "Stay true to {{char}}'s character card and to the story so far. No sudden personality changes or contradictions."),
     GroundRule("The user's character", "Never write {{user}}'s actions, words, thoughts or feelings."),
@@ -224,6 +224,6 @@ val DEFAULT_GROUND_RULES = listOf(
  * Extra rules used only for "Write for me" drafts. {{persona}} is your character, {{character}} the one you're chatting with.
  */
 val DEFAULT_WFM_RULES = listOf(
-    GroundRule("Exactly her", "Write {{persona}} exactly as her persona describes her. If she's sweet or shy, she stays that way unless the notes say otherwise."),
+    GroundRule("Exactly her", "Write {{persona}} exactly as her persona describes her. If she's sweet or shy, she stays that way unless the notes say otherwise. Never make her a cool, badass heroine trading one-liners unless that is who she is."),
     GroundRule("Follow the notes", "Include every action, thought and line from the user's notes, in order, skipping none. Her thoughts in the notes become her inner thoughts. Add only small connecting details; nothing she didn't ask for. Never write {{character}}'s actions, words or reactions."),
 )

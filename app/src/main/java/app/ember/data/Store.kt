@@ -112,6 +112,7 @@ object Store {
         condenseRulesOnce()
         updateWfmRulesV3()
         updateDialogueRulesV4()
+        updateNaturalVoiceV5()
         markGroundSeen()
         settings = read("settings.json")?.let { runCatching { Json.settings(JSONObject(it)) }.getOrNull() } ?: Settings()
         app.ember.ai.PromptBuilder.historyBudgetChars = budgetFor(settings.contextChars)
@@ -199,6 +200,22 @@ object Store {
             updateGroundRules(groundRules.map { r -> if (r.text in oldTexts) fresh[r.title] ?: r else r })
         }
         prefs.edit().putInt("rulesVersion", 4).apply()
+    }
+
+    /** Version 5: precise rules against film-trailer dialogue and fragment sentences (only unedited defaults change). */
+    private fun updateNaturalVoiceV5() {
+        if (prefs.getInt("rulesVersion", 1) >= 5) return
+        val oldGround = setOf(
+            "Third person, past tense, novel prose. No asterisks or roleplay shorthand; every action is a full sentence.",
+            "Dialogue goes in double quotes and sounds like real people talking: plain, natural, sometimes awkward. No speeches or poetic, quotable lines. How much {{char}} talks comes from the character card: a talkative, teasing or flirty character talks a lot (banter, teasing, several lines in a reply); a quiet one says little.",
+            "Dialogue goes in double quotes and sounds like real people talking: plain, natural, sometimes awkward. No speeches or poetic, quotable lines.",
+        )
+        val freshGround = DEFAULT_GROUND_RULES.associateBy { it.title }
+        if (groundRules.any { it.text in oldGround }) updateGroundRules(groundRules.map { r -> if (r.text in oldGround) freshGround[r.title] ?: r else r })
+        val oldWfm = "Write {{persona}} exactly as her persona describes her. If she's sweet or shy, she stays that way unless the notes say otherwise."
+        val freshWfm = DEFAULT_WFM_RULES.associateBy { it.title }
+        if (wfmRules.any { it.text == oldWfm }) updateWfmRules(wfmRules.map { r -> if (r.text == oldWfm) freshWfm[r.title] ?: r else r })
+        prefs.edit().putInt("rulesVersion", 5).apply()
     }
 
     /** Version 3: the Write for me rule "Only the notes" became "Follow the notes" (every beat, in order). */
