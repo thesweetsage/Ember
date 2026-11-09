@@ -346,17 +346,19 @@ class ChatViewModel : ViewModel() {
         wordLimit: Int, onText: (String) -> Unit,
     ) {
         val buf = StringBuilder()
-        var words = 0
         var cut = false
         try {
             LlmClient.stream(ep, prompt, maxTokens, temp).collect { ev ->
                 when (ev) {
                     is StreamEvent.Text -> {
-                        thinking = false
                         buf.append(ev.text)
-                        words += ev.text.count { it == ' ' || it == '\n' }
-                        onText(buf.toString())
-                        if (words > wordLimit) throw RunawayStop()
+                        // The hidden <beat> note (the model reading the moment) shows as "Thinking…", never as text.
+                        val shown = withoutBeat(buf.toString())
+                        thinking = shown == null
+                        if (shown != null) {
+                            onText(shown)
+                            if (shown.count { it == ' ' || it == '\n' } > wordLimit) throw RunawayStop()
+                        }
                     }
                     is StreamEvent.Usage -> addUsage(chatId, ev.input, ev.output)
                     is StreamEvent.Thinking -> thinking = true
@@ -365,12 +367,30 @@ class ChatViewModel : ViewModel() {
         } catch (e: RunawayStop) {
             cut = true
         }
-        var text = buf.toString().trimEnd()
+        // If a model never closed its note, keep what it wrote rather than lose the reply.
+        var text = (withoutBeat(buf.toString()) ?: buf.toString().replace(Regex("</?beat>", RegexOption.IGNORE_CASE), "")).trimEnd()
         // Only a reply we cut off ourselves is trimmed. A finished reply is kept whole, even if its last line
         // has no full stop (a text message, a trailing-off line).
         if (text.isNotEmpty() && cut && !endsCleanly(text)) text = trimToLastSentence(text)
         val laidOut = paragraphize(text)
-        if (laidOut != buf.toString()) onText(laidOut)
+        onText(laidOut)
+    }
+
+    /**
+     * The reply without its <beat>…</beat> planning note. Returns null while the note is still being
+     * written (nothing to show yet). Text without a note is returned as it is.
+     */
+    private fun withoutBeat(raw: String): String? {
+        val t = raw.trimStart()
+        if (t.isEmpty()) return ""
+        // Still could be the start of "<beat>".
+        if ("<beat>".startsWith(t.take(6).lowercase()) && t.length < 6) return null
+        if (t.startsWith("<beat", ignoreCase = true)) {
+            val end = t.indexOf("</beat>", ignoreCase = true)
+            return if (end < 0) null else t.substring(end + 7).trimStart()
+        }
+        // A note placed somewhere else is removed too.
+        return t.replace(Regex("<beat>[\\s\\S]*?</beat>\\s*", RegexOption.IGNORE_CASE), "")
     }
 
     /**

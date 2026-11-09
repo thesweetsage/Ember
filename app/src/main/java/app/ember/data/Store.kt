@@ -113,6 +113,7 @@ object Store {
         updateWfmRulesV3()
         updateDialogueRulesV4()
         updateNaturalVoiceV5()
+        updateMomentRulesV6()
         markGroundSeen()
         settings = read("settings.json")?.let { runCatching { Json.settings(JSONObject(it)) }.getOrNull() } ?: Settings()
         app.ember.ai.PromptBuilder.historyBudgetChars = budgetFor(settings.contextChars)
@@ -216,6 +217,18 @@ object Store {
         val freshWfm = DEFAULT_WFM_RULES.associateBy { it.title }
         if (wfmRules.any { it.text == oldWfm }) updateWfmRules(wfmRules.map { r -> if (r.text == oldWfm) freshWfm[r.title] ?: r else r })
         prefs.edit().putInt("rulesVersion", 5).apply()
+    }
+
+    /** Version 6: how much a character talks follows the moment, not a fixed amount (only unedited defaults change). */
+    private fun updateMomentRulesV6() {
+        if (prefs.getInt("rulesVersion", 1) >= 6) return
+        val old = setOf(
+            "Dialogue goes in double quotes and sounds like a real person mid-conversation: contractions, everyday words, half-finished thoughts, small questions, the odd hesitation or ramble. Never film-trailer lines: no one-liner comebacks, catchphrases, aphorisms, dramatic declarations, stacked rhetorical questions, or anything written to sound cool or quotable. How much {{char}} talks comes from the character card: a talkative, teasing or flirty character talks a lot; a quiet one says little.",
+            "Mix dialogue with body language, reactions, sensation and inner thought, in the balance that fits {{char}}. Every action carries feeling.",
+        )
+        val fresh = DEFAULT_GROUND_RULES.associateBy { it.title }
+        if (groundRules.any { it.text in old }) updateGroundRules(groundRules.map { r -> if (r.text in old) fresh[r.title] ?: r else r })
+        prefs.edit().putInt("rulesVersion", 6).apply()
     }
 
     /** Version 3: the Write for me rule "Only the notes" became "Follow the notes" (every beat, in order). */

@@ -74,7 +74,7 @@ object PromptBuilder {
             if (c.personality.isNotBlank()) append("Personality:\n${fill(c.personality.trim())}\n\n")
             if (c.background.isNotBlank()) append("Background:\n${fill(c.background.trim())}\n\n")
         }
-        if (c.example.isNotBlank()) append("Example of how ${c.name} writes and speaks:\n${fill(c.example.trim())}\n\n")
+        if (c.example.isNotBlank()) append("Example of how ${c.name} sounds (their voice and style, not how much they say every time):\n${fill(c.example.trim())}\n\n")
         if (c.tags.isNotEmpty()) append("Tags: ${app.ember.data.Tags.describe(c.tags)}\n\n")
         if (c.isGroup) append(fill(GROUP_NOTE))
     }
@@ -177,13 +177,22 @@ object PromptBuilder {
             else append("Write $charName's next reply, following the rules. ")
             if (group && p.character.members.isNotEmpty()) append("Stay true to each of them as their sheets describe. ")
             else p.character.personality.trim().takeIf { it.isNotEmpty() }?.let {
-                append("Stay true to who $charName is, including how much and how they talk: ").append(fill(it.take(900))).append(if (it.length > 900) "… " else " ")
+                append("Stay true to who $charName is: ").append(fill(it.take(900))).append(if (it.length > 900) "… " else " ")
             }
+            val who = if (group) "they" else charName
+            // Read the moment first, in a short hidden note, the way good roleplay presets do. The app strips it out.
+            append("\n\nBefore the reply, read the moment and decide how $who would really respond to it. Write that decision first, ")
+            append("inside <beat></beat> tags, in under 35 words: what $userName just did or said, what $who feels and wants right now, ")
+            append("and whether this moment calls for talk (banter, an answer, a question, a confession) or for quiet (focus, tension, a look, an action, a thought kept to themselves). ")
+            append("Then write the reply. The tags are hidden from the reader.\n")
+            append("How much $who talks follows the moment as well as their personality: even a chatty, teasing character goes quiet when ")
+            append("focused, absorbed, nervous or when silence says more, and even a quiet one speaks when it matters. ")
+            append("If $userName has gone quiet or is busy with something, don't fill the silence with chatter: show what $who does, notices ")
+            append("and thinks, and the tension between them, with a line or two at most unless there's a real reason to talk. ")
+            append("If $userName is bantering, flirting or asking something, answer in kind. Use the example dialogue for how $who sounds, not for how much to say. ")
             append(NATURAL_VOICE)
-            append("Use as much dialogue as ${if (group) "they" else charName} would really say: ")
-            append("if the card shows someone talkative, teasing or flirty, they talk, tease and banter freely, several lines in a reply. ")
-            append("Around the dialogue, show ${if (group) "their" else "$charName's"} body reacting, what they notice about $userName, and their thoughts. ")
-            if (replyWords <= 0) append("Length: fit the moment, usually 200 to 300 words, up to about 450 for big scenes, never more. ")
+            append("Around any dialogue, show ${if (group) "their" else "$charName's"} body reacting, what they notice about $userName, and their thoughts. ")
+            if (replyWords <= 0) append("Length: fit the moment, usually 200 to 300 words (quiet moments can be shorter), up to about 450 for big scenes, never more. ")
             else append("Length: about $replyWords words, between ${replyWords * 85 / 100} and ${replyWords * 115 / 100}. Reach it with more of what they'd naturally say and do in this moment, body language and thoughts, not by jumping to new events. ")
             append(
                 (if (group) "Write only their parts" else "Write only $charName's part") +
