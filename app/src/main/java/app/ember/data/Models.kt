@@ -180,16 +180,27 @@ data class Member(val id: String = newId(), val name: String = "", val about: St
  * Returns the text before the first heading and the members, or null if there are fewer than two.
  */
 fun splitMembers(text: String): Pair<String, List<Member>>? {
-    val re = Regex("^\\s*#{2,4}\\s*([^#\\n]{1,60}?)\\s*:?\\s*$", RegexOption.MULTILINE)
+    // Only "### Name" lines (the format group cards use), and only short name-like headings, never sheet parts like "Core traits".
+    val re = Regex("^\\s*###\\s*([^#:\\n]{1,40}?)\\s*$", RegexOption.MULTILINE)
     val heads = re.findAll(text).toList()
     if (heads.size < 2) return null
     val intro = text.substring(0, heads.first().range.first).trim()
     val members = heads.mapIndexed { i, m ->
         val end = if (i + 1 < heads.size) heads[i + 1].range.first else text.length
         Member(name = m.groupValues[1].trim(), about = text.substring(m.range.last + 1, end).trim())
-    }.filter { it.name.isNotBlank() }
-    return if (members.size >= 2) intro to members else null
+    }.filter { it.name.isNotBlank() && it.name.split(' ').size <= 4 && it.name.lowercase() !in SHEET_HEADING_WORDS }
+    return if (members.size >= 2 && members.size == heads.size) intro to members else null
 }
+
+/** Headings used inside one character's sheet; never mistaken for member names. */
+private val SHEET_HEADING_WORDS = setOf(
+    "personality", "background", "core traits", "appearance", "basics", "likes", "dislikes", "secrets", "romance", "intimacy",
+    "in love", "emotions", "home", "childhood", "childhood and family", "hobbies", "hobbies and skills", "past relationships",
+    "how he talks", "voice", "kinks", "values", "fears", "flaws", "habits", "work", "work and daily routine",
+)
+
+/** Words in a request that mean she wants several characters in one card. */
+val GROUP_WORDS = Regex("\\b(group|poly|polyamor\\w*|reverse harem|why choose|several (men|guys|characters)|brothers|members|band|pack|crew|throuple|both of them|twins)\\b", RegexOption.IGNORE_CASE)
 
 /** Tags that mean a card is a group of characters unless you say otherwise. */
 private val GROUP_TAGS = setOf("poly", "reverse harem", "why choose", "group", "polyamory")

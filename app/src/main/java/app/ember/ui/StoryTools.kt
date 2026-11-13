@@ -103,7 +103,7 @@ fun MoveItAlongSheet(characterName: String, onPick: (instruction: String, chapte
                 value = own, onValueChange = { own = it },
                 trailingIcon = { MicButton({ own = appendDictation(own, it) }) },
                 placeholder = { Text("e.g. his ex shows up at the party", color = EmberColors.Dim) },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp, max = 160.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp), maxLines = 4,
                 colors = fieldColors(), shape = RoundedCornerShape(12.dp),
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             )

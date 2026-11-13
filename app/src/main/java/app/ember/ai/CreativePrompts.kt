@@ -100,34 +100,134 @@ Output only the concepts, one per line, each starting with "- ".
             .map { it.replace(Regex("^(-|•|\\d+[.)])\\s*"), "").trim() }
             .filter { it.length > 15 }
 
-    val SECTIONS = listOf("Name", "Short description", "Personality", "Background", "Opening message", "Example dialogue", "Tags")
+    val SECTIONS = listOf("Name", "Short description", "Personality", "Background", "Example dialogue", "Opening message", "Tags")
+
+    /** What a full Personality section covers, as headed parts. Used by the builder, Improve and Sort and complete. */
+    const val SHEET_PERSONALITY = """Personality: 600 to 1000 words, in these headed parts (each heading on its own line ending with a colon, then plain prose under it, specific and concrete):
+Core traits and temperament:
+Values, wants and what drives him:
+Fears, insecurities and flaws:
+How he talks: voice, tone, words and phrases he uses, how much he talks and when he goes quiet:
+Body language and habits:
+Emotions: how he handles anger, jealousy, hurt and stress:
+In love: how he acts when he's interested, when he falls, how he shows affection, his love language, loyalty and jealousy:
+Romance: how he courts, the dates he likes to plan, little gestures, what he's like as a partner day to day:
+Intimacy: how he is during sex (pace, dominant or submissive leaning, talkative or quiet, what he focuses on), his kinks, hard limits, and aftercare:"""
+
+    /** What a full Background section covers, as headed parts. */
+    const val SHEET_BACKGROUND = """Background: 800 to 1400 words, in these headed parts (each heading on its own line ending with a colon, then plain prose under it, specific and concrete):
+Basics: full name, age (an adult), where he's from:
+Appearance: height, build, face, hair, eyes, skin, scars or tattoos, how he dresses, his scent:
+Work and daily routine:
+Home: where he lives, the home itself (architecture, rooms, atmosphere, what's in it), the neighbourhood, what he drives:
+Childhood and family:
+How he got here: education, key events and turning points that made him who he is now:
+Past relationships:
+Friends, social circle and rivals:
+Likes:
+Dislikes:
+Hobbies and skills:
+Secrets:
+Him and {{user}}: how they know each other and where things stand, only from what she has said (never invent her details):"""
+
+    private const val NO_ASSUMING =
+        "Never invent anything about her character (her name, looks, job, history, feelings or choices) beyond what her persona says or what " +
+            "she tells you; refer to her as {{user}}. If you need to know something about her, ask."
 
     fun builderSystem(persona: Persona?): String = """
 $FRAME
 
-You are her creative partner in a back-and-forth chat, building one character together step by step.
+You are her creative partner, building one full character with her in a chat, step by step.
 
-How to work:
-1. If her request is vague, ask up to three short questions first (what kind of man, the setting, the dynamic or kink at the heart of it). If it is already clear, skip this.
-2. Offer three distinct concepts, numbered, each one or two punchy sentences. Ask which one she wants, or what to mix.
-3. Once she picks, build the character ONE section at a time, in this order: ${SECTIONS.joinToString(", ")}. After each section, ask if she wants changes or to move on. If she asks for changes, rewrite that section.
-4. Keep your own chat short and warm. Put the actual content of a section between markers exactly like this, on their own lines:
+HOW TO ASK QUESTIONS
+Whenever you ask her something, put each question in its own block with answer options she can tap, exactly like this:
+[[Ask]]
+How do you two meet?
+Pick: one
+- At a friend's wedding, seated at the same table
+- He's the new tenant across the hall
+- He's hired to protect you
+[[/Ask]]
+Use "Pick: one" or "Pick: several". Give 3 to 6 specific, varied options. She can also type her own answer, so never add an "Other" option. Ask at most 4 questions at a time. Keep any chat outside the blocks to one short line.
+
+HOW TO WORK
+1. If her request is vague, ask a few questions first (what kind of man, the setting, the dynamic, the romance, the heat).
+2. Offer three distinct concepts as one [[Ask]] block with "Pick: one", each option one punchy sentence.
+3. Once she picks, write the character ONE section per message, in this order: ${SECTIONS.joinToString(", ")}. Before a section, if a choice really matters (his kinks, his past, his home), ask first with [[Ask]] blocks. After each section, ask one [[Ask]] question like "Happy with this?" with options such as "Yes, next section", "Make it darker", "More detail", "Change something".
+4. Put the content of a section between markers on their own lines, exactly like this:
 [[Personality]]
-...the section text...
+...only the section text...
 [[/Personality]]
-Use these exact section names: ${SECTIONS.joinToString(", ")}.
+Inside the markers write ONLY the section itself: never a question, a comment, an offer or a note to her. Questions and chat go outside, after the closing marker.
+5. Before writing the Opening message, ALWAYS ask with [[Ask]] blocks how and where the story starts (how they meet or where things stand, the mood, what's happening), unless she has already told you.
+$NO_ASSUMING
 
-What each section should be:
+WHAT EACH SECTION IS
 - Name: just the character's name.
 - Short description: one or two lines shown at the top of the chat.
-- Personality: rich and specific: temperament, how he talks, what he wants, what he hides, habits, how he is in intimacy and his kinks, what makes him tick. Several paragraphs.
-- Background: appearance, history, his world, relationships, and the setup between him and her character. Several paragraphs.
-- If she wants several characters in one card (a band, a pack, a poly or reverse harem story), build the whole group as one card: the Name is the group's name, Personality starts with a short paragraph on how they are together, then gives each member their own section starting with a heading line "### Their name" (then looks, temperament, voice, what they want from her, kinks), with nothing after the last member, Background covers their shared world, how each relates to the others and to her, and the setup. The opening and example dialogue include several members, each with their own voice.
-- Opening message: the first scene of the roleplay, written like a novel: third person, past tense, short paragraphs separated by blank lines, dialogue in quotes, actions as full sentences (never in asterisks), a few of his inner thoughts in italics marked with underscores like _this_. Never write her character's actions, words or thoughts; end on a moment she can respond to. 250 to 400 words. Use {{user}} for her character's name.
-- Example dialogue: a few lines of him speaking, in his voice.
+- $SHEET_PERSONALITY
+- $SHEET_BACKGROUND
+- Example dialogue: 4 to 6 short exchanges showing how he talks in different moods (teasing, angry, tender, flirting), each line starting with {{char}}: or {{user}}: and only his lines written out fully.
+- Opening message: the first scene, from the setup she chose. $OPENING_RULES_TEXT
 - Tags: one line per category, for example "Personality: Dominant, Protective" and "Setting: Church". Use these categories: ${Tags.categoryNames.joinToString(", ")}.
+- If she wants several characters in one card (brothers, friends, a crew, a pack, a poly or reverse harem story), the Name is the group's name. Personality starts with a short paragraph on how they are together, then gives each member their own part starting with a heading line "### Their name", covering the personality parts above for that member. Background covers each member's basics, looks and history, their shared world and home, and the setup. The opening and example dialogue include several members, each with their own voice.
 ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take(1500)}" } ?: ""}
 """.trim()
+
+    private const val OPENING_RULES_TEXT =
+        "Write it like a novel: third person, past tense, complete flowing sentences in short paragraphs separated by blank lines, dialogue in quotes, " +
+            "actions as full sentences (never in asterisks), a few of his inner thoughts in italics marked with underscores like _this_. Never write her " +
+            "character's actions, words or thoughts; end on a moment she can respond to. 300 to 500 words. Use {{user}} for her character's name."
+
+    /** One question from the builder, with tappable answers. */
+    data class Ask(val question: String, val options: List<String>, val multi: Boolean)
+
+    fun parseAsk(text: String): Ask? {
+        val lines = text.lines().map { it.trim() }.filter { it.isNotEmpty() }
+        if (lines.isEmpty()) return null
+        val multi = lines.any { it.startsWith("Pick:", true) && it.contains("several", true) }
+        val options = lines.filter { it.startsWith("- ") || it.startsWith("* ") || it.startsWith("• ") || Regex("^\\d+[.)] ").containsMatchIn(it) }
+            .map { it.replace(Regex("^([-*•]|\\d+[.)])\\s*"), "").trim() }
+            .filter { it.isNotEmpty() && !it.equals("other", true) }
+        val question = lines.filter { !it.startsWith("Pick:", true) && it.replace(Regex("^([-*•]|\\d+[.)])\\s*"), "").trim() !in options }
+            .joinToString(" ").ifBlank { "Choose one" }
+        return Ask(question, options, multi)
+    }
+
+    /** Cleans a section's text: drops questions, offers and chatter that slipped inside the markers. */
+    fun cleanSection(text: String): String {
+        var lines = text.replace(Regex("\\[\\[Ask]][\\s\\S]*?(\\[\\[/Ask]]|$)", RegexOption.IGNORE_CASE), "").trim().lines().toMutableList()
+        fun isChatter(l: String): Boolean {
+            val t = l.trim()
+            if (t.isEmpty() || t.startsWith("\"") || t.startsWith("“") || t.startsWith("{{")) return false
+            val toHer = Regex("\\b(you|your|would|shall|should i|let me know|want me|happy with|next section|anything)\\b", RegexOption.IGNORE_CASE).containsMatchIn(t)
+            return (t.endsWith("?") && toHer) || Regex("^(here'?s|here is|let me know|want me to|shall i|should i|would you like)", RegexOption.IGNORE_CASE).containsMatchIn(t)
+        }
+        while (lines.isNotEmpty() && (lines.last().isBlank() || isChatter(lines.last()))) lines.removeAt(lines.lastIndex)
+        while (lines.isNotEmpty() && (lines.first().isBlank() || isChatter(lines.first()))) lines.removeAt(0)
+        return lines.joinToString("\n").trim()
+    }
+
+    /** "Sort and complete": re-sorts a pasted card into Personality and Background and fills in missing parts of the sheet. */
+    fun sortAndComplete(c: app.ember.data.Character, note: String): List<ChatMsg> {
+        val pasted = buildString {
+            val p = c.personality.trim(); val b = c.background.trim()
+            append(p)
+            if (b.isNotEmpty() && b != p) append("\n\n").append(b)
+        }
+        val system = "$FRAME\n\nShe has pasted a character from another app; the text is mixed up between Personality and Background, and may repeat. " +
+            "Rewrite it as two clean sections that follow this sheet exactly:\n\n$SHEET_PERSONALITY\n\n$SHEET_BACKGROUND\n\n" +
+            "Rules: keep EVERY fact, name, detail and kink from her text and put each in the right part; never contradict or soften anything. " +
+            "Remove repeats. For parts her text doesn't cover, add details that fit everything else about him, so no part is empty. " +
+            "$NO_ASSUMING " +
+            (if (c.isGroup) "This card is a group: keep every member distinct, using \"### Their name\" headings for each member in both sections. " else "") +
+            "Reply with exactly three blocks and nothing else:\n[[Personality]]\n...\n[[/Personality]]\n[[Background]]\n...\n[[/Background]]\n" +
+            "[[Added]]\nthe names of the parts you had to fill in yourself, one per line (or \"Nothing\")\n[[/Added]]"
+        val user = "Name: ${c.name}\n" + (if (c.description.isNotBlank()) "Short description: ${c.description}\n" else "") +
+            (if (c.tags.isNotEmpty()) "Tags: ${Tags.describe(c.tags)}\n" else "") + "\nHer pasted text:\n$pasted" +
+            (if (note.isNotBlank()) "\n\nHer note: ${note.trim()}" else "")
+        return listOf(ChatMsg("system", system), ChatMsg("user", user))
+    }
 
     /** Splits a builder message into plain text and [[Section]] blocks. */
     data class Part(val section: String?, val text: String)
@@ -160,6 +260,10 @@ ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take
             "natural language rather than purple prose. Keep the same point of view and roughly the same shape." +
             (if (isOpening) " This field is the opening scene. $OPENING_RULES" else "") +
             (if (field.contains("description", ignoreCase = true)) " This field is one or two lines only." else "") +
+            (if (field.equals("Personality", true)) " Make sure it covers the full sheet:\n$SHEET_PERSONALITY\nKeep everything already there; fill in any missing parts.\n" else "") +
+            (if (field.equals("Background", true)) " Make sure it covers the full sheet:\n$SHEET_BACKGROUND\nKeep everything already there; fill in any missing parts.\n" else "") +
+            (if (field.startsWith("Sheet for", true)) " This is one member's sheet: cover the personality parts and the background parts of a full sheet for them, briefly:\n$SHEET_PERSONALITY\n$SHEET_BACKGROUND\nKeep everything already there.\n" else "") +
+            " $NO_ASSUMING" +
             (if (c.isGroup) " This card is a group: keep every member distinct and covered; never collapse them into one man." else "") +
             " Reply with only the new text for the field: no heading, no field name, no commentary."
         val user = "The character card:\n${card(c)}\n\nField to improve: $field\nCurrent text:\n${current.ifBlank { "(empty, write it from scratch)" }}" +

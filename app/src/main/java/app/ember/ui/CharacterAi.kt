@@ -132,7 +132,7 @@ private fun AiHelperDialog(
                     value = note, onValueChange = { note = it },
                     trailingIcon = { MicButton({ note = appendDictation(note, it) }) },
                     placeholder = { Text(notePlaceholder, color = EmberColors.Dim) },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp, max = 200.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp), maxLines = 5,
                     colors = fieldColors(), shape = RoundedCornerShape(12.dp),
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 )
@@ -272,7 +272,7 @@ fun VariantDialog(character: Character, onReady: () -> Unit, onDismiss: () -> Un
 /** A new character based on [c], with any sections the AI rewrote; photos are copied, never shared. */
 private fun variantOf(c: Character, parts: Map<String, String>): Character {
     fun pick(key: String, old: String) = parts[key]?.takeIf { it.isNotBlank() } ?: old
-    val split = parts["personality"]?.let { app.ember.data.splitMembers(it) }
+    val split = if (c.isGroup) parts["personality"]?.let { app.ember.data.splitMembers(it) } else null
     return c.copy(
         members = split?.second ?: c.members.map { it.copy(id = newId()) },
         group = if (split != null) true else c.group,
@@ -288,4 +288,50 @@ private fun variantOf(c: Character, parts: Map<String, String>): Character {
         favourite = false, archived = false,
         createdAt = System.currentTimeMillis(),
     )
+}
+
+/**
+ * "Sort and complete": for characters pasted from another app. Puts personality in Personality and everything else in
+ * Background, following the full sheet, keeps every detail, and fills in missing parts. Nothing changes until you tap Replace.
+ */
+@Composable
+fun SortCompleteDialog(card: Character, onReplace: (personality: String, background: String) -> Unit, onDismiss: () -> Unit) {
+    AiHelperDialog(
+        title = "Sort and complete",
+        explain = "Sorts what you pasted into Personality and Background, keeps every detail, removes repeats, and fills in any part of the " +
+            "character sheet that's missing (childhood, home, likes, how he is in love, in bed, and so on). You see the result before anything changes.",
+        noteLabel = "Anything to keep in mind (optional)",
+        notePlaceholder = "e.g. he grew up in Glasgow, keep his kinks exactly as written",
+        noteRequired = false,
+        prompt = { note -> CreativePrompts.sortAndComplete(card, note) },
+        preferBackup = Ai.creativeOnBackup,
+        showResult = false,
+        onDismiss = onDismiss,
+    ) { result ->
+        val parts = CreativePrompts.parseBuilder(result).filter { it.section != null }.associate { it.section!!.lowercase() to it.text.trim() }
+        val p = parts["personality"].orEmpty()
+        val b = parts["background"].orEmpty()
+        val added = parts["added"].orEmpty().lines().map { it.trim().trimStart('-', '*', ' ') }.filter { it.isNotEmpty() && !it.equals("nothing", true) }
+        if (p.isBlank() || b.isBlank()) {
+            Text("The result came back incomplete. Tap Try again.", color = EmberColors.RedSoft, fontSize = 13.sp)
+        } else {
+            if (added.isNotEmpty()) Text("Filled in because they were missing: ${added.joinToString(", ")}", fontSize = 13.sp, color = EmberColors.Muted)
+            listOf("Personality" to p, "Background" to b).forEach { (t, text) ->
+                Column(Modifier.fillMaxWidth().background(EmberColors.Surface, RoundedCornerShape(14.dp)).padding(14.dp)) {
+                    Text(t.uppercase() + " · ${wordCount(text)} words", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = EmberColors.RedSoft, letterSpacing = 1.sp)
+                    Spacer(Modifier.height(6.dp))
+                    Text(text, fontSize = 14.sp, lineHeight = 20.sp)
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f).height(50.dp), shape = RoundedCornerShape(25.dp)) {
+                    Text("Keep mine", color = EmberColors.Text)
+                }
+                Button(
+                    onClick = { onReplace(p, b); onDismiss() }, modifier = Modifier.weight(1f).height(50.dp),
+                    shape = RoundedCornerShape(25.dp), colors = ButtonDefaults.buttonColors(containerColor = EmberColors.Red),
+                ) { Text("Replace both", fontWeight = FontWeight.SemiBold) }
+            }
+        }
+    }
 }

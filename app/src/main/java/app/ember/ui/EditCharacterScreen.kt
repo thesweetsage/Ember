@@ -29,6 +29,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -78,6 +79,7 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
     var chatBg by rememberSaveable { mutableStateOf(base.chatBg) }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
     var groupOn by rememberSaveable { mutableStateOf(base.isGroup) }
+    var sorting by remember { mutableStateOf(false) }
     var members by remember { mutableStateOf(base.members) }
     /** Which field "Improve with AI" is open for: label, current text, and where the result goes. */
     var improving by remember { mutableStateOf<Triple<String, String, (String) -> Unit>?>(null) }
@@ -111,6 +113,8 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
         Store.editorDraftBuildId = null
         if (isNew) onCreated(c.id) else onBack()
     }
+
+    if (sorting) SortCompleteDialog(current(), onReplace = { p, b -> personality = p; background = b }, onDismiss = { sorting = false })
 
     improving?.let { (field, text, apply) ->
         ImproveFieldDialog(field, text, current(), onReplace = apply, onDismiss = { improving = null })
@@ -171,6 +175,14 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
             ) { on ->
                 groupOn = on
                 if (on && members.isEmpty()) members = listOf(app.ember.data.Member(), app.ember.data.Member())
+                // Turning it off folds any sheets back into Personality, so nothing is lost
+                // (this also repairs a single character that was wrongly split into "members").
+                if (!on && members.any { it.name.isNotBlank() || it.about.isNotBlank() }) {
+                    val merged = members.filter { it.name.isNotBlank() || it.about.isNotBlank() }
+                        .joinToString("\n\n") { m -> (if (m.name.isNotBlank()) m.name.trim() + ":\n" else "") + m.about.trim() }
+                    personality = listOf(personality.trim(), merged).filter { it.isNotEmpty() }.joinToString("\n\n")
+                    members = emptyList()
+                }
             }
             EmberField(if (groupOn) "Group name" else "Name", name, { name = it; error = null }, required = true,
                 placeholder = if (groupOn) "e.g. The Hale brothers" else "Character name", singleLine = true)
@@ -205,6 +217,11 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
                     onClick = { members = members + app.ember.data.Member() },
                     modifier = Modifier.border(1.dp, EmberColors.Outline, RoundedCornerShape(20.dp)),
                 ) { Text("+ Add a character", color = EmberColors.TextSoft) }
+            }
+            if (personality.isNotBlank() || background.isNotBlank()) {
+                OutlinedButton(onClick = { sorting = true }, shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth()) {
+                    Text("✦ Sort and complete Personality and Background", color = EmberColors.TextSoft, fontSize = 13.5.sp)
+                }
             }
             EmberField(if (groupOn) "How they are together" else "Personality", personality, { personality = it },
                 placeholder = if (groupOn) "Optional. The dynamic between them: who leads, rivalries, how they share, how they are with you as a group."

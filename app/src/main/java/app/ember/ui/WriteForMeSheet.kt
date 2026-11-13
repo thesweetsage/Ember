@@ -126,7 +126,7 @@ fun WriteForMeSheet(vm: ChatViewModel, personaName: String, onSent: () -> Unit) 
             TextField(
                 value = vm.wfmNotes, onValueChange = { vm.wfmNotes = it },
                 trailingIcon = { MicButton({ vm.wfmNotes = appendDictation(vm.wfmNotes, it) }) },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 90.dp, max = 220.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 90.dp), maxLines = 6,
                 placeholder = { Text("e.g. she laughs, grabs his sleeve, says she wasn't admiring anything. Leave empty and it decides.", color = EmberColors.Dim) },
                 colors = fieldColors(), shape = RoundedCornerShape(12.dp),
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),

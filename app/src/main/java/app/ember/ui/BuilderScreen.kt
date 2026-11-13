@@ -163,7 +163,10 @@ class BuilderViewModel : ViewModel() {
 
     fun toCharacter(): Character {
         // Group cards come back with one "### Name" section per member: those become member sheets.
-        val split = app.ember.data.splitMembers(draft["Personality"].orEmpty())
+        // Only when she actually asked for a group: one man's sheet also has headings, and those are not people.
+        val wantsGroup = tags.any { app.ember.data.Tags.name(it).lowercase() in setOf("poly", "reverse harem", "why choose", "group", "polyamory") } ||
+            messages.any { it.fromUser && app.ember.data.GROUP_WORDS.containsMatchIn(it.text) }
+        val split = if (wantsGroup) app.ember.data.splitMembers(draft["Personality"].orEmpty()) else null
         return toCharacter(split)
     }
 
@@ -181,7 +184,7 @@ class BuilderViewModel : ViewModel() {
     )
 }
 
-private val QUICK = listOf("Give me 3 concepts", "Next section", "Make it darker", "More dominant", "Shorter", "Start the opening message")
+private val QUICK = listOf("Give me 3 concepts", "Next section", "More detail", "Make it darker", "Make it softer", "Start the opening message")
 
 @Composable
 fun BuilderScreen(buildId: String?, onBack: () -> Unit, openEditor: () -> Unit) {
@@ -195,6 +198,9 @@ fun BuilderScreen(buildId: String?, onBack: () -> Unit, openEditor: () -> Unit) 
     BackHandler { tryLeave() }
     var input by rememberSaveable { mutableStateOf("") }
     var pickTags by rememberSaveable { mutableStateOf(false) }
+    // Answers picked on the latest questions, keyed "message:question".
+    val picks = remember { androidx.compose.runtime.mutableStateMapOf<String, Set<String>>() }
+    val own = remember { androidx.compose.runtime.mutableStateMapOf<String, String>() }
     val listState = rememberLazyListState()
     val lastLen = vm.messages.lastOrNull()?.text?.length ?: 0
     LaunchedEffect(vm.messages.size, lastLen) {
@@ -243,8 +249,8 @@ fun BuilderScreen(buildId: String?, onBack: () -> Unit, openEditor: () -> Unit) 
                         ) {
                             Text("Tell me what you'd like", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                             Text(
-                                "Describe the kind of character, a setting, a job, a kink, or just pick tags. I'll ask a few questions, " +
-                                    "offer three concepts, then we'll write him section by section. Tap \"Use\" on each section you like.",
+                                "Describe the kind of character, a setting, a job, a kink, or just pick tags. I'll ask a few questions you can answer with a tap, " +
+                                    "offer three concepts, then we'll write him section by section, in full detail. Tap \"Use\" on each section you like.",
                                 fontSize = 14.sp, color = EmberColors.Muted, lineHeight = 20.sp,
                             )
                         }
@@ -260,19 +266,56 @@ fun BuilderScreen(buildId: String?, onBack: () -> Unit, openEditor: () -> Unit) 
                         }
                     } else {
                         val streaming = vm.busy && i == vm.messages.lastIndex
+                        val isLast = i == vm.messages.lastIndex
+                        val parts = CreativePrompts.parseBuilder(m.text)
+                        val asks = parts.filter { it.section.equals("Ask", true) }.mapNotNull { CreativePrompts.parseAsk(it.text) }
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (m.text.isEmpty()) Text("…", color = EmberColors.Muted)
-                            CreativePrompts.parseBuilder(m.text).forEach { part ->
-                                if (part.section == null) {
-                                    Text(
+                            var askIndex = 0
+                            parts.forEach { part ->
+                                val sec = part.section
+                                when {
+                                    sec.equals("Ask", true) -> {
+                                        val ask = CreativePrompts.parseAsk(part.text)
+                                        val key = "$i:${askIndex++}"
+                                        if (ask != null) AskCard(
+                                            ask, picked = picks[key].orEmpty(), enabled = isLast && !vm.busy,
+                                            onToggle = { opt ->
+                                                val cur = picks[key].orEmpty()
+                                                picks[key] = if (ask.multi) (if (opt in cur) cur - opt else cur + opt) else setOf(opt)
+                                                // One single-choice question: a tap is the answer, like a quick reply.
+                                                if (!ask.multi && asks.size == 1 && own[key].isNullOrBlank()) {
+                                                    vm.send(opt); picks.clear(); own.clear()
+                                                }
+                                            },
+                                            own = own[key].orEmpty(), onOwn = { own[key] = it },
+                                        )
+                                    }
+                                    sec != null && CreativePrompts.SECTIONS.any { it.equals(sec, true) } -> {
+                                        val clean = CreativePrompts.cleanSection(part.text)
+                                        SectionCard(sec, clean, streaming, accepted = vm.draft[sectionKey(sec)] == clean) {
+                                            vm.accept(sec, clean)
+                                        }
+                                    }
+                                    else -> if (part.text.isNotBlank()) Text(
                                         formatStory(part.text), fontSize = 15.sp, lineHeight = 21.sp,
                                         modifier = Modifier.widthIn(max = 340.dp).background(EmberColors.Surface, RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp)).padding(12.dp),
                                     )
-                                } else {
-                                    SectionCard(part.section, part.text, streaming, accepted = vm.draft[sectionKey(part.section)] == part.text) {
-                                        vm.accept(part.section, part.text)
-                                    }
                                 }
+                            }
+                            // Several questions (or a multi-pick): send all answers together.
+                            if (isLast && !streaming && asks.isNotEmpty() && (asks.size > 1 || asks.any { it.multi } || own.values.any { it.isNotBlank() })) {
+                                val answer = asks.mapIndexedNotNull { j, a ->
+                                    val key = "$i:$j"
+                                    val chosen = picks[key].orEmpty().toList() + listOfNotNull(own[key]?.trim()?.takeIf { it.isNotEmpty() })
+                                    if (chosen.isEmpty()) null else "${a.question} ${chosen.joinToString(", ")}"
+                                }
+                                Button(
+                                    onClick = { vm.send(answer.joinToString("\n")); picks.clear(); own.clear() },
+                                    enabled = answer.isNotEmpty() && !vm.busy,
+                                    modifier = Modifier.fillMaxWidth().height(46.dp), shape = RoundedCornerShape(23.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = EmberColors.Red),
+                                ) { Text(if (answer.size < asks.size) "Send answers (${answer.size} of ${asks.size})" else "Send answers", fontWeight = FontWeight.SemiBold) }
                             }
                         }
                     }
@@ -304,7 +347,8 @@ fun BuilderScreen(buildId: String?, onBack: () -> Unit, openEditor: () -> Unit) 
                 TextField(
                     value = input, onValueChange = { input = it },
                     trailingIcon = { MicButton({ input = appendDictation(input, it) }) },
-                    modifier = Modifier.weight(1f).heightIn(min = 52.dp, max = 180.dp),
+                    modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+                    maxLines = 4,
                     placeholder = { Text("e.g. a priest and an atheist, dominant, pet play", color = EmberColors.Dim) },
                     colors = fieldColors(), shape = RoundedCornerShape(26.dp),
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
@@ -366,5 +410,35 @@ private fun SectionCard(title: String, text: String, streaming: Boolean, accepte
                 Text(if (accepted) "✓ Using this" else "Use as $title", color = if (accepted) EmberColors.Muted else EmberColors.RedSoft)
             }
         }
+    }
+}
+
+/** One question from the builder with tappable answers and room for your own. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun AskCard(ask: CreativePrompts.Ask, picked: Set<String>, enabled: Boolean, onToggle: (String) -> Unit, own: String, onOwn: (String) -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().background(EmberColors.Surface, RoundedCornerShape(16.dp))
+            .border(1.dp, EmberColors.Outline, RoundedCornerShape(16.dp)).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(ask.question, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, lineHeight = 21.sp)
+        if (ask.multi) Text("Pick any", fontSize = 12.sp, color = EmberColors.Muted)
+        ask.options.forEach { opt ->
+            val on = opt in picked
+            Text(
+                opt, fontSize = 14.sp, lineHeight = 19.sp,
+                color = if (on) EmberColors.Bg else EmberColors.Text,
+                modifier = Modifier.fillMaxWidth()
+                    .background(if (on) EmberColors.Text else EmberColors.Field, RoundedCornerShape(12.dp))
+                    .clickable(enabled = enabled) { onToggle(opt) }.padding(horizontal = 12.dp, vertical = 10.dp),
+            )
+        }
+        if (enabled) TextField(
+            value = own, onValueChange = onOwn, maxLines = 3,
+            placeholder = { Text("Or your own answer", color = EmberColors.Dim, fontSize = 14.sp) },
+            modifier = Modifier.fillMaxWidth(), colors = fieldColors(), shape = RoundedCornerShape(12.dp),
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+        )
     }
 }
