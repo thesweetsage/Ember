@@ -308,12 +308,23 @@ fun SortCompleteDialog(card: Character, onReplace: (personality: String, backgro
         showResult = false,
         onDismiss = onDismiss,
     ) { result ->
-        val parts = CreativePrompts.parseBuilder(result).filter { it.section != null }.associate { it.section!!.lowercase() to it.text.trim() }
+        val marked = CreativePrompts.parseBuilder(result).filter { it.section != null }.associate { it.section!!.lowercase() to it.text.trim() }
+        // No usable markers? Fall back to plain headings like "Personality" and "Background".
+        val parts = if (marked["personality"].isNullOrBlank() || marked["background"].isNullOrBlank())
+            CreativePrompts.splitByHeadings(result, listOf("Personality", "Background", "Added")).ifEmpty { marked } else marked
         val p = parts["personality"].orEmpty()
         val b = parts["background"].orEmpty()
+        var showRaw by remember { mutableStateOf(false) }
         val added = parts["added"].orEmpty().lines().map { it.trim().trimStart('-', '*', ' ') }.filter { it.isNotEmpty() && !it.equals("nothing", true) }
         if (p.isBlank() || b.isBlank()) {
-            Text("The result came back incomplete. Tap Try again.", color = EmberColors.RedSoft, fontSize = 13.sp)
+            Text(
+                "It wrote the text but didn't split it into Personality and Background the way Ember expects. You can read it below and copy what you want, or tap Try again.",
+                color = EmberColors.RedSoft, fontSize = 13.sp,
+            )
+            TextButton(onClick = { showRaw = !showRaw }) { Text(if (showRaw) "Hide what it wrote" else "Show what it wrote", color = EmberColors.RedSoft) }
+            if (showRaw) androidx.compose.foundation.text.selection.SelectionContainer {
+                Text(result, fontSize = 13.5.sp, lineHeight = 19.sp, modifier = Modifier.fillMaxWidth().background(EmberColors.Surface, RoundedCornerShape(14.dp)).padding(14.dp))
+            }
         } else {
             if (added.isNotEmpty()) Text("Filled in because they were missing: ${added.joinToString(", ")}", fontSize = 13.sp, color = EmberColors.Muted)
             listOf("Personality" to p, "Background" to b).forEach { (t, text) ->

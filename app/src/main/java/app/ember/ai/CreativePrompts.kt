@@ -353,18 +353,40 @@ ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take
     }
 
     fun parseBuilder(text: String): List<Part> {
+        // Forgiving: a section runs until its own closing marker (any capitalisation, stray spaces) or the next opening
+        // marker, whichever comes first. A missing or misspelled closing marker never swallows the next section.
         val out = ArrayList<Part>()
-        val re = Regex("\\[\\[([^\\]/][^\\]]*)]]\\s*\\n?([\\s\\S]*?)(\\n?\\s*\\[\\[/\\1]]|$)")
+        val open = Regex("\\[\\[\\s*(?![\\s/])([^\\]]+?)\\s*]]")
+        val opens = open.findAll(text).toList()
         var last = 0
-        for (m in re.findAll(text)) {
-            val before = text.substring(last, m.range.first).trim()
+        opens.forEachIndexed { i, m ->
+            val before = text.substring(last, m.range.first).replace(Regex("\\[\\[\\s*/[^\\]]*]]"), "").trim()
             if (before.isNotEmpty()) out.add(Part(null, before))
-            out.add(Part(m.groupValues[1].trim(), m.groupValues[2].trim()))
-            last = m.range.last + 1
+            val name = m.groupValues[1].trim()
+            val start = m.range.last + 1
+            val nextOpen = opens.getOrNull(i + 1)?.range?.first ?: text.length
+            val close = Regex("\\[\\[\\s*/\\s*" + Regex.escape(name) + "\\s*]]", RegexOption.IGNORE_CASE).find(text, start)
+            val end = if (close != null && close.range.first <= nextOpen) close.range.first else nextOpen
+            val body = text.substring(start, end).replace(Regex("\\[\\[\\s*/[^\\]]*]]"), "").trim()
+            out.add(Part(name, body))
+            last = if (close != null && close.range.first <= nextOpen) close.range.last + 1 else end
         }
-        val rest = text.substring(last.coerceAtMost(text.length)).trim()
+        val rest = text.substring(last.coerceAtMost(text.length)).replace(Regex("\\[\\[\\s*/[^\\]]*]]"), "").trim()
         if (rest.isNotEmpty()) out.add(Part(null, rest))
         return out
+    }
+
+    /**
+     * For results that came back without markers: splits on heading lines such as "Personality", "## Background:"
+     * or "**Added**". Returns section name (lowercase) to text.
+     */
+    fun splitByHeadings(text: String, names: List<String>): Map<String, String> {
+        val re = Regex("^\\s*[#*_\\s]*(" + names.joinToString("|") { Regex.escape(it) } + ")[*_\\s]*:?[*_\\s]*$", setOf(RegexOption.MULTILINE, RegexOption.IGNORE_CASE))
+        val heads = re.findAll(text).toList()
+        return heads.mapIndexed { i, m ->
+            val end = heads.getOrNull(i + 1)?.range?.first ?: text.length
+            m.groupValues[1].lowercase() to text.substring(m.range.last + 1, end).trim()
+        }.toMap()
     }
 
     /** Reads a Tags section ("Personality: Dominant, Protective") into tags. */
