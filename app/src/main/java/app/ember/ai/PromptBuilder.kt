@@ -95,7 +95,7 @@ object PromptBuilder {
 
     private fun StringBuilder.storySections(chat: Chat, fill: (String) -> String) {
         if (chat.pins.isNotEmpty()) {
-            append("\n# Facts to always remember\n")
+            append("\n# Facts to always remember (written by the user; always true, and they override anything earlier in the story or the summaries that seems to contradict them)\n")
             chat.pins.forEach { append("- ${fill(it.text.trim())}\n") }
         }
         if (chat.summaries.isNotEmpty()) {
@@ -200,6 +200,9 @@ object PromptBuilder {
                     "never write $userName's actions, words or thoughts. "
             )
             append("Split it into short paragraphs separated by blank lines, never one block of text. End on a complete sentence.")
+            if (p.chat.pins.isNotEmpty()) {
+                append("\nKeep to these facts: ").append(p.chat.pins.joinToString("; ") { fill(it.text.trim()).trimEnd('.') }).append(".")
+            }
             if (!extraInstruction.isNullOrBlank()) append("\n").append(extraInstruction)
         })
         return out

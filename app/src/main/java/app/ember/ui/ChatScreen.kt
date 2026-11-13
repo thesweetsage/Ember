@@ -526,7 +526,6 @@ private fun MessageItem(m: Message, isLast: Boolean, streaming: Boolean, vm: Cha
                 DropdownMenuItem(text = { Text("Edit") }, onClick = { menu = false; editing = true })
                 if (!m.fromUser && isLast) DropdownMenuItem(text = { Text("Rewrite with notes…") }, onClick = { menu = false; rewriting = true })
                 DropdownMenuItem(text = { Text("Copy") }, onClick = { menu = false; clipboard.setText(AnnotatedString(m.text)) })
-                DropdownMenuItem(text = { Text("Pin to memory") }, onClick = { menu = false; pinning = true })
                 if (!isLast) DropdownMenuItem(text = { Text("Rewind to here") }, onClick = { menu = false; confirmRewind = true })
                 DropdownMenuItem(text = { Text("Delete") }, onClick = { menu = false; vm.deleteMessage(m.id) })
             }
@@ -545,7 +544,6 @@ private fun MessageItem(m: Message, isLast: Boolean, streaming: Boolean, vm: Cha
                     if (Store.settings.baseUrl.contains("openrouter", ignoreCase = true)) {
                         RoundAction(Icons.Filled.CompareArrows, "Compare with another model") { vm.pickingCompare = true }
                     }
-                    RoundAction(Icons.Filled.PushPin, "Pin to memory") { pinning = true }
                 }
                 if (showSwipe) {
                     Row(Modifier.height(40.dp).clip(RoundedCornerShape(20.dp)).background(Chip), verticalAlignment = Alignment.CenterVertically) {

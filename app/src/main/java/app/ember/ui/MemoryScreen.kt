@@ -55,6 +55,7 @@ fun MemoryScreen(characterId: String, onBack: () -> Unit) {
     if (character == null || chat == null) { LaunchedEffect(Unit) { onBack() }; return }
 
     var editPin by remember { mutableStateOf<Pin?>(null) }
+    var newFact by remember { mutableStateOf("") }
     var editSummary by remember { mutableStateOf<Summary?>(null) }
     var editDirection by remember { mutableStateOf(false) }
     var editScene by remember { mutableStateOf(false) }
@@ -63,7 +64,7 @@ fun MemoryScreen(characterId: String, onBack: () -> Unit) {
         containerColor = EmberColors.Bg,
         topBar = {
             EmberTopBar("${character.name} · Memory", onBack) {
-                IconButton(onClick = { editPin = Pin(text = "") }) { Icon(Icons.Filled.Add, "Add pinned memory") }
+                IconButton(onClick = { editPin = Pin(text = "") }) { Icon(Icons.Filled.Add, "Add a thing to remember") }
             }
         },
     ) { pad ->
@@ -72,6 +73,39 @@ fun MemoryScreen(characterId: String, onBack: () -> Unit) {
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            item {
+                Text("Things to remember", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("Facts the story must always respect, like how long you've been together. Sent with every reply.", fontSize = 12.5.sp, color = EmberColors.Dim)
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.TextField(
+                        value = newFact, onValueChange = { newFact = it },
+                        placeholder = { Text("e.g. They've been dating for a month and live together", color = EmberColors.Dim) },
+                        trailingIcon = { MicButton({ newFact = appendDictation(newFact, it) }) },
+                        modifier = Modifier.weight(1f), colors = fieldColors(), shape = RoundedCornerShape(14.dp),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences),
+                    )
+                    TextButton(
+                        onClick = {
+                            val t = newFact.trim()
+                            if (t.isNotEmpty()) Store.updateChat(chat.id) { c -> c.copy(pins = c.pins + Pin(text = t)) }
+                            newFact = ""
+                        },
+                        enabled = newFact.isNotBlank(),
+                    ) { Text("Add", color = EmberColors.RedSoft) }
+                }
+            }
+            items(chat.pins, key = { it.id }) { p ->
+                Row(
+                    Modifier.fillMaxWidth().background(EmberColors.Surface, RoundedCornerShape(14.dp)).clickable { editPin = p }.padding(14.dp),
+                ) {
+                    Icon(Icons.Filled.PushPin, null, tint = EmberColors.RedSoft, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(p.text, fontSize = 15.sp, lineHeight = 21.sp)
+                }
+            }
+            item { Spacer(Modifier.height(8.dp)) }
+
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -150,26 +184,6 @@ fun MemoryScreen(characterId: String, onBack: () -> Unit) {
             }
 
             item {
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text("Pinned", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    Text("Sent with every reply", fontSize = 13.sp, color = EmberColors.Dim)
-                }
-            }
-            if (chat.pins.isEmpty()) {
-                item { Text("Nothing pinned yet. Long-press a message and choose Pin to memory, or tap + above.", color = EmberColors.Muted, fontSize = 14.sp) }
-            }
-            items(chat.pins, key = { it.id }) { p ->
-                Row(
-                    Modifier.fillMaxWidth().background(EmberColors.Surface, RoundedCornerShape(14.dp)).clickable { editPin = p }.padding(14.dp),
-                ) {
-                    Icon(Icons.Filled.PushPin, null, tint = EmberColors.RedSoft, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Text(p.text, fontSize = 15.sp, lineHeight = 21.sp)
-                }
-            }
-
-            item {
                 Spacer(Modifier.height(14.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Story so far", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
@@ -234,7 +248,7 @@ fun MemoryScreen(characterId: String, onBack: () -> Unit) {
     editPin?.let { p ->
         val isNew = chat.pins.none { it.id == p.id }
         TextDialog(
-            title = if (isNew) "New pinned memory" else "Pinned memory",
+            title = if (isNew) "New thing to remember" else "Thing to remember",
             initial = p.text,
             hint = "A fact that must never be forgotten, e.g. \"Evelyn has a scar on her left wrist.\"",
             onSave = { t ->
