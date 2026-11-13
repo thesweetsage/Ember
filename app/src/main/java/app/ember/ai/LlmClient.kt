@@ -194,6 +194,19 @@ object Refusal {
         "i must decline", "against my guidelines", "content policy", "i can't engage", "i cannot engage",
     )
 
+    /** Signs a model wrote its own planning notes (about the prompt, rules, word counts) instead of the story. */
+    private val leakSigns = listOf(
+        "the user's instruction", "the instruction", "instructions say", "the system prompt", "system prompt", "the prompt",
+        "word count", "check length", "length instruction", "final response", "my reasoning", "reasoning step", "content boundaries",
+        "beat (hidden)", "no wait,", "let me proceed", "i'll continue with", "i will continue with", "i'll write", "let me write",
+        "draft:", "the persona", "{{char}}", "{{user}}", "as the narrator, i", "the roleplay", "this scene contains",
+    )
+
+    fun looksLikeLeak(text: String): Boolean {
+        val t = text.lowercase().replace('’', '\'')
+        return leakSigns.count { t.contains(it) } >= 2
+    }
+
     fun looksLike(text: String): Boolean {
         val head = text.take(400).lowercase().replace('’', '\'')
         // Story replies almost always contain dialogue; refusals almost never do.

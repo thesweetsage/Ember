@@ -283,17 +283,24 @@ class ChatViewModel : ViewModel() {
                 val (primary, fallback) = eps
                 val blocked = try {
                     streamInto(cid, primary, prompt, maxTokens, temp, limit, ::show)
-                    written.isBlank() || Refusal.looksLike(written)
+                    written.isBlank() || Refusal.looksLike(written) || Refusal.looksLikeLeak(written)
                 } catch (e: ContentBlockedException) {
                     if (fallback == null) throw e
                     true
                 }
                 var used = primary
+                val leaked = written.isNotBlank() && Refusal.looksLikeLeak(written)
                 if (blocked && fallback != null) {
                     show("")
                     streamInto(cid, fallback, prompt, maxTokens, temp, limit, ::show)
                     used = fallback
-                    info = "The main model refused, so the backup model wrote this reply."
+                    info = if (leaked) "${primary.model.substringAfter('/')} wrote its own notes instead of a reply, so the backup model wrote this one."
+                    else "The main model refused, so the backup model wrote this reply."
+                } else if (blocked && leaked) {
+                    // No backup: one more try with the same model.
+                    show("")
+                    streamInto(cid, primary, prompt, maxTokens, temp, limit, ::show)
+                    if (Refusal.looksLikeLeak(written)) { show(""); error = "${primary.model.substringAfter('/')} keeps writing its notes instead of a reply. Try another model." }
                 } else if (blocked) {
                     info = "This looks like a refusal. Add a backup model in Settings to retry these automatically."
                 }
@@ -385,12 +392,16 @@ class ChatViewModel : ViewModel() {
         if (t.isEmpty()) return ""
         // Still could be the start of "<beat>".
         if ("<beat>".startsWith(t.take(6).lowercase()) && t.length < 6) return null
-        if (t.startsWith("<beat", ignoreCase = true)) {
-            val end = t.indexOf("</beat>", ignoreCase = true)
-            return if (end < 0) null else t.substring(end + 7).trimStart()
+        // Planning notes some models write as text: <beat>, <think>, <thinking>, <reasoning>, <analysis>.
+        val tag = Regex("^<(beat|think|thinking|reasoning|analysis)>", RegexOption.IGNORE_CASE).find(t)?.groupValues?.get(1)
+        if (tag != null) {
+            val close = "</$tag>"
+            val end = t.indexOf(close, ignoreCase = true)
+            return if (end < 0) null else withoutBeat(t.substring(end + close.length))
         }
+        if (t.length < 12 && "<thinking>".startsWith(t.lowercase())) return null
         // A note placed somewhere else is removed too.
-        return t.replace(Regex("<beat>[\\s\\S]*?</beat>\\s*", RegexOption.IGNORE_CASE), "")
+        return t.replace(Regex("<(beat|think|thinking|reasoning|analysis)>[\\s\\S]*?</\\1>\\s*", RegexOption.IGNORE_CASE), "")
     }
 
     /**
@@ -708,7 +719,7 @@ class ChatViewModel : ViewModel() {
                 val (primary, fallback) = eps
                 val blocked = try {
                     streamInto(ch.id, primary, prompt, PromptBuilder.maxTokens(words), temperature(ch), wfmLimit, ::show)
-                    written.isBlank() || Refusal.looksLike(written)
+                    written.isBlank() || Refusal.looksLike(written) || Refusal.looksLikeLeak(written)
                 } catch (e: ContentBlockedException) {
                     if (fallback == null) throw e
                     true
