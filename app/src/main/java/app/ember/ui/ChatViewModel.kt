@@ -35,8 +35,9 @@ private const val SCENE_EVERY = 6
 class ChatViewModel : ViewModel() {
     var characterId by mutableStateOf("")
         private set
-    var busy by mutableStateOf(false)
-        private set
+    private var localBusy by mutableStateOf(false)
+    /** True while a reply for this character is being written, even one started before you left the screen. */
+    val busy: Boolean get() = localBusy || app.ember.work.Generation.isRunning(characterId)
     var streamingId by mutableStateOf<String?>(null)
         private set
     /** True while a "thinking" model reasons before writing. */
@@ -268,9 +269,14 @@ class ChatViewModel : ViewModel() {
         val maxTokens = PromptBuilder.maxTokens(ch.replyWords)
         val temp = temperature(ch)
 
-        busy = true; error = null; info = null
+        localBusy = true; error = null; info = null
         streamingId = messageId
-        job = viewModelScope.launch(UsageTag(characterId)) {
+        val name = character?.name?.ifBlank { null } ?: "The reply"
+        // Runs app-wide (not tied to this screen), so leaving the chat or the app never cuts the reply off.
+        job = app.ember.work.Generation.launch(
+            characterId, UsageTag(characterId), label = "Writing $name's reply…",
+            result = { Store.chat(cid)?.messages?.firstOrNull { it.id == messageId }?.text?.takeIf { it.isNotBlank() } },
+        ) {
             var written = ""
             fun show(text: String) {
                 written = text
@@ -323,7 +329,7 @@ class ChatViewModel : ViewModel() {
             } finally {
                 cleanup(cid, messageId, idx, base, written)
                 Store.persistChat(cid)
-                busy = false
+                localBusy = false
                 streamingId = null
                 thinking = false
             }
@@ -475,7 +481,7 @@ class ChatViewModel : ViewModel() {
         val avoid = if (more) whatNext.map { "${it.first} | ${it.second}" } else emptyList()
         if (!more) whatNext = emptyList()
         whatNextBusy = true; whatNextError = null
-        viewModelScope.launch(UsageTag(characterId)) {
+        app.ember.work.Generation.launchQuiet(UsageTag(characterId)) {
             try {
                 val r = LlmClient.complete(ep, PromptBuilder.forWhatNext(ctx, ch.messages.takeLast(8), avoid), null, 1.0)
                 val got = r.text.lines().map { it.trim().replace(Regex("^(\\d+[.)]|[-*•])\\s*"), "").replace("**", "") }
@@ -565,7 +571,7 @@ class ChatViewModel : ViewModel() {
         val ep = if (Store.backupReady) backupEndpoint() else if (Store.hasApiKey) mainEndpoint() else return
         val prompt = PromptBuilder.forScene(ctx, ch.scene, ch.messages.takeLast(6), ch.meters, ch.timeline.map { it.text })
         sceneBusy = true; sceneUpdating = true
-        viewModelScope.launch(UsageTag(characterId)) {
+        app.ember.work.Generation.launchQuiet(UsageTag(characterId)) {
             try {
                 val r = LlmClient.complete(ep, prompt, null, 0.3)
                 val lines = r.text.trim().lines().map { it.trim().trimStart('-', '*', ' ').replace("**", "") }.filter { it.isNotEmpty() }
@@ -605,7 +611,7 @@ class ChatViewModel : ViewModel() {
         val keep = if (light) LIGHT_KEEP_RECENT else KEEP_RECENT
         if (every <= 0) return
         summarising = true
-        viewModelScope.launch(UsageTag(characterId)) {
+        app.ember.work.Generation.launchQuiet(UsageTag(characterId)) {
             try {
                 // Catch up a few blocks at a time if the chat is far behind (e.g. after switching to Light).
                 repeat(3) {
@@ -651,7 +657,7 @@ class ChatViewModel : ViewModel() {
         val eps = endpoints(ch) ?: run { error = "Add your API key in Settings first."; return }
         summarising = true
         info = "Writing a summary…"
-        viewModelScope.launch(UsageTag(characterId)) {
+        app.ember.work.Generation.launchQuiet(UsageTag(characterId)) {
             try {
                 val prompt = PromptBuilder.forSummary(ctx, ch.messages.subList(start, end))
                 val r = LlmClient.complete(eps.first, prompt, null, 0.4)
@@ -709,7 +715,10 @@ class ChatViewModel : ViewModel() {
         wfmDraftModels = wfmDraftModels.take(idx) + eps.first.model
         wfmSel = idx
         wfmBusy = true; wfmError = null
-        wfmJob = viewModelScope.launch(UsageTag(characterId)) {
+        wfmJob = app.ember.work.Generation.launch(
+            characterId, UsageTag(characterId), label = "Writing your draft…",
+            result = { wfmDrafts.getOrNull(idx)?.takeIf { it.isNotBlank() } },
+        ) {
             var written = ""
             fun show(t: String) {
                 written = t.trimStart()

@@ -39,17 +39,30 @@ import app.ember.ui.SearchScreen
 import app.ember.ui.SettingsScreen
 
 class MainActivity : FragmentActivity() {
+    companion object {
+        const val EXTRA_CHAT = "openChat"
+    }
+
     /** Shown over the app until you unlock, when the fingerprint lock is on. */
     private var locked by mutableStateOf(false)
     private var leftAt = 0L
+    /** A chat to open, from tapping a "reply is ready" notification. */
+    private var openChatId by mutableStateOf<String?>(null)
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        intent.getStringExtra(EXTRA_CHAT)?.let { openChatId = it }
+    }
 
     override fun onStop() {
         super.onStop()
         leftAt = System.currentTimeMillis()
+        app.ember.work.Generation.appVisible = false
     }
 
     override fun onStart() {
         super.onStart()
+        app.ember.work.Generation.appVisible = true
         // Lock again after being away for more than 30 seconds (not for quick trips to the photo picker).
         if (Store.settings.lockEnabled && leftAt > 0 && System.currentTimeMillis() - leftAt > 30_000) locked = true
     }
@@ -58,7 +71,13 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         Store.init(applicationContext)
+        app.ember.work.Generation.init(applicationContext)
         locked = Store.settings.lockEnabled
+        openChatId = intent?.getStringExtra(EXTRA_CHAT)
+        // So Ember can tell you when a reply is ready while you're away.
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 7)
         setContent {
             EmberTheme {
                 Box(Modifier.fillMaxSize().background(EmberColors.Bg)) {
@@ -74,6 +93,9 @@ class MainActivity : FragmentActivity() {
                         createWithAi = { nav.navigate("builder") },
                         continueBuild = { nav.navigate("builder/$it") },
                     )
+                    androidx.compose.runtime.LaunchedEffect(openChatId) {
+                        openChatId?.let { id -> if (Store.character(id) != null) nav.navigate("chat/$id") { launchSingleTop = true }; openChatId = null }
+                    }
                     NavHost(navController = nav, startDestination = "library") {
                         composable("library") {
                             LibraryScreen(
