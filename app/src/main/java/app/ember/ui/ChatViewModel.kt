@@ -615,12 +615,12 @@ class ChatViewModel : ViewModel() {
             try {
                 // Catch up a few blocks at a time if the chat is far behind (e.g. after switching to Light).
                 repeat(3) {
-                    val ch = Store.chat(chatId) ?: return@launch
+                    val ch = Store.chat(chatId) ?: return@launchQuiet
                     val start = ch.coveredUntil
                     val end = start + every
-                    if (ch.messages.size - keep < end) return@launch
-                    val ctx = context(ch) ?: return@launch
-                    val eps = endpoints(ch) ?: return@launch
+                    if (ch.messages.size - keep < end) return@launchQuiet
+                    val ctx = context(ch) ?: return@launchQuiet
+                    val eps = endpoints(ch) ?: return@launchQuiet
                     val prompt = PromptBuilder.forSummary(ctx, ch.messages.subList(start, end))
                     val result = try {
                         LlmClient.complete(eps.first, prompt, null, 0.4)
@@ -629,7 +629,7 @@ class ChatViewModel : ViewModel() {
                     } catch (e: ContentBlockedException) {
                         eps.second?.let { LlmClient.complete(it, prompt, null, 0.4) }
                     }
-                    if (result == null || result.text.isBlank() || Refusal.looksLike(result.text)) return@launch
+                    if (result == null || result.text.isBlank() || Refusal.looksLike(result.text)) return@launchQuiet
                     Store.updateChat(chatId) { c ->
                         if (c.coveredUntil != start) c
                         else c.copy(
