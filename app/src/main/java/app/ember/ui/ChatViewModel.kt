@@ -265,7 +265,7 @@ class ChatViewModel : ViewModel() {
         Store.lastPrompt = PromptBuilder.describe(prompt)
         // A length typed in a note ("make it 700 words") raises the runaway stop so the reply isn't cut off.
         val asked = requestedWords(extra)
-        val limit = wordLimit(asked ?: ch.replyWords, 500)
+        val limit = wordLimit(asked ?: ch.replyWords, if (character?.isGroup == true) 800 else 500)
         val maxTokens = PromptBuilder.maxTokens(ch.replyWords)
         val temp = temperature(ch)
 

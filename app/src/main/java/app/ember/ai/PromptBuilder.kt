@@ -192,7 +192,10 @@ object PromptBuilder {
             append("If $userName is bantering, flirting or asking something, answer in kind. Use the example dialogue for how $who sounds, not for how much to say. ")
             append(NATURAL_VOICE)
             append("Around any dialogue, show ${if (group) "their" else "$charName's"} body reacting, what they notice about $userName, and their thoughts. ")
-            if (replyWords <= 0) append("Length: fit the moment, usually 200 to 300 words (quiet moments can be shorter), up to about 450 for big scenes, never more. ")
+            if (replyWords <= 0) append(
+                if (group) "Length: fit the moment, usually 300 to 500 words so each character present gets room (quiet moments can be shorter), up to about 700 for big scenes, never more. "
+                else "Length: fit the moment, usually 200 to 300 words (quiet moments can be shorter), up to about 450 for big scenes, never more. "
+            )
             else append("Length: about $replyWords words, between ${replyWords * 85 / 100} and ${replyWords * 115 / 100}. Reach it with more of what they'd naturally say and do in this moment, body language and thoughts, not by jumping to new events. ")
             append(
                 (if (group) "Write only their parts" else "Write only $charName's part") +

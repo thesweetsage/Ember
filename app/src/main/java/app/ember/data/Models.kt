@@ -188,19 +188,23 @@ fun splitMembers(text: String): Pair<String, List<Member>>? {
     val members = heads.mapIndexed { i, m ->
         val end = if (i + 1 < heads.size) heads[i + 1].range.first else text.length
         Member(name = m.groupValues[1].trim(), about = text.substring(m.range.last + 1, end).trim())
-    }.filter { it.name.isNotBlank() && it.name.split(' ').size <= 4 && it.name.lowercase() !in SHEET_HEADING_WORDS }
+    }.filter { m -> m.name.isNotBlank() && m.name.split(' ').size <= 4 && SHEET_HEADING_WORDS.none { m.name.lowercase().contains(it) } }
     return if (members.size >= 2 && members.size == heads.size) intro to members else null
 }
 
 /** Headings used inside one character's sheet; never mistaken for member names. */
-private val SHEET_HEADING_WORDS = setOf(
-    "personality", "background", "core traits", "appearance", "basics", "likes", "dislikes", "secrets", "romance", "intimacy",
-    "in love", "emotions", "home", "childhood", "childhood and family", "hobbies", "hobbies and skills", "past relationships",
-    "how he talks", "voice", "kinks", "values", "fears", "flaws", "habits", "work", "work and daily routine",
+private val SHEET_HEADING_WORDS = listOf(
+    "personality", "background", "trait", "temperament", "appearance", "basics", "likes", "secret", "romance", "intimacy",
+    "love", "emotion", "home", "childhood", "family", "hobbies", "skills", "relationship", "talks", "voice", "kink",
+    "values", "fear", "flaw", "habit", "work", "routine", "friends", "social", "body language", "history", "together", "dynamic",
 )
 
 /** Words in a request that mean she wants several characters in one card. */
-val GROUP_WORDS = Regex("\\b(group|poly|polyamor\\w*|reverse harem|why choose|several (men|guys|characters)|brothers|members|band|pack|crew|throuple|both of them|twins)\\b", RegexOption.IGNORE_CASE)
+val GROUP_WORDS = Regex(
+    "\\b(group|poly|polyamor\\w*|reverse harem|harem|why choose|(several|multiple|two|three|four|five) (men|guys|characters|brothers|friends|of them|love interests)|" +
+        "brothers|sisters|siblings|members|band|pack|crew|squad|gang|team|throuple|triad|trio|duo|quartet|both of them|all of them|twins|best friends|roommates|housemates)\\b",
+    RegexOption.IGNORE_CASE,
+)
 
 /** Tags that mean a card is a group of characters unless you say otherwise. */
 private val GROUP_TAGS = setOf("poly", "reverse harem", "why choose", "group", "polyamory")

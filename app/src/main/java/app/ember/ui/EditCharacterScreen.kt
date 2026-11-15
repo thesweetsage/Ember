@@ -174,7 +174,12 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
                 divider = false,
             ) { on ->
                 groupOn = on
-                if (on && members.isEmpty()) members = listOf(app.ember.data.Member(), app.ember.data.Member())
+                if (on && members.isEmpty()) {
+                    // A group written as one block ("### Jace", "### Theo"…) is split into one sheet per person.
+                    val split = app.ember.data.splitMembers(personality)
+                    if (split != null) { members = split.second; personality = split.first }
+                    else members = listOf(app.ember.data.Member(), app.ember.data.Member())
+                }
                 // Turning it off folds any sheets back into Personality, so nothing is lost
                 // (this also repairs a single character that was wrongly split into "members").
                 if (!on && members.any { it.name.isNotBlank() || it.about.isNotBlank() }) {

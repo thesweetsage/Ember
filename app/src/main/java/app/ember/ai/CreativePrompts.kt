@@ -134,7 +134,7 @@ Him and {{user}}: how they know each other and where things stand, only from wha
         "Never invent anything about her character (her name, looks, job, history, feelings or choices) beyond what her persona says or what " +
             "she tells you; refer to her as {{user}}. If you need to know something about her, ask."
 
-    fun builderSystem(persona: Persona?): String = """
+    fun builderSystem(persona: Persona?, group: Boolean = false): String = """
 $FRAME
 
 You are her creative partner, building one full character with her in a chat, step by step.
@@ -171,6 +171,7 @@ WHAT EACH SECTION IS
 - Opening message: the first scene, from the setup she chose. $OPENING_RULES_TEXT
 - Tags: one line per category, for example "Personality: Dominant, Protective" and "Setting: Church". Use these categories: ${Tags.categoryNames.joinToString(", ")}.
 - If she wants several characters in one card (brothers, friends, a crew, a pack, a poly or reverse harem story), the Name is the group's name. Personality starts with a short paragraph on how they are together, then gives each member their own part starting with a heading line "### Their name", covering the personality parts above for that member. Background covers each member's basics, looks and history, their shared world and home, and the setup. The opening and example dialogue include several members, each with their own voice.
+${if (group) "\nSHE WANTS SEVERAL CHARACTERS IN THIS CARD. Build it as a group: in Personality, after the short paragraph on how they are together, give EVERY member their own part starting with a heading line \"### Their name\" (nothing else on that line), and never merge them. Make each member clearly different in looks, temperament, voice and what they want from her." else ""}
 ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take(1500)}" } ?: ""}
 """.trim()
 

@@ -123,7 +123,9 @@ class BuilderViewModel : ViewModel() {
         persist()
         val persona = Store.persona(Store.settings.defaultPersonaId)
         val prompt = buildList {
-            add(ChatMsg("system", CreativePrompts.builderSystem(persona)))
+            val group = tags.any { app.ember.data.Tags.name(it).lowercase() in setOf("poly", "reverse harem", "why choose", "group", "polyamory") } ||
+                messages.any { it.fromUser && app.ember.data.GROUP_WORDS.containsMatchIn(it.text) }
+            add(ChatMsg("system", CreativePrompts.builderSystem(persona, group)))
             if (tags.isNotEmpty()) add(ChatMsg("system", "Tags she has picked so far: ${Tags.describe(tags)}"))
             messages.forEach { add(ChatMsg(if (it.fromUser) "user" else "assistant", it.text)) }
         }
@@ -166,7 +168,8 @@ class BuilderViewModel : ViewModel() {
         // Only when she actually asked for a group: one man's sheet also has headings, and those are not people.
         val wantsGroup = tags.any { app.ember.data.Tags.name(it).lowercase() in setOf("poly", "reverse harem", "why choose", "group", "polyamory") } ||
             messages.any { it.fromUser && app.ember.data.GROUP_WORDS.containsMatchIn(it.text) }
-        val split = if (wantsGroup) app.ember.data.splitMembers(draft["Personality"].orEmpty()) else null
+        // Also when the AI clearly wrote one "### Name" part per person (sheet headings are never taken as names).
+        val split = app.ember.data.splitMembers(draft["Personality"].orEmpty())?.takeIf { wantsGroup || it.second.size >= 2 }
         return toCharacter(split)
     }
 
