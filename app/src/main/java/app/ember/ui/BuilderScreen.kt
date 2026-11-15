@@ -152,6 +152,11 @@ class BuilderViewModel : ViewModel() {
 
     fun stop() { job?.cancel() }
 
+    /** Names of the people in a group build so far. */
+    val people: List<String>
+        get() = draft.keys.filter { it.startsWith("Member:") || it.startsWith("MemberP:") || it.startsWith("MemberB:") }
+            .map { it.substringAfter(':').trim() }.distinct()
+
     /** Building several characters in one card (asked for in words or tags, or sheets already written). */
     val groupBuild: Boolean
         get() = draft.keys.any { it.startsWith("Member:") } ||
@@ -181,9 +186,13 @@ class BuilderViewModel : ViewModel() {
 
     private fun toCharacter(split: Pair<String, List<app.ember.data.Member>>?): Character {
         // Each person's own sheet from the builder ("Member: Jace" sections) becomes a member sheet in the editor.
-        val sheets = draft.filterKeys { it.startsWith("Member:") }.map { (k, v) ->
-            val (personality, background) = app.ember.data.splitSheet(v)
-            app.ember.data.Member(name = k.substringAfter(':').trim(), about = personality, background = background)
+        val sheets = people.map { who ->
+            val whole = draft["Member: $who"]?.let { app.ember.data.splitSheet(it) }
+            app.ember.data.Member(
+                name = who,
+                about = draft["MemberP: $who"] ?: whole?.first.orEmpty(),
+                background = draft["MemberB: $who"] ?: whole?.second.orEmpty(),
+            )
         }
         val members = sheets.ifEmpty { split?.second.orEmpty() }
         return Character(
@@ -242,7 +251,7 @@ fun BuilderScreen(buildId: String?, onBack: () -> Unit, openEditor: () -> Unit) 
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                val people = vm.draft.keys.filter { it.startsWith("Member:") }.map { it.substringAfter(':').trim() }
+                val people = vm.people
                 val steps = if (vm.groupBuild) listOf(
                     "Name", "Short description",
                     if (people.isEmpty()) "Characters" else "Characters: " + people.joinToString(", "),
@@ -322,23 +331,46 @@ fun BuilderScreen(buildId: String?, onBack: () -> Unit, openEditor: () -> Unit) 
                                             own = own[key].orEmpty(), onOwn = { own[key] = it },
                                         )
                                     }
+                                    sec != null && Regex("^(Personality|Background)\\s*:\\s*\\S", RegexOption.IGNORE_CASE).containsMatchIn(sec) -> {
+                                        // One person's own Personality or Background ("Background: Jace").
+                                        val kind = sec.substringBefore(':').trim().lowercase()
+                                        val who = sec.substringAfter(':').trim()
+                                        val body = CreativePrompts.cleanSection(part.text)
+                                        val key = (if (kind == "personality") "MemberP: " else "MemberB: ") + who
+                                        SectionCard("$who's $kind", body, streaming, accepted = vm.draft[key] == body) { vm.accept(key, body) }
+                                    }
                                     sec != null && (sec.startsWith("Member", true) ||
                                         (sec.equals("Personality", true) && parts.count { it.section.equals("Personality", true) } > 1)) -> {
-                                        // One person in a group: their own sheet, kept separately from the others.
+                                        // One person's whole sheet: split into their personality and background when used.
                                         val (who, body) = memberOf(sec, CreativePrompts.cleanSection(part.text))
                                         val key = "Member: $who"
                                         SectionCard("$who's sheet", body, streaming, accepted = vm.draft[key] == body) {
                                             vm.accept(key, body)
                                         }
                                     }
+                                    sec != null && (sec.equals("Together", true) || sec.equals("How they are together", true)) -> {
+                                        val clean = CreativePrompts.cleanSection(part.text)
+                                        SectionCard("How they are together", clean, streaming, accepted = vm.draft["Personality"] == clean) { vm.accept("Personality", clean) }
+                                    }
+                                    sec != null && (sec.equals("Shared world", true) || sec.equals("Their world", true) || sec.equals("Their world and background", true)) -> {
+                                        val clean = CreativePrompts.cleanSection(part.text)
+                                        SectionCard("Their world and background", clean, streaming, accepted = vm.draft["Background"] == clean) { vm.accept("Background", clean) }
+                                    }
                                     sec != null && CreativePrompts.SECTIONS.any { it.equals(sec, true) } -> {
                                         val clean = CreativePrompts.cleanSection(part.text)
+                                        val isP = sec.equals("Personality", true)
+                                        val isB = sec.equals("Background", true)
                                         val title = when {
-                                            vm.groupBuild && sec.equals("Personality", true) -> "How they are together"
-                                            vm.groupBuild && sec.equals("Background", true) -> "Their world and background"
+                                            vm.groupBuild && isP -> "How they are together"
+                                            vm.groupBuild && isB -> "Their world and background"
                                             else -> sec
                                         }
-                                        SectionCard(title, clean, streaming, accepted = vm.draft[sectionKey(sec)] == clean) {
+                                        // In a group, a plain Personality or Background might be about one man: let her choose where it goes.
+                                        val alt = if (vm.groupBuild && (isP || isB)) vm.people.map { who ->
+                                            val key = (if (isP) "MemberP: " else "MemberB: ") + who
+                                            "Use as $who's ${if (isP) "personality" else "background"}" to { vm.accept(key, clean) }
+                                        } else emptyList()
+                                        SectionCard(title, clean, streaming, accepted = vm.draft[sectionKey(sec)] == clean, alternatives = alt) {
                                             vm.accept(sec, clean)
                                         }
                                     }
@@ -385,8 +417,8 @@ fun BuilderScreen(buildId: String?, onBack: () -> Unit, openEditor: () -> Unit) 
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).height(46.dp),
                     shape = RoundedCornerShape(23.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = EmberColors.Red),
-                ) { Text("Open in editor (" + vm.draft.keys.count { !it.startsWith("Member:") } + " sections" +
-                    vm.draft.keys.count { it.startsWith("Member:") }.let { n -> if (n > 0) ", $n characters" else "" } + " ready)", fontWeight = FontWeight.SemiBold) }
+                ) { Text("Open in editor (" + vm.draft.keys.count { !it.startsWith("Member") } + " sections" +
+                    vm.people.size.let { n -> if (n > 0) ", $n characters" else "" } + " ready)", fontWeight = FontWeight.SemiBold) }
             }
 
             Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.Bottom) {
@@ -454,7 +486,10 @@ private fun memberOf(section: String, text: String): Pair<String, String> {
 }
 
 @Composable
-private fun SectionCard(title: String, text: String, streaming: Boolean, accepted: Boolean, onUse: () -> Unit) {
+private fun SectionCard(
+    title: String, text: String, streaming: Boolean, accepted: Boolean,
+    alternatives: List<Pair<String, () -> Unit>> = emptyList(), onUse: () -> Unit,
+) {
     Column(
         Modifier.fillMaxWidth().background(EmberColors.Surface, RoundedCornerShape(16.dp))
             .border(1.5.dp, if (accepted) EmberColors.Red else EmberColors.Outline, RoundedCornerShape(16.dp)).padding(14.dp),
@@ -466,6 +501,9 @@ private fun SectionCard(title: String, text: String, streaming: Boolean, accepte
             Spacer(Modifier.height(6.dp))
             TextButton(onClick = onUse, enabled = !accepted) {
                 Text(if (accepted) "✓ Using this" else "Use as $title", color = if (accepted) EmberColors.Muted else EmberColors.RedSoft)
+            }
+            alternatives.forEach { (label, action) ->
+                TextButton(onClick = action) { Text(label, color = EmberColors.TextSoft) }
             }
         }
     }

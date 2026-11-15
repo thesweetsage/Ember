@@ -131,16 +131,24 @@ Secrets:
 Him and {{user}}: how they know each other and where things stand, only from what she has said (never invent her details):"""
 
     /** How the builder writes a card with several people: one sheet per person, then what they share. */
-    private const val GROUP_BUILD = """SHE WANTS SEVERAL CHARACTERS IN THIS CARD. The editor has a separate sheet for each person, so write them separately:
-- Write each person as their OWN section, one per message, using their name in the marker, exactly like this:
-[[Member: Jace]]
-...Jace's full sheet...
-[[/Member: Jace]]
-- Each person's sheet covers, under headed parts, everything about them alone: core traits, how they talk, body language, emotions, in love, romance, intimacy and kinks, then basics, appearance, work, childhood and family, how they got here, past relationships, likes, dislikes, hobbies, secrets. 600 to 900 words each. Make each person clearly different in looks, temperament, voice and what they want from her.
-- Then write [[Personality]], which here means only how they are TOGETHER (300 to 600 words): how they met and what they are to each other, their dynamic, who leads, loyalties and rivalries, jealousy between them, how they share her and how they are with her as a group.
-- Then write [[Background]], which here means only what they SHARE (500 to 900 words): what ties them together, their shared home or world (the place itself, in detail), their history as a group, their routine together, people around them, and the setup with {{user}}.
-- These two sections are required: never skip them, and never jump to the opening before both are written.
-- Order: Name (the group's name), Short description, one Member section per person, Personality, Background, Example dialogue, Opening message, Tags. Never put several people in one section."""
+    private const val GROUP_BUILD = """SHE WANTS SEVERAL CHARACTERS IN THIS CARD. The editor has a separate Personality and Background for each person, plus two shared sections, so always name whose section it is in the marker:
+- For EACH person, write two sections, one per message, with their name after a colon, exactly like this:
+[[Personality: Jace]]
+...Jace's personality, under the personality parts of the sheet (500 to 800 words)...
+[[/Personality: Jace]]
+[[Background: Jace]]
+...Jace's own background, under the background parts of the sheet: basics, appearance, work, his own home if he has one, childhood and family, how he got here, past relationships, likes, dislikes, hobbies, secrets (500 to 800 words)...
+[[/Background: Jace]]
+- Never write a person's section without their name in the marker. Make each person clearly different in looks, temperament, voice and what they want from her.
+- When every person is done, write the two shared sections:
+[[Together]]
+How they are together (300 to 600 words): how they met and what they are to each other, their dynamic, who leads, loyalties and rivalries, jealousy between them, how they share her and how they are with her as a group.
+[[/Together]]
+[[Shared world]]
+What they share (500 to 900 words): what ties them together, their shared home or world (the place itself, in detail), their history as a group, their routine together, people around them, and the setup with {{user}}.
+[[/Shared world]]
+- These two are required: never skip them, and never jump to the opening before both are written.
+- Order: Name (the group's name), Short description, each person's Personality and Background, Together, Shared world, Example dialogue, Opening message, Tags."""
 
     private const val NO_ASSUMING =
         "Never invent anything about her character (her name, looks, job, history, feelings or choices) beyond what her persona says or what " +
@@ -182,7 +190,7 @@ WHAT EACH SECTION IS
 - Example dialogue: 4 to 6 short exchanges showing how he talks in different moods (teasing, angry, tender, flirting), each line starting with {{char}}: or {{user}}: and only his lines written out fully.
 - Opening message: the first scene, from the setup she chose. $OPENING_RULES_TEXT
 - Tags: one line per category, for example "Personality: Dominant, Protective" and "Setting: Church". Use these categories: ${Tags.categoryNames.joinToString(", ")}.
-- If she wants several characters in one card (a trio, brothers, friends, a crew, a pack, a poly or reverse harem story), the Name is the group's name and you write each person as their own section, [[Member: Their name]] ... [[/Member: Their name]], one per message, covering that person's full personality and background. Then Personality is only how they are together and Background only what they share. Never put several people in one section.
+- If she wants several characters in one card (a trio, brothers, friends, a crew, a pack, a poly or reverse harem story), the Name is the group's name and you write each person's own sections with their name in the marker, [[Personality: Their name]] and [[Background: Their name]], then [[Together]] for how they are together and [[Shared world]] for what they share. Never put several people in one section.
 ${if (group) "\n" + GROUP_BUILD else ""}
 ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take(1500)}" } ?: ""}
 """.trim()
