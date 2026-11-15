@@ -64,10 +64,15 @@ object PromptBuilder {
     private fun StringBuilder.characterCard(c: Character, heading: String, fill: (String) -> String) {
         append("\n# $heading\n")
         if (c.description.isNotBlank()) append("Summary: ${fill(c.description.trim())}\n\n")
-        val members = if (c.isGroup) c.members.filter { it.name.isNotBlank() || it.about.isNotBlank() } else emptyList()
+        val members = if (c.isGroup) c.members.filter { !it.isEmpty } else emptyList()
         if (members.isNotEmpty()) {
             append("The characters:\n")
-            members.forEach { m -> append("## ${m.name.ifBlank { "Unnamed" }}\n${fill(m.about.trim())}\n\n") }
+            members.forEach { m ->
+                append("## ${m.name.ifBlank { "Unnamed" }}\n")
+                if (m.about.isNotBlank()) append("Personality:\n${fill(m.about.trim())}\n")
+                if (m.background.isNotBlank()) append("Background:\n${fill(m.background.trim())}\n")
+                append("\n")
+            }
             if (c.personality.isNotBlank()) append("How they are together:\n${fill(c.personality.trim())}\n\n")
             if (c.background.isNotBlank()) append("Their shared world and background:\n${fill(c.background.trim())}\n\n")
         } else {

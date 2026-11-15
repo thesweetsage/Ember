@@ -80,6 +80,7 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
     var error by rememberSaveable { mutableStateOf<String?>(null) }
     var groupOn by rememberSaveable { mutableStateOf(base.isGroup) }
     var sorting by remember { mutableStateOf(false) }
+    var sortingMember by remember { mutableStateOf<String?>(null) }
     var members by remember { mutableStateOf(base.members) }
     /** Which field "Improve with AI" is open for: label, current text, and where the result goes. */
     var improving by remember { mutableStateOf<Triple<String, String, (String) -> Unit>?>(null) }
@@ -104,7 +105,7 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
             background = background, openings = openings.ifEmpty { listOf("") }, example = example,
             avatar = avatar, chatBg = chatBg, replyWords = words,
             tags = tags, personaId = personaId, useBackup = useBackup,
-            group = groupOn, members = members.filter { it.name.isNotBlank() || it.about.isNotBlank() },
+            group = groupOn, members = members.filter { !it.isEmpty },
             tint = if (avatar != base.avatar || chatBg != base.chatBg || base.tint == null) Store.computeTint(chatBg ?: avatar) else base.tint,
         )
         Store.saveCharacter(c)
@@ -114,6 +115,16 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
         if (isNew) onCreated(c.id) else onBack()
     }
 
+    // One member's sheet: sorted and completed as if they were a single character.
+    sortingMember?.let { id ->
+        members.firstOrNull { it.id == id }?.let { m ->
+            SortCompleteDialog(
+                Character(name = m.name, personality = m.about, background = m.background, tags = tags, description = "One of the characters in \"$name\""),
+                onReplace = { p, b -> members = members.map { if (it.id == id) it.copy(about = p, background = b) else it } },
+                onDismiss = { sortingMember = null },
+            )
+        }
+    }
     if (sorting) SortCompleteDialog(current(), onReplace = { p, b -> personality = p; background = b }, onDismiss = { sorting = false })
 
     improving?.let { (field, text, apply) ->
@@ -182,9 +193,9 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
                 }
                 // Turning it off folds any sheets back into Personality, so nothing is lost
                 // (this also repairs a single character that was wrongly split into "members").
-                if (!on && members.any { it.name.isNotBlank() || it.about.isNotBlank() }) {
-                    val merged = members.filter { it.name.isNotBlank() || it.about.isNotBlank() }
-                        .joinToString("\n\n") { m -> (if (m.name.isNotBlank()) m.name.trim() + ":\n" else "") + m.about.trim() }
+                if (!on && members.any { !it.isEmpty }) {
+                    val merged = members.filter { !it.isEmpty }
+                        .joinToString("\n\n") { m -> (if (m.name.isNotBlank()) m.name.trim() + ":\n" else "") + listOf(m.about.trim(), m.background.trim()).filter { it.isNotEmpty() }.joinToString("\n\n") }
                     personality = listOf(personality.trim(), merged).filter { it.isNotEmpty() }.joinToString("\n\n")
                     members = emptyList()
                 }
@@ -208,14 +219,25 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
                         }
                         EmberField("Name", m.name, { v -> members = members.toMutableList().also { it[i] = m.copy(name = v) } },
                             placeholder = "e.g. Jace", singleLine = true)
+                        val who = m.name.ifBlank { "Character ${i + 1}" }
+                        fun update(f: (app.ember.data.Member) -> app.ember.data.Member) { members = members.map { if (it.id == m.id) f(it) else it } }
                         EmberField(
-                            "Who they are", m.about, { v -> members = members.toMutableList().also { it[i] = m.copy(about = v) } },
-                            placeholder = "Looks, who they are to the others, personality, how they talk, what they want from you, kinks.",
+                            "Personality", m.about, { v -> update { it.copy(about = v) } },
+                            placeholder = "Their temperament, how they talk, what they want from you, in love, romance, intimacy and kinks.",
                             minLines = 4, maxLines = 8,
-                            onImprove = { improving = Triple("Sheet for ${m.name.ifBlank { "character ${i + 1}" }}", m.about) { v: String ->
-                                members = members.map { if (it.id == m.id) it.copy(about = v) else it }
-                            } },
+                            onImprove = { improving = Triple("$who's Personality", m.about) { v: String -> update { it.copy(about = v) } } },
                         )
+                        EmberField(
+                            "Background", m.background, { v -> update { it.copy(background = v) } },
+                            placeholder = "Their looks, work, home, childhood, past, likes and dislikes, secrets, who they are to the others.",
+                            minLines = 4, maxLines = 8,
+                            onImprove = { improving = Triple("$who's Background", m.background) { v: String -> update { it.copy(background = v) } } },
+                        )
+                        if (m.about.isNotBlank() || m.background.isNotBlank()) {
+                            OutlinedButton(onClick = { sortingMember = m.id }, shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth()) {
+                                Text("✦ Sort and complete $who", color = EmberColors.TextSoft, fontSize = 13.5.sp)
+                            }
+                        }
                     }
                 }
                 TextButton(
@@ -223,7 +245,7 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
                     modifier = Modifier.border(1.dp, EmberColors.Outline, RoundedCornerShape(20.dp)),
                 ) { Text("+ Add a character", color = EmberColors.TextSoft) }
             }
-            if (personality.isNotBlank() || background.isNotBlank()) {
+            if (!groupOn && (personality.isNotBlank() || background.isNotBlank())) {
                 OutlinedButton(onClick = { sorting = true }, shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth()) {
                     Text("✦ Sort and complete Personality and Background", color = EmberColors.TextSoft, fontSize = 13.5.sp)
                 }

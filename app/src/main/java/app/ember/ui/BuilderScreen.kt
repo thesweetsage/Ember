@@ -175,7 +175,10 @@ class BuilderViewModel : ViewModel() {
 
     private fun toCharacter(split: Pair<String, List<app.ember.data.Member>>?): Character {
         // Each person's own sheet from the builder ("Member: Jace" sections) becomes a member sheet in the editor.
-        val sheets = draft.filterKeys { it.startsWith("Member:") }.map { (k, v) -> app.ember.data.Member(name = k.substringAfter(':').trim(), about = v) }
+        val sheets = draft.filterKeys { it.startsWith("Member:") }.map { (k, v) ->
+            val (personality, background) = app.ember.data.splitSheet(v)
+            app.ember.data.Member(name = k.substringAfter(':').trim(), about = personality, background = background)
+        }
         val members = sheets.ifEmpty { split?.second.orEmpty() }
         return Character(
         members = members,

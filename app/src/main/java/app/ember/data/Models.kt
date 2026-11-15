@@ -173,7 +173,27 @@ data class Settings(
 data class Milestone(val id: String = newId(), val text: String, val messageId: String, val at: Int)
 
 /** One character in a group card. */
-data class Member(val id: String = newId(), val name: String = "", val about: String = "")
+data class Member(
+    val id: String = newId(),
+    val name: String = "",
+    /** Their personality. */
+    val about: String = "",
+    val background: String = "",
+) {
+    val isEmpty get() = name.isBlank() && about.isBlank() && background.isBlank()
+}
+
+/**
+ * Splits one person's full sheet into its personality part and its background part, at the first background
+ * heading ("Basics:", "Appearance:", "Background:"). Returns the text unchanged as personality if there's none.
+ */
+fun splitSheet(text: String): Pair<String, String> {
+    val m = Regex("^\\s*[#*_\\s]*(Background|Basics|Appearance)\\b[^\\n]*$", setOf(RegexOption.MULTILINE, RegexOption.IGNORE_CASE)).find(text)
+        ?: return text.trim() to ""
+    if (m.range.first == 0) return "" to text.trim()
+    val bg = text.substring(m.range.first).let { if (Regex("^\\s*[#*_\\s]*Background\\b", RegexOption.IGNORE_CASE).containsMatchIn(it.lineSequence().first())) it.substringAfter('\n') else it }
+    return text.substring(0, m.range.first).trim().removeSuffix("Personality:").trim() to bg.trim()
+}
 
 /**
  * Splits "### Name" sections (how the AI writes group members) out of a text.

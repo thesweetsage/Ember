@@ -257,7 +257,7 @@ ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take
         if (c.tags.isNotEmpty()) append("Tags: ${Tags.describe(c.tags)}\n")
         if (c.isGroup && c.members.isNotEmpty()) {
             append("\nThe characters:\n")
-            c.members.forEach { m -> append("### ${m.name}\n${m.about.trim()}\n\n") }
+            c.members.forEach { m -> append("### ${m.name}\nPersonality:\n${m.about.trim()}\nBackground:\n${m.background.trim()}\n\n") }
             append("How they are together:\n${c.personality.trim()}\n\nShared world and background:\n${c.background.trim()}\n")
         } else append("\nPersonality:\n${c.personality.trim()}\n\nBackground:\n${c.background.trim()}\n")
         if (c.opening.isNotBlank()) append("\nOpening message:\n${c.opening.trim()}\n")
@@ -272,8 +272,9 @@ ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take
             "natural language rather than purple prose. Keep the same point of view and roughly the same shape." +
             (if (isOpening) " This field is the opening scene. $OPENING_RULES" else "") +
             (if (field.contains("description", ignoreCase = true)) " This field is one or two lines only." else "") +
-            (if (field.equals("Personality", true)) " Make sure it covers the full sheet:\n$SHEET_PERSONALITY\nKeep everything already there; fill in any missing parts.\n" else "") +
-            (if (field.equals("Background", true)) " Make sure it covers the full sheet:\n$SHEET_BACKGROUND\nKeep everything already there; fill in any missing parts.\n" else "") +
+            (if (field.endsWith("Personality", true)) " Make sure it covers the full sheet:\n$SHEET_PERSONALITY\nKeep everything already there; fill in any missing parts.\n" else "") +
+            (if (field.endsWith("Background", true)) " Make sure it covers the full sheet:\n$SHEET_BACKGROUND\nKeep everything already there; fill in any missing parts.\n" else "") +
+            (if (field.contains("'s ") && c.isGroup) " This field belongs to ONE member of the group, named at the start of the field name; write only about them.\n" else "") +
             (if (field.startsWith("Sheet for", true)) " This is one member's sheet: cover the personality parts and the background parts of a full sheet for them, briefly:\n$SHEET_PERSONALITY\n$SHEET_BACKGROUND\nKeep everything already there.\n" else "") +
             " $NO_ASSUMING" +
             (if (c.isGroup) " This card is a group: keep every member distinct and covered; never collapse them into one man." else "") +
