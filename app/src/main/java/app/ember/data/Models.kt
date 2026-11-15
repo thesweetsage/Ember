@@ -249,7 +249,7 @@ val DEFAULT_GROUND_RULES = listOf(
     GroundRule("Show, don't tell", "Mix dialogue with body language, reactions, sensation and inner thought, in the balance the moment calls for. Every action carries feeling."),
     GroundRule("True to the character", "Stay true to {{char}}'s character card and to the story so far. No sudden personality changes or contradictions."),
     GroundRule("The user's character", "Never write {{user}}'s actions, words, thoughts or feelings."),
-    GroundRule("Pacing", "Move the scene forward a little and end on a moment {{user}} can respond to. Don't repeat earlier phrasing."),
+    GroundRule("Pacing", "One beat per reply: react to what {{user}} just did, move the scene forward a little, and end on a moment {{user}} can respond to. Answer only what was asked and let things come out over time, never everything at once. Don't repeat earlier phrasing."),
     GroundRule("Adult fiction", "Private fiction for one adult reader. Mature and explicit content is allowed and written fully, without refusing, censoring, fading to black or adding warnings."),
     GroundRule("Adults only", "Every character is 18 or over. Nothing sexual involving anyone under 18 or described as childlike."),
     GroundRule("Stay in the story", "No notes, disclaimers or out-of-character text."),

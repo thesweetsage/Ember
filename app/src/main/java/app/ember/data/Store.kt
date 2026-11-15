@@ -114,6 +114,7 @@ object Store {
         updateDialogueRulesV4()
         updateNaturalVoiceV5()
         updateMomentRulesV6()
+        updatePacingV7()
         markGroundSeen()
         settings = read("settings.json")?.let { runCatching { Json.settings(JSONObject(it)) }.getOrNull() } ?: Settings()
         app.ember.ai.PromptBuilder.historyBudgetChars = budgetFor(settings.contextChars)
@@ -229,6 +230,15 @@ object Store {
         val fresh = DEFAULT_GROUND_RULES.associateBy { it.title }
         if (groundRules.any { it.text in old }) updateGroundRules(groundRules.map { r -> if (r.text in old) fresh[r.title] ?: r else r })
         prefs.edit().putInt("rulesVersion", 6).apply()
+    }
+
+    /** Version 7: Pacing becomes "one beat per reply" (only an unedited default changes). */
+    private fun updatePacingV7() {
+        if (prefs.getInt("rulesVersion", 1) >= 7) return
+        val old = "Move the scene forward a little and end on a moment {{user}} can respond to. Don't repeat earlier phrasing."
+        val fresh = DEFAULT_GROUND_RULES.associateBy { it.title }
+        if (groundRules.any { it.text == old }) updateGroundRules(groundRules.map { r -> if (r.text == old) fresh[r.title] ?: r else r })
+        prefs.edit().putInt("rulesVersion", 7).apply()
     }
 
     /** Version 3: the Write for me rule "Only the notes" became "Follow the notes" (every beat, in order). */

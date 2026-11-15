@@ -88,8 +88,15 @@ object PromptBuilder {
     private const val NATURAL_VOICE =
         "Make the dialogue sound like a real person talking, not a film trailer: contractions, ordinary words, small questions, " +
             "hesitations, thoughts that trail off. No one-liner comebacks, catchphrases, aphorisms, dramatic declarations, stacked " +
-            "rhetorical questions or lines meant to sound cool. Write the prose in complete, flowing sentences, never dramatic one-word " +
-            "or fragment sentences on their own. "
+            "rhetorical questions, clever similes or witty comparisons in speech, or lines meant to sound cool. Write the prose in complete, " +
+            "flowing sentences, never dramatic one-word or fragment sentences on their own. "
+
+    /** One beat per reply: the most common way replies feel stretched and unnatural. */
+    private const val PACING =
+        "Pace it like a real conversation: one beat per reply. React to what {{user}} just did or said and move things on only a little. " +
+            "Answer only what was asked, in the fewest natural words, and let the rest come out later; never explain everything at once. " +
+            "People speak in short turns, usually one to three sentences, unless a moment truly calls for more. " +
+            "Ask {{user}} at most one question, and only at the end. Never pad a reply to reach a length. "
 
     /** Sent with group cards so the model plays everyone, not one merged man. */
     private const val GROUP_NOTE =
@@ -195,10 +202,10 @@ object PromptBuilder {
             append("If $userName has gone quiet or is busy with something, don't fill the silence with chatter: show what $who does, notices ")
             append("and thinks, and the tension between them, with a line or two at most unless there's a real reason to talk. ")
             append("If $userName is bantering, flirting or asking something, answer in kind. Use the example dialogue for how $who sounds, not for how much to say. ")
-            append(NATURAL_VOICE)
+            append(fill(NATURAL_VOICE)).append(fill(PACING))
             append("Around any dialogue, show ${if (group) "their" else "$charName's"} body reacting, what they notice about $userName, and their thoughts. ")
             if (replyWords <= 0) append(
-                if (group) "Length: fit the moment, usually 300 to 500 words so each character present gets room (quiet moments can be shorter), up to about 700 for big scenes, never more. "
+                if (group) "Length: fit the moment, usually 250 to 400 words (quiet moments can be shorter), up to about 600 for big scenes, never more. Not everyone present has to speak in every reply. "
                 else "Length: fit the moment, usually 200 to 300 words (quiet moments can be shorter), up to about 450 for big scenes, never more. "
             )
             else append("Length: about $replyWords words, between ${replyWords * 85 / 100} and ${replyWords * 115 / 100}. Reach it with more of what they'd naturally say and do in this moment, body language and thoughts, not by jumping to new events. ")
@@ -266,7 +273,7 @@ object PromptBuilder {
                 append("\nCurrent draft:\n").append(draft.trim()).append("\n")
                 append("Rewrite it with this change: ").append(change.trim()).append(". Keep everything else.\n")
             }
-            append(NATURAL_VOICE)
+            append(fill(NATURAL_VOICE))
             if (words <= 0 && notes.isBlank()) append("Length: about 80 to 150 words. ")
             else if (words <= 0) append("Length: whatever it takes to cover every beat in the notes, and no more. Never pad. ")
             else append("Length: about $words words, between ${words * 85 / 100} and ${words * 115 / 100}. Reach it by deepening her body language, what she notices and her thoughts around the beats, never by adding new actions or lines. ")
