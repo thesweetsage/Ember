@@ -96,7 +96,10 @@ object PromptBuilder {
         "Pace it like a real conversation: one beat per reply. React to what {{user}} just did or said and move things on only a little. " +
             "Answer only what was asked, in the fewest natural words, and let the rest come out later; never explain everything at once. " +
             "People speak in short turns, usually one to three sentences, unless a moment truly calls for more. " +
-            "Ask {{user}} at most one question, and only at the end. Never pad a reply to reach a length. "
+            "Ask {{user}} at most one question, and only at the end. Never pad a reply to reach a length. " +
+            "Build each reply on prose and inner life: what {{char}} does and notices, how their body reacts, and what they feel and think " +
+            "but don't say (a few thoughts in italics marked with underscores, like _this_). Dialogue lives inside that prose in short turns; " +
+            "it never carries the reply on its own. "
 
     /** Sent with group cards so the model plays everyone, not one merged man. */
     private const val GROUP_NOTE =

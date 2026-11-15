@@ -235,9 +235,12 @@ object Store {
     /** Version 7: Pacing becomes "one beat per reply" (only an unedited default changes). */
     private fun updatePacingV7() {
         if (prefs.getInt("rulesVersion", 1) >= 7) return
-        val old = "Move the scene forward a little and end on a moment {{user}} can respond to. Don't repeat earlier phrasing."
+        val old = setOf(
+            "Move the scene forward a little and end on a moment {{user}} can respond to. Don't repeat earlier phrasing.",
+            "Mix dialogue with body language, reactions, sensation and inner thought, in the balance the moment calls for. Every action carries feeling.",
+        )
         val fresh = DEFAULT_GROUND_RULES.associateBy { it.title }
-        if (groundRules.any { it.text == old }) updateGroundRules(groundRules.map { r -> if (r.text == old) fresh[r.title] ?: r else r })
+        if (groundRules.any { it.text in old }) updateGroundRules(groundRules.map { r -> if (r.text in old) fresh[r.title] ?: r else r })
         prefs.edit().putInt("rulesVersion", 7).apply()
     }
 
