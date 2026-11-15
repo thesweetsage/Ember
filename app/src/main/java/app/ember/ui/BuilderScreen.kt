@@ -173,18 +173,23 @@ class BuilderViewModel : ViewModel() {
         return toCharacter(split)
     }
 
-    private fun toCharacter(split: Pair<String, List<app.ember.data.Member>>?): Character = Character(
-        members = split?.second.orEmpty(),
-        group = if (split != null) true else null,
+    private fun toCharacter(split: Pair<String, List<app.ember.data.Member>>?): Character {
+        // Each person's own sheet from the builder ("Member: Jace" sections) becomes a member sheet in the editor.
+        val sheets = draft.filterKeys { it.startsWith("Member:") }.map { (k, v) -> app.ember.data.Member(name = k.substringAfter(':').trim(), about = v) }
+        val members = sheets.ifEmpty { split?.second.orEmpty() }
+        return Character(
+        members = members,
+        group = if (members.size > 1) true else null,
         name = draft["Name"]?.lines()?.firstOrNull()?.trim()?.trim('*', '"')?.take(60).orEmpty(),
         description = draft["Short description"].orEmpty(),
-        personality = split?.first ?: draft["Personality"].orEmpty(),
+        personality = if (sheets.isNotEmpty()) draft["Personality"].orEmpty() else split?.first ?: draft["Personality"].orEmpty(),
         background = draft["Background"].orEmpty(),
         openings = listOf(draft["Opening message"].orEmpty()),
         example = draft["Example dialogue"].orEmpty(),
         tags = tags,
         replyWords = 0,
     )
+    }
 }
 
 private val QUICK = listOf("Give me 3 concepts", "Next section", "More detail", "Make it darker", "Make it softer", "Start the opening message")
@@ -226,7 +231,8 @@ fun BuilderScreen(buildId: String?, onBack: () -> Unit, openEditor: () -> Unit) 
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 items(CreativePrompts.SECTIONS) { s ->
-                    val done = vm.draft.containsKey(s) || (s == "Tags" && vm.tags.isNotEmpty())
+                    val done = vm.draft.containsKey(s) || (s == "Tags" && vm.tags.isNotEmpty()) ||
+                        (s == "Personality" && vm.draft.keys.any { it.startsWith("Member:") })
                     Row(
                         Modifier.clip(RoundedCornerShape(14.dp)).background(if (done) EmberColors.Red else EmberColors.Field)
                             .padding(horizontal = 10.dp, vertical = 6.dp),
@@ -294,6 +300,15 @@ fun BuilderScreen(buildId: String?, onBack: () -> Unit, openEditor: () -> Unit) 
                                             own = own[key].orEmpty(), onOwn = { own[key] = it },
                                         )
                                     }
+                                    sec != null && (sec.startsWith("Member", true) ||
+                                        (sec.equals("Personality", true) && parts.count { it.section.equals("Personality", true) } > 1)) -> {
+                                        // One person in a group: their own sheet, kept separately from the others.
+                                        val (who, body) = memberOf(sec, CreativePrompts.cleanSection(part.text))
+                                        val key = "Member: $who"
+                                        SectionCard("$who's sheet", body, streaming, accepted = vm.draft[key] == body) {
+                                            vm.accept(key, body)
+                                        }
+                                    }
                                     sec != null && CreativePrompts.SECTIONS.any { it.equals(sec, true) } -> {
                                         val clean = CreativePrompts.cleanSection(part.text)
                                         SectionCard(sec, clean, streaming, accepted = vm.draft[sectionKey(sec)] == clean) {
@@ -343,7 +358,8 @@ fun BuilderScreen(buildId: String?, onBack: () -> Unit, openEditor: () -> Unit) 
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).height(46.dp),
                     shape = RoundedCornerShape(23.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = EmberColors.Red),
-                ) { Text("Open in editor (${vm.draft.size} sections ready)", fontWeight = FontWeight.SemiBold) }
+                ) { Text("Open in editor (" + vm.draft.keys.count { !it.startsWith("Member:") } + " sections" +
+                    vm.draft.keys.count { it.startsWith("Member:") }.let { n -> if (n > 0) ", $n characters" else "" } + " ready)", fontWeight = FontWeight.SemiBold) }
             }
 
             Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.Bottom) {
@@ -397,6 +413,18 @@ fun BuilderScreen(buildId: String?, onBack: () -> Unit, openEditor: () -> Unit) 
 }
 
 private fun sectionKey(s: String) = CreativePrompts.SECTIONS.firstOrNull { it.equals(s, ignoreCase = true) } ?: s
+
+/**
+ * The person a member section is about, and its text. "Member: Jace" names them directly; a Personality block that
+ * starts with a short heading like "### Jace" or "Jace:" takes its name from that line.
+ */
+private fun memberOf(section: String, text: String): Pair<String, String> {
+    section.substringAfter(':', "").trim().takeIf { it.isNotEmpty() }?.let { return it to text }
+    val first = text.lineSequence().firstOrNull().orEmpty()
+    val name = first.trim().trim('#', '*', ' ').removeSuffix(":").trim('*', ' ')
+    return if (name.isNotEmpty() && name.split(' ').size <= 4 && first.length < 50) name to text.substringAfter('\n', "").trim()
+    else "Character" to text
+}
 
 @Composable
 private fun SectionCard(title: String, text: String, streaming: Boolean, accepted: Boolean, onUse: () -> Unit) {

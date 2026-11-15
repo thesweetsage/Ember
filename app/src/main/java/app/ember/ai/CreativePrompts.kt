@@ -130,6 +130,17 @@ Hobbies and skills:
 Secrets:
 Him and {{user}}: how they know each other and where things stand, only from what she has said (never invent her details):"""
 
+    /** How the builder writes a card with several people: one sheet per person, then what they share. */
+    private const val GROUP_BUILD = """SHE WANTS SEVERAL CHARACTERS IN THIS CARD. The editor has a separate sheet for each person, so write them separately:
+- Write each person as their OWN section, one per message, using their name in the marker, exactly like this:
+[[Member: Jace]]
+...Jace's full sheet...
+[[/Member: Jace]]
+- Each person's sheet covers, under headed parts, everything about them alone: core traits, how they talk, body language, emotions, in love, romance, intimacy and kinks, then basics, appearance, work, childhood and family, how they got here, past relationships, likes, dislikes, hobbies, secrets. 600 to 900 words each. Make each person clearly different in looks, temperament, voice and what they want from her.
+- Then [[Personality]] is only how they are TOGETHER: their dynamic, who leads, rivalries, how they share her (a few paragraphs).
+- [[Background]] is only what they SHARE: what ties them together, their shared home or world, their history as a group, and the setup with {{user}}.
+- Order: Name (the group's name), Short description, one Member section per person, Personality, Background, Example dialogue, Opening message, Tags. Never put several people in one section."""
+
     private const val NO_ASSUMING =
         "Never invent anything about her character (her name, looks, job, history, feelings or choices) beyond what her persona says or what " +
             "she tells you; refer to her as {{user}}. If you need to know something about her, ask."
@@ -170,8 +181,8 @@ WHAT EACH SECTION IS
 - Example dialogue: 4 to 6 short exchanges showing how he talks in different moods (teasing, angry, tender, flirting), each line starting with {{char}}: or {{user}}: and only his lines written out fully.
 - Opening message: the first scene, from the setup she chose. $OPENING_RULES_TEXT
 - Tags: one line per category, for example "Personality: Dominant, Protective" and "Setting: Church". Use these categories: ${Tags.categoryNames.joinToString(", ")}.
-- If she wants several characters in one card (brothers, friends, a crew, a pack, a poly or reverse harem story), the Name is the group's name. Personality starts with a short paragraph on how they are together, then gives each member their own part starting with a heading line "### Their name", covering the personality parts above for that member. Background covers each member's basics, looks and history, their shared world and home, and the setup. The opening and example dialogue include several members, each with their own voice.
-${if (group) "\nSHE WANTS SEVERAL CHARACTERS IN THIS CARD. Build it as a group: in Personality, after the short paragraph on how they are together, give EVERY member their own part starting with a heading line \"### Their name\" (nothing else on that line), and never merge them. Make each member clearly different in looks, temperament, voice and what they want from her." else ""}
+- If she wants several characters in one card (a trio, brothers, friends, a crew, a pack, a poly or reverse harem story), the Name is the group's name and you write each person as their own section, [[Member: Their name]] ... [[/Member: Their name]], one per message, covering that person's full personality and background. Then Personality is only how they are together and Background only what they share. Never put several people in one section.
+${if (group) "\n" + GROUP_BUILD else ""}
 ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take(1500)}" } ?: ""}
 """.trim()
 
