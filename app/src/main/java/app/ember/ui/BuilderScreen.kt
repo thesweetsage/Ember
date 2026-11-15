@@ -152,6 +152,12 @@ class BuilderViewModel : ViewModel() {
 
     fun stop() { job?.cancel() }
 
+    /** Building several characters in one card (asked for in words or tags, or sheets already written). */
+    val groupBuild: Boolean
+        get() = draft.keys.any { it.startsWith("Member:") } ||
+            tags.any { app.ember.data.Tags.name(it).lowercase() in setOf("poly", "reverse harem", "why choose", "group", "polyamory") } ||
+            messages.any { it.fromUser && app.ember.data.GROUP_WORDS.containsMatchIn(it.text) }
+
     fun accept(section: String, text: String) {
         if (section.equals("Tags", ignoreCase = true)) {
             tags = (tags + CreativePrompts.parseTags(text)).distinct()
@@ -195,6 +201,9 @@ class BuilderViewModel : ViewModel() {
     }
 }
 
+private val QUICK_GROUP = listOf(
+    "Next character", "Write how they are together", "Write their shared world and background", "More detail", "Start the opening message",
+)
 private val QUICK = listOf("Give me 3 concepts", "Next section", "More detail", "Make it darker", "Make it softer", "Start the opening message")
 
 @Composable
@@ -233,9 +242,19 @@ fun BuilderScreen(buildId: String?, onBack: () -> Unit, openEditor: () -> Unit) 
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                items(CreativePrompts.SECTIONS) { s ->
-                    val done = vm.draft.containsKey(s) || (s == "Tags" && vm.tags.isNotEmpty()) ||
-                        (s == "Personality" && vm.draft.keys.any { it.startsWith("Member:") })
+                val people = vm.draft.keys.filter { it.startsWith("Member:") }.map { it.substringAfter(':').trim() }
+                val steps = if (vm.groupBuild) listOf(
+                    "Name", "Short description",
+                    if (people.isEmpty()) "Characters" else "Characters: " + people.joinToString(", "),
+                    "How they are together", "Their world", "Example dialogue", "Opening message", "Tags",
+                ) else CreativePrompts.SECTIONS
+                items(steps) { s ->
+                    val done = when {
+                        s.startsWith("Characters") -> people.size >= 2
+                        s == "How they are together" -> vm.draft.containsKey("Personality")
+                        s == "Their world" -> vm.draft.containsKey("Background")
+                        else -> vm.draft.containsKey(s) || (s == "Tags" && vm.tags.isNotEmpty())
+                    }
                     Row(
                         Modifier.clip(RoundedCornerShape(14.dp)).background(if (done) EmberColors.Red else EmberColors.Field)
                             .padding(horizontal = 10.dp, vertical = 6.dp),
@@ -314,7 +333,12 @@ fun BuilderScreen(buildId: String?, onBack: () -> Unit, openEditor: () -> Unit) 
                                     }
                                     sec != null && CreativePrompts.SECTIONS.any { it.equals(sec, true) } -> {
                                         val clean = CreativePrompts.cleanSection(part.text)
-                                        SectionCard(sec, clean, streaming, accepted = vm.draft[sectionKey(sec)] == clean) {
+                                        val title = when {
+                                            vm.groupBuild && sec.equals("Personality", true) -> "How they are together"
+                                            vm.groupBuild && sec.equals("Background", true) -> "Their world and background"
+                                            else -> sec
+                                        }
+                                        SectionCard(title, clean, streaming, accepted = vm.draft[sectionKey(sec)] == clean) {
                                             vm.accept(sec, clean)
                                         }
                                     }
@@ -348,7 +372,7 @@ fun BuilderScreen(buildId: String?, onBack: () -> Unit, openEditor: () -> Unit) 
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                items(QUICK) { q -> TagChip(q, on = false) { if (!vm.busy) vm.send(q) } }
+                items(if (vm.groupBuild) QUICK_GROUP else QUICK) { q -> TagChip(q, on = false) { if (!vm.busy) vm.send(q) } }
             }
 
             if (vm.draft.containsKey("Name")) {

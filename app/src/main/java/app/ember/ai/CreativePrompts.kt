@@ -137,8 +137,9 @@ Him and {{user}}: how they know each other and where things stand, only from wha
 ...Jace's full sheet...
 [[/Member: Jace]]
 - Each person's sheet covers, under headed parts, everything about them alone: core traits, how they talk, body language, emotions, in love, romance, intimacy and kinks, then basics, appearance, work, childhood and family, how they got here, past relationships, likes, dislikes, hobbies, secrets. 600 to 900 words each. Make each person clearly different in looks, temperament, voice and what they want from her.
-- Then [[Personality]] is only how they are TOGETHER: their dynamic, who leads, rivalries, how they share her (a few paragraphs).
-- [[Background]] is only what they SHARE: what ties them together, their shared home or world, their history as a group, and the setup with {{user}}.
+- Then write [[Personality]], which here means only how they are TOGETHER (300 to 600 words): how they met and what they are to each other, their dynamic, who leads, loyalties and rivalries, jealousy between them, how they share her and how they are with her as a group.
+- Then write [[Background]], which here means only what they SHARE (500 to 900 words): what ties them together, their shared home or world (the place itself, in detail), their history as a group, their routine together, people around them, and the setup with {{user}}.
+- These two sections are required: never skip them, and never jump to the opening before both are written.
 - Order: Name (the group's name), Short description, one Member section per person, Personality, Background, Example dialogue, Opening message, Tags. Never put several people in one section."""
 
     private const val NO_ASSUMING =
