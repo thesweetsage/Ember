@@ -106,6 +106,29 @@ object Generation {
         runCatching { NotificationManagerCompat.from(app).notify(characterId.hashCode(), n) }
     }
 
+    /** "New chapter" notification for a daily story; tapping it opens the story. */
+    fun notifyStory(storyId: String, title: String, preview: String) {
+        if (!::app.isInitialized) return
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(app, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) return
+        val open = PendingIntent.getActivity(
+            app, storyId.hashCode(),
+            Intent(app, MainActivity::class.java).putExtra(MainActivity.EXTRA_STORY, storyId)
+                .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val n = NotificationCompat.Builder(app, CH_DONE)
+            .setSmallIcon(R.drawable.ic_notify)
+            .setContentTitle(title)
+            .setContentText(preview.take(140))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(preview))
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build()
+        runCatching { NotificationManagerCompat.from(app).notify(storyId.hashCode(), n) }
+    }
+
     fun workingNotification(context: Context, label: String): Notification =
         NotificationCompat.Builder(context, CH_WORKING)
             .setSmallIcon(R.drawable.ic_notify)

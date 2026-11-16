@@ -516,7 +516,7 @@ class ChatViewModel : ViewModel() {
         val parts = buildList {
             add("$title: $what")
             c.directionGuide?.let { add(it) }
-            c.mood?.let { add("Mood: $it.") }
+            c.mood?.let { add("Mood: $it (${PromptBuilder.MOOD_MEANING[it] ?: it.lowercase()}); the whole reply must feel this way.") }
             if (c.focus.isNotEmpty()) add("Focus on: ${c.focus.joinToString(", ")}.")
         }
         nudge(parts.joinToString(" "), chapter = c.chapter)

@@ -172,6 +172,36 @@ data class Settings(
 /** A turning point in a story (first kiss, first fight…), tied to the message where it happened. */
 data class Milestone(val id: String = newId(), val text: String, val messageId: String, val at: Int)
 
+/** One chapter of a daily story. */
+data class StoryChapter(
+    val id: String = newId(),
+    val title: String,
+    val text: String,
+    val createdAt: Long = System.currentTimeMillis(),
+    val read: Boolean = false,
+)
+
+/**
+ * A daily story: the AI writes a new chapter with [characterId] and the persona every day at [hour],
+ * starting from the character's first message.
+ */
+data class Story(
+    val id: String = newId(),
+    val characterId: String,
+    val personaId: String? = null,
+    val chapters: List<StoryChapter> = emptyList(),
+    /** Where she wants the next chapter to go ("" = the AI decides). */
+    val nextDirection: String = "",
+    /** The AI's ideas for where the next chapter could go. */
+    val suggestions: List<String> = emptyList(),
+    /** Everything before the latest chapter, summarised, so long stories stay cheap and consistent. */
+    val summary: String = "",
+    val words: Int = 2500,
+    val hour: Int = 8,
+    val active: Boolean = true,
+    val createdAt: Long = System.currentTimeMillis(),
+)
+
 /** One character in a group card. */
 data class Member(
     val id: String = newId(),

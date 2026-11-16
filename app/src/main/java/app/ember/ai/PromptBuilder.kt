@@ -346,10 +346,11 @@ object PromptBuilder {
             if (chose) {
                 append("\nHer choices for this turn:\n")
                 direction?.let { append("- Direction: $it\n") }
-                mood?.let { append("- Mood: $it\n") }
+                mood?.let { append("- Mood: $it (${MOOD_MEANING[it] ?: it.lowercase()})\n") }
                 if (focus.isNotEmpty()) append("- Focus on: ${focus.joinToString(", ")}\n")
                 if (note.isNotBlank()) append("- Her thoughts: ${note.trim()}\n")
                 append("Option 1 follows her choices and thoughts as closely as possible. Option 2 goes the same way with a different take. ")
+                if (mood != null) append("The mood is the point: options 1 and 2 MUST feel $mood from start to finish, whatever else is going on in the scene; bend the situation toward that mood rather than the other way round. ")
                 append("Option 3 is something else worth considering: a different mood or turn she may not have thought of. ")
             } else {
                 append("Make them clearly different from each other: for example one tender or emotional, one tense or dramatic, one bold or spicy, unless the moment suggests better. ")
@@ -367,6 +368,19 @@ object PromptBuilder {
         }
         return listOf(ChatMsg("system", sys), ChatMsg("user", user))
     }
+
+    /** What each "What next?" mood means, so the model can't read "Flirty" as anything else. */
+    val MOOD_MEANING = mapOf(
+        "Tender" to "gentle, caring, emotional closeness, soft touches and honest words",
+        "Playful" to "light, fun, teasing games and laughter",
+        "Flirty" to "teasing, banter, compliments, lingering looks, charged closeness and obvious attraction",
+        "Cosy" to "warm, safe, homely comfort: blankets, food, quiet intimacy, being looked after",
+        "Tense" to "unease, conflict or charged silence, something unresolved in the air",
+        "Dramatic" to "high emotion, confrontation, revelations, big stakes",
+        "Spicy" to "sexual tension and desire acted on, heat and explicit intent",
+        "Dark" to "danger, menace, cruelty or moral darkness",
+        "Funny" to "comedy, mishaps, witty moments that make her laugh",
+    )
 
     fun forSummary(p: PromptContext, block: List<Message>): List<ChatMsg> {
         val charName = p.character.name.ifBlank { "the character" }

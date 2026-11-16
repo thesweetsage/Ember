@@ -76,7 +76,9 @@ private fun chatNumber(c: Chat): Int =
 fun ChatsScreen(
     openChat: (String) -> Unit,
     bottomBar: @Composable () -> Unit,
+    openStory: (String) -> Unit = {},
 ) {
+    var tab by rememberSaveable { mutableStateOf(0) }
     var query by rememberSaveable { mutableStateOf("") }
     var searching by rememberSaveable { mutableStateOf(false) }
     var confirmFresh by remember { mutableStateOf<Chat?>(null) }
@@ -98,10 +100,16 @@ fun ChatsScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text("Chats", fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                IconButton(onClick = { searching = !searching; if (!searching) query = "" }) {
+                if (tab == 0) IconButton(onClick = { searching = !searching; if (!searching) query = "" }) {
                     Icon(Icons.Outlined.Search, "Search by character", tint = EmberColors.Text)
                 }
             }
+            Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                TagChip("Chats", on = tab == 0) { tab = 0 }
+                val unread = Store.stories.sumOf { st -> st.chapters.count { !it.read } }
+                TagChip(if (unread > 0) "Daily stories · $unread new" else "Daily stories", on = tab == 1) { tab = 1 }
+            }
+            if (tab == 1) { StoriesTab(openStory); return@Column }
             if (searching) {
                 TextField(
                     value = query, onValueChange = { query = it }, singleLine = true,

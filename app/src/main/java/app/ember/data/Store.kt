@@ -127,10 +127,29 @@ object Store {
         hasBackupKey = prefs.contains("backupKey")
         hasVoiceKey = prefs.contains("voiceKey")
         loadTrash()
+        stories = read("stories.json")?.let { Json.parseList(it) { o -> Json.story(o) } } ?: emptyList()
         usage = read("usage.json")?.let { Json.parseList(it) { o -> Json.usage(o) } } ?: emptyList()
         migrateLegacyUser()
         addStarterPresets()
     }
+
+    // ---------- daily stories ----------
+
+    var stories by mutableStateOf(listOf<Story>())
+        private set
+
+    private fun saveStories() = write(File(dir, "stories.json"), Json.list(stories) { Json.story(it) })
+
+    fun story(id: String) = stories.firstOrNull { it.id == id }
+
+    fun putStory(st: Story) {
+        stories = if (stories.any { it.id == st.id }) stories.map { if (it.id == st.id) st else it } else stories + st
+        saveStories()
+    }
+
+    fun updateStory(id: String, f: (Story) -> Story) { story(id)?.let { putStory(f(it)) } }
+
+    fun deleteStory(id: String) { stories = stories.filter { it.id != id }; saveStories() }
 
     // ---------- spending ----------
 

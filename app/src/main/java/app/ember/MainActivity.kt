@@ -41,6 +41,7 @@ import app.ember.ui.SettingsScreen
 class MainActivity : FragmentActivity() {
     companion object {
         const val EXTRA_CHAT = "openChat"
+        const val EXTRA_STORY = "openStory"
     }
 
     /** Shown over the app until you unlock, when the fingerprint lock is on. */
@@ -48,10 +49,12 @@ class MainActivity : FragmentActivity() {
     private var leftAt = 0L
     /** A chat to open, from tapping a "reply is ready" notification. */
     private var openChatId by mutableStateOf<String?>(null)
+    private var openStoryId by mutableStateOf<String?>(null)
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         intent.getStringExtra(EXTRA_CHAT)?.let { openChatId = it }
+        intent.getStringExtra(EXTRA_STORY)?.let { openStoryId = it }
     }
 
     override fun onStop() {
@@ -74,6 +77,8 @@ class MainActivity : FragmentActivity() {
         app.ember.work.Generation.init(applicationContext)
         locked = Store.settings.lockEnabled
         openChatId = intent?.getStringExtra(EXTRA_CHAT)
+        openStoryId = intent?.getStringExtra(EXTRA_STORY)
+        app.ember.work.StoryWorker.schedule(applicationContext)
         // So Ember can tell you when a reply is ready while you're away.
         if (android.os.Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -96,6 +101,9 @@ class MainActivity : FragmentActivity() {
                     androidx.compose.runtime.LaunchedEffect(openChatId) {
                         openChatId?.let { id -> if (Store.character(id) != null) nav.navigate("chat/$id") { launchSingleTop = true }; openChatId = null }
                     }
+                    androidx.compose.runtime.LaunchedEffect(openStoryId) {
+                        openStoryId?.let { id -> if (Store.story(id) != null) nav.navigate("story/$id") { launchSingleTop = true }; openStoryId = null }
+                    }
                     NavHost(navController = nav, startDestination = "library") {
                         composable("library") {
                             LibraryScreen(
@@ -111,7 +119,11 @@ class MainActivity : FragmentActivity() {
                             ChatsScreen(
                                 openChat = { nav.navigate("chat/$it") },
                                 bottomBar = { EmberBottomBar(Section.Chats, bottom) },
+                                openStory = { nav.navigate("story/$it") },
                             )
+                        }
+                        composable("story/{id}") { e ->
+                            app.ember.ui.StoryScreen(e.arguments?.getString("id").orEmpty(), onBack = { nav.popBackStack() })
                         }
                         composable("ideas") {
                             IdeasScreen(

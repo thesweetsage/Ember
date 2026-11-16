@@ -148,6 +148,25 @@ object Json {
         .put("in", u.input).put("out", u.output).put("cost", u.cost)
     fun usage(o: JSONObject) = UsageRow(o.str("month"), o.str("model"), o.str("tag"), o.optLong("in"), o.optLong("out"), o.optDouble("cost", 0.0))
 
+    // ----- daily stories -----
+    fun story(st: Story): JSONObject = JSONObject()
+        .put("id", st.id).put("characterId", st.characterId).put("personaId", nul(st.personaId))
+        .put("chapters", arr(st.chapters) {
+            JSONObject().put("id", it.id).put("title", it.title).put("text", it.text).put("createdAt", it.createdAt).put("read", it.read)
+        })
+        .put("nextDirection", st.nextDirection).put("suggestions", JSONArray(st.suggestions)).put("summary", st.summary)
+        .put("words", st.words).put("hour", st.hour).put("active", st.active).put("createdAt", st.createdAt)
+
+    fun story(o: JSONObject) = Story(
+        id = o.str("id"), characterId = o.str("characterId"), personaId = o.strOrNull("personaId"),
+        chapters = o.objects("chapters") {
+            StoryChapter(it.str("id").ifEmpty { newId() }, it.str("title"), it.str("text"), it.optLong("createdAt", 0L), it.optBoolean("read", false))
+        },
+        nextDirection = o.str("nextDirection"), suggestions = o.strings("suggestions"), summary = o.str("summary"),
+        words = o.optInt("words", 2500), hour = o.optInt("hour", 8), active = o.optBoolean("active", true),
+        createdAt = o.optLong("createdAt", 0L),
+    )
+
     // ----- settings -----
     fun settings(s: Settings): JSONObject = JSONObject()
         .put("baseUrl", s.baseUrl).put("model", s.model).put("temperature", s.temperature)
