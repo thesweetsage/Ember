@@ -144,7 +144,6 @@ fun ChatScreen(
     var customLength by remember { mutableStateOf(false) }
     var confirmNewChat by remember { mutableStateOf(false) }
     var pickingModel by remember { mutableStateOf(false) }
-    var moving by remember { mutableStateOf(false) }
     var whatNextOpen by remember { mutableStateOf(false) }
     var exportAsk by remember { mutableStateOf(false) }
     var scenario by remember { mutableStateOf(false) }
@@ -192,11 +191,12 @@ fun ChatScreen(
 
     if (playlist) PlaylistDialog(characterId, onDismiss = { playlist = false })
 
-    if (whatNextOpen) WhatNextSheet(vm, onDismiss = { whatNextOpen = false })
+    if (whatNextOpen) WhatNextSheet(
+        vm, character.name, group = character.isGroup,
+        members = character.members.map { it.name }.filter { it.isNotBlank() },
+        onDismiss = { whatNextOpen = false },
+    )
 
-    if (moving) {
-        MoveItAlongSheet(character.name, onPick = { instruction, chapter -> moving = false; vm.nudge(instruction, chapter) }, onDismiss = { moving = false }, group = character.isGroup)
-    }
     if (vm.pickingCompare) {
         ModelPicker(Store.settings.model, onPick = { id, _, _ -> vm.pickingCompare = false; vm.compare(id) }, onDismiss = { vm.pickingCompare = false })
     }
@@ -347,7 +347,6 @@ fun ChatScreen(
                     }
                 }
                 item { IconChip(Icons.Outlined.Explore, "What next?") { if (!vm.busy && messages.isNotEmpty()) whatNextOpen = true } }
-                item { IconChip(Icons.Filled.FastForward, "Move it along") { if (!vm.busy) moving = true } }
                 item { IconChip(Icons.Outlined.Rule, "Rules · ${Store.rules.count { it.enabled }} on") { openRules() } }
                 if (chat?.direction.isNullOrBlank()) {
                     item { IconChip(Icons.Outlined.Edit, "Direction") { editDirection = true } }

@@ -319,20 +319,43 @@ object PromptBuilder {
         )
     }
 
-    /** "What next?": three directions for the next reply, fitted to this exact moment. Lines of "Title | one sentence". */
-    fun forWhatNext(p: PromptContext, recent: List<Message>, avoid: List<String>): List<ChatMsg> {
+    /**
+     * "What next?": three previews of where the next reply could go. Lines of "Title | one or two sentences".
+     * [direction], [mood], [focus] and [note] are her choices; option 1 follows them closely, option 2 takes the same road
+     * differently, option 3 offers a different mood or turn.
+     */
+    fun forWhatNext(
+        p: PromptContext, recent: List<Message>, avoid: List<String>,
+        direction: String? = null, mood: String? = null, focus: List<String> = emptyList(), note: String = "",
+    ): List<ChatMsg> {
         val charName = p.character.name.ifBlank { "the character" }
         val userName = p.persona?.name?.ifBlank { null } ?: "the user"
         val fill = { t: String -> t.replace("{{char}}", charName).replace("{{user}}", userName) }
         val transcript = recent.joinToString("\n\n") { (if (it.fromUser) "$userName: " else "$charName: ") + it.text.take(1800) }
+        val group = p.character.isGroup
+        val chose = direction != null || mood != null || focus.isNotEmpty() || note.isNotBlank()
         val sys = buildString {
             append("You help steer a private, fictional interactive story between adults; dark and explicit themes are allowed. ")
-            append("Suggest 3 different directions the very next reply from $charName could take, growing naturally out of this exact moment. ")
-            if (p.character.isGroup) append("$charName is a group of several characters; directions can bring in or focus on particular members. ")
-            append("Make them clearly different from each other: for example one tender or emotional, one tense or dramatic, one bold or spicy, ")
-            append("unless the moment suggests better options. Each must fit who the character is and where the story is. ")
-            append("Never decide what $userName does, says or feels. ")
-            append("Reply with exactly 3 lines, each like this: Short title | One sentence describing what happens. No numbering, nothing else.")
+            append("Suggest 3 previews of where the very next reply could take the story. Each preview says what happens and where it leads, ")
+            append("so she can see where the story is going before choosing. ")
+            if (group) {
+                val names = p.character.members.map { it.name }.filter { it.isNotBlank() }
+                append("$charName is a group of several characters${if (names.isNotEmpty()) " (" + names.joinToString(", ") + ")" else ""}. ")
+                if (focus.isEmpty()) append("Vary which of them each option centres on, and favour members who haven't been in focus lately, bringing them into the scene. ")
+            }
+            if (chose) {
+                append("\nHer choices for this turn:\n")
+                direction?.let { append("- Direction: $it\n") }
+                mood?.let { append("- Mood: $it\n") }
+                if (focus.isNotEmpty()) append("- Focus on: ${focus.joinToString(", ")}\n")
+                if (note.isNotBlank()) append("- Her thoughts: ${note.trim()}\n")
+                append("Option 1 follows her choices and thoughts as closely as possible. Option 2 goes the same way with a different take. ")
+                append("Option 3 is something else worth considering: a different mood or turn she may not have thought of. ")
+            } else {
+                append("Make them clearly different from each other: for example one tender or emotional, one tense or dramatic, one bold or spicy, unless the moment suggests better. ")
+            }
+            append("Each must fit who the characters are and where the story is. Never decide what $userName does, says or feels. ")
+            append("Reply with exactly 3 lines, each like this: Short title | One or two sentences on what happens and where it leads. No numbering, nothing else.")
         }
         val user = buildString {
             append("The character:\n")

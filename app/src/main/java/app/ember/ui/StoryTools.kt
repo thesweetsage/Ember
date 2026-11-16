@@ -44,85 +44,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
-/** One "Move it along" option: what you see, and what the model is told. */
-private data class Nudge(val title: String, val sub: String, val instruction: (String) -> String, val chapter: Boolean)
-
-private val NUDGES = listOf(
-    Nudge("Skip to the next scene", "Wrap this moment up and jump to what comes next", { n ->
-        "Bring this scene to a natural close in a line or two, then jump ahead to the next meaningful scene between $n and the user's character. Make the jump clear in the first line."
-    }, true),
-    Nudge("Time skip", "Hours or days later", { n ->
-        "Skip ahead in time: hours, days or longer, whatever suits the story. Show in a sentence or two what happened in between, then land in a new moment with $n."
-    }, true),
-    Nudge("Somewhere new", "Move the story to a different place", { n ->
-        "Move the story to a new location that fits where things are heading. Set the place vividly through what $n notices, then carry on from there."
-    }, true),
-    Nudge("Something unexpected", "An arrival, a call, news, a discovery", { _ ->
-        "Something unexpected happens that changes the moment: someone arrives, a phone rings, news lands, something is discovered, or something goes wrong. It must fit this world and raise the stakes."
-    }, false),
-    Nudge("A new side of him", "A secret, a memory, something he's never shown", { n ->
-        "$n reveals something new about himself, prompted naturally by the moment: a secret, a memory, a want or a side of him not shown before."
-    }, false),
-    Nudge("A new side of them", "One of them reveals a secret, a memory, something never shown", { n ->
-        "One of $n reveals something new about themselves, prompted naturally by the moment: a secret, a memory, a want or a side not shown before. Show how the others react."
-    }, false),
-    Nudge("Turn up the heat", "More tension, more desire", { n ->
-        "Raise the tension and desire between $n and the user's character, in a way true to who $n is and to where the scene already is."
-    }, false),
-)
-
-/** "Move it along": quick ways to push the story forward. */
-@Composable
-fun MoveItAlongSheet(characterName: String, onPick: (instruction: String, chapter: Boolean) -> Unit, onDismiss: () -> Unit, group: Boolean = false) {
-    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var own by remember { mutableStateOf("") }
-    var ownChapter by remember { mutableStateOf(false) }
-    val name = characterName.ifBlank { "the character" }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet, containerColor = EmberColors.Bg) {
-        Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp).padding(bottom = 16.dp).navigationBarsPadding().imePadding(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text("Move it along", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Text(if (group) "The next reply goes in this direction." else "$name writes the next reply in this direction.", fontSize = 13.sp, color = EmberColors.Muted)
-            Spacer(Modifier.height(4.dp))
-            NUDGES.filter { if (group) it.title != "A new side of him" else it.title != "A new side of them" }.forEach { n ->
-                Column(
-                    Modifier.fillMaxWidth().background(EmberColors.Surface, RoundedCornerShape(14.dp))
-                        .border(1.dp, EmberColors.Line, RoundedCornerShape(14.dp))
-                        .clickable { onPick(n.instruction(name), n.chapter) }.padding(horizontal = 14.dp, vertical = 11.dp),
-                ) {
-                    Text(n.title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                    Text(n.sub + if (n.chapter) " · new chapter" else "", fontSize = 12.5.sp, color = EmberColors.Muted)
-                }
-            }
-            Spacer(Modifier.height(4.dp))
-            Text("Or your own", fontSize = 13.sp, color = EmberColors.Muted)
-            TextField(
-                value = own, onValueChange = { own = it },
-                trailingIcon = { MicButton({ own = appendDictation(own, it) }) },
-                placeholder = { Text("e.g. his ex shows up at the party", color = EmberColors.Dim) },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp), maxLines = 4,
-                colors = fieldColors(), shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(
-                    checked = ownChapter, onCheckedChange = { ownChapter = it },
-                    colors = CheckboxDefaults.colors(checkedColor = EmberColors.Red),
-                )
-                Text("Start a new chapter (for the book export)", fontSize = 13.sp, color = EmberColors.TextSoft)
-            }
-            Button(
-                onClick = { onPick(own.trim(), ownChapter) }, enabled = own.isNotBlank(),
-                modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(24.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = EmberColors.Red),
-            ) { Text("Go", fontWeight = FontWeight.SemiBold) }
-        }
-    }
-}
-
 /** Two versions of the last reply, side by side: the current one and the one from another model. */
 @Composable
 fun CompareScreen(vm: ChatViewModel, current: String, textSize: Float) {
@@ -202,38 +123,97 @@ fun ExportBookDialog(characterName: String, chatCount: Int, onPick: (all: Boolea
     )
 }
 
-/** "What next?": three directions written for this exact moment; tap one to steer the next reply. */
+
+/** A direction for the next reply: what she sees, what the model is told, and whether it starts a new chapter. */
+private data class Direction(val label: String, val guide: String, val chapter: Boolean)
+
+private fun directions(group: Boolean) = listOf(
+    Direction("Stay in the scene", "Keep going in this moment; no jump in time or place.", false),
+    Direction("Next scene", "Bring this scene to a natural close in a line or two, then jump to the next meaningful scene. Make the jump clear in the first line.", true),
+    Direction("Time skip", "Skip ahead hours, days or longer. Show in a sentence or two what happened in between, then land in a new moment.", true),
+    Direction("Somewhere new", "Move the story to a new place that fits where things are heading, set through what the characters notice.", true),
+    Direction("Something unexpected", "Something unexpected happens: an arrival, a call, news, a discovery, something going wrong. It must fit this world and raise the stakes.", false),
+    Direction(if (group) "A new side of them" else "A new side of him",
+        if (group) "One of them reveals something new about themselves: a secret, a memory, a want, a side not shown before; the others react."
+        else "He reveals something new about himself, prompted by the moment: a secret, a memory, a want, a side not shown before.", false),
+    Direction("Turn up the heat", "Raise the tension and desire, true to who they are and where the scene already is.", false),
+)
+
+private val MOODS = listOf("Tender", "Playful", "Flirty", "Cosy", "Tense", "Dramatic", "Spicy", "Dark", "Funny")
+
+/**
+ * "What next?": pick a direction, a mood, who to focus on (for groups) and add your own thoughts, then preview three
+ * places the story could go. The first follows your choices closely, the second takes the same road differently,
+ * the third offers another mood. Tap one and the next reply goes there.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-fun WhatNextSheet(vm: ChatViewModel, onDismiss: () -> Unit) {
+fun WhatNextSheet(vm: ChatViewModel, characterName: String, group: Boolean, members: List<String>, onDismiss: () -> Unit) {
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    androidx.compose.runtime.LaunchedEffect(Unit) { if (vm.whatNext.isEmpty()) vm.suggestWhatNext(more = false) }
+    val dirs = remember(group) { directions(group) }
+    var dir by remember { mutableStateOf<Direction?>(null) }
+    var mood by remember { mutableStateOf<String?>(null) }
+    var focus by remember { mutableStateOf(setOf<String>()) }
+    var note by remember { mutableStateOf("") }
+    fun choice() = ChatViewModel.WhatNextChoice(
+        direction = dir?.label, directionGuide = dir?.guide, chapter = dir?.chapter == true,
+        mood = mood, focus = focus.toList(), note = note,
+    )
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet, containerColor = EmberColors.Bg) {
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp).padding(bottom = 16.dp).navigationBarsPadding(),
+                .padding(horizontal = 16.dp).padding(bottom = 16.dp).navigationBarsPadding().imePadding(),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text("What could happen next", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Text("Written for this moment. Tap one and the next reply goes that way.", fontSize = 13.sp, color = EmberColors.Muted)
-            if (vm.whatNext.isEmpty() && vm.whatNextBusy) Text("Thinking…", color = EmberColors.Muted, modifier = Modifier.padding(vertical = 12.dp))
-            vm.whatNext.forEach { (title, what) ->
+            Text("What next?", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text("Choose anything you like (or nothing), then preview where the story could go.", fontSize = 13.sp, color = EmberColors.Muted)
+
+            Text("Direction", fontSize = 13.sp, color = EmberColors.TextSoft)
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                dirs.forEach { d -> TagChip(d.label, on = dir == d) { dir = if (dir == d) null else d } }
+            }
+            Text("Mood", fontSize = 13.sp, color = EmberColors.TextSoft)
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                MOODS.forEach { m -> TagChip(m, on = mood == m) { mood = if (mood == m) null else m } }
+            }
+            if (group && members.isNotEmpty()) {
+                Text("Focus on", fontSize = 13.sp, color = EmberColors.TextSoft)
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    members.forEach { n -> TagChip(n, on = n in focus) { focus = if (n in focus) focus - n else focus + n } }
+                    TagChip("Everyone", on = focus.size == members.size) { focus = if (focus.size == members.size) emptySet() else members.toSet() }
+                }
+            }
+            TextField(
+                value = note, onValueChange = { note = it }, maxLines = 4,
+                trailingIcon = { MicButton({ note = appendDictation(note, it) }) },
+                placeholder = { Text("Your thoughts (optional), e.g. Theo walks in and isn't happy to see Bram so close to her", color = EmberColors.Dim) },
+                modifier = Modifier.fillMaxWidth(), colors = fieldColors(), shape = RoundedCornerShape(12.dp),
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+            )
+            Button(
+                onClick = { vm.suggestWhatNext(more = false, choice = choice()) }, enabled = !vm.whatNextBusy,
+                modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = EmberColors.Red),
+            ) { Text(if (vm.whatNextBusy && vm.whatNext.isEmpty()) "Thinking…" else "Show me options", fontWeight = FontWeight.SemiBold) }
+
+            vm.whatNext.forEachIndexed { i, (title, what) ->
+                val tag = if (vm.whatNext.size >= 3 && i % 3 == 2 && (dir != null || mood != null || note.isNotBlank() || focus.isNotEmpty())) "Something different · " else ""
                 Column(
                     Modifier.fillMaxWidth().background(EmberColors.Surface, RoundedCornerShape(14.dp))
                         .border(1.dp, EmberColors.Line, RoundedCornerShape(14.dp))
                         .clickable {
                             onDismiss()
-                            vm.nudge("$title: $what", chapter = false)
-                            vm.clearWhatNext()
+                            vm.takeWhatNext(title, what)
                         }.padding(horizontal = 14.dp, vertical = 12.dp),
                 ) {
-                    Text(title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text(tag + title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     Text(what, fontSize = 13.5.sp, lineHeight = 19.sp, color = EmberColors.TextSoft)
                 }
             }
             vm.whatNextError?.let { Text(it, color = EmberColors.RedSoft, fontSize = 13.sp) }
             if (vm.whatNext.isNotEmpty()) {
                 OutlinedButton(
-                    onClick = { vm.suggestWhatNext(more = true) }, enabled = !vm.whatNextBusy,
+                    onClick = { vm.suggestWhatNext(more = true, choice = choice()) }, enabled = !vm.whatNextBusy,
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
                 ) { Text(if (vm.whatNextBusy) "Thinking…" else "3 more", color = EmberColors.Text) }
             }

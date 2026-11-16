@@ -472,8 +472,15 @@ class ChatViewModel : ViewModel() {
     var whatNextError by mutableStateOf<String?>(null)
         private set
 
-    fun suggestWhatNext(more: Boolean) {
+    /** Her choices for the current "What next?" previews, reused for "3 more" and when she picks one. */
+    data class WhatNextChoice(val direction: String? = null, val directionGuide: String? = null, val chapter: Boolean = false,
+                              val mood: String? = null, val focus: List<String> = emptyList(), val note: String = "")
+    private var whatNextChoice = WhatNextChoice()
+
+    fun suggestWhatNext(more: Boolean, choice: WhatNextChoice? = null) {
         if (whatNextBusy) return
+        if (choice != null) whatNextChoice = choice
+        val c = whatNextChoice
         val ch = chat ?: return
         val ctx = context(ch) ?: return
         val ep = if (Store.backupReady && Store.settings.creativeUseBackup) backupEndpoint()
@@ -483,7 +490,12 @@ class ChatViewModel : ViewModel() {
         whatNextBusy = true; whatNextError = null
         app.ember.work.Generation.launchQuiet(UsageTag(characterId)) {
             try {
-                val r = LlmClient.complete(ep, PromptBuilder.forWhatNext(ctx, ch.messages.takeLast(8), avoid), null, 1.0)
+                val prompt = PromptBuilder.forWhatNext(
+                    ctx, ch.messages.takeLast(8), avoid,
+                    direction = c.direction?.let { d -> d + (c.directionGuide?.let { " ($it)" } ?: "") },
+                    mood = c.mood, focus = c.focus, note = c.note,
+                )
+                val r = LlmClient.complete(ep, prompt, null, 1.0)
                 val got = r.text.lines().map { it.trim().replace(Regex("^(\\d+[.)]|[-*•])\\s*"), "").replace("**", "") }
                     .filter { "|" in it }
                     .map { it.substringBefore("|").trim() to it.substringAfter("|").trim() }
@@ -496,6 +508,19 @@ class ChatViewModel : ViewModel() {
                 whatNextBusy = false
             }
         }
+    }
+
+    /** She picked a preview: the next reply goes there, with her direction, mood and focus. */
+    fun takeWhatNext(title: String, what: String) {
+        val c = whatNextChoice
+        val parts = buildList {
+            add("$title: $what")
+            c.directionGuide?.let { add(it) }
+            c.mood?.let { add("Mood: $it.") }
+            if (c.focus.isNotEmpty()) add("Focus on: ${c.focus.joinToString(", ")}.")
+        }
+        nudge(parts.joinToString(" "), chapter = c.chapter)
+        clearWhatNext()
     }
 
     fun clearWhatNext() { whatNext = emptyList(); whatNextError = null }
