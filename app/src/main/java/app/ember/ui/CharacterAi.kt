@@ -239,8 +239,22 @@ fun NewScenarioDialog(character: Character, onStarted: (chatCharacterId: String)
 }
 
 /** "Make a variant": a copy of the character reworked with your changes, opened in the editor to review. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-fun VariantDialog(character: Character, onReady: () -> Unit, onDismiss: () -> Unit) {
+fun VariantDialog(character: Character, onReady: () -> Unit, onDismiss: () -> Unit, startMember: String? = null) {
+    // For a group: start from the whole group, or from one member (who becomes a character of his own).
+    val members = character.members.filter { it.name.isNotBlank() }
+    var memberId by remember { mutableStateOf(startMember ?: if (character.isGroup) null else null) }
+    var type by remember { mutableStateOf(CreativePrompts.VariantType.Any) }
+    fun base(): Character = members.firstOrNull { it.id == memberId }?.let { m ->
+        Character(
+            name = m.name.substringBefore(',').trim(), description = "",
+            personality = m.about, background = m.background,
+            tags = character.tags.filter { t -> app.ember.data.Tags.name(t).lowercase() !in setOf("poly", "reverse harem", "why choose", "group", "polyamory") },
+            avatar = character.avatar, chatBg = character.chatBg, group = false, personaId = character.personaId,
+        )
+    } ?: character
+    val who = base().name
     AiHelperDialog(
         title = "Make a variant of ${character.name}",
         explain = "Describe what's different and the whole character is reworked to match. It opens in the editor so you can check it before creating. " +
@@ -248,21 +262,42 @@ fun VariantDialog(character: Character, onReady: () -> Unit, onDismiss: () -> Un
         noteLabel = "What's different",
         notePlaceholder = "e.g. he's her rival instead of her bodyguard, set in 1920s Paris",
         noteRequired = true,
-        prompt = { changes -> CreativePrompts.variant(character, changes) },
-        suggest = { avoid -> CreativePrompts.suggestions(character, forVariant = true, avoid = avoid) },
+        prompt = { changes -> CreativePrompts.variant(base(), changes, type) },
+        suggest = { avoid -> CreativePrompts.suggestions(base(), forVariant = true, avoid = avoid, type = type) },
         preferBackup = Ai.creativeOnBackup,
         showResult = false,
         onDismiss = onDismiss,
         extra = {
-            TextButton(onClick = { Store.editorDraft = variantOf(character, emptyMap()); Store.editorDraftBuildId = null; onReady() }) {
-                Text("Copy as is (no AI)", color = EmberColors.RedSoft)
+            if (members.isNotEmpty()) {
+                Text("Start from", fontSize = 13.sp, color = EmberColors.TextSoft)
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    TagChip("The whole group", on = memberId == null) { memberId = null }
+                    members.forEach { m -> TagChip(m.name.substringBefore(',').trim(), on = memberId == m.id) { memberId = m.id } }
+                }
+            }
+            Text("Keep", fontSize = 13.sp, color = EmberColors.TextSoft)
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                TagChip("Same type", on = type == CreativePrompts.VariantType.Same) { type = CreativePrompts.VariantType.Same }
+                TagChip("Other types that fit", on = type == CreativePrompts.VariantType.Other) { type = CreativePrompts.VariantType.Other }
+                TagChip("Anything", on = type == CreativePrompts.VariantType.Any) { type = CreativePrompts.VariantType.Any }
+            }
+            Text(
+                when (type) {
+                    CreativePrompts.VariantType.Same -> "$who stays the same kind of man in the same kind of world (a pirate stays a pirate); his story and situation change."
+                    CreativePrompts.VariantType.Other -> "$who keeps his personality and how he loves, in a different role and world that suits him."
+                    CreativePrompts.VariantType.Any -> "Any change you describe."
+                },
+                fontSize = 12.5.sp, color = EmberColors.Dim,
+            )
+            TextButton(onClick = { Store.editorDraft = variantOf(base(), emptyMap()); Store.editorDraftBuildId = null; onReady() }) {
+                Text(if (memberId != null) "Copy $who as his own character (no AI)" else "Copy as is (no AI)", color = EmberColors.RedSoft)
             }
         },
     ) { result ->
         val parts = CreativePrompts.parseBuilder(result).filter { it.section != null }.associate { it.section!!.lowercase() to it.text }
         Text("Sections ready: ${parts.size} of 6", fontSize = 13.sp, color = EmberColors.Muted)
         Button(
-            onClick = { Store.editorDraft = variantOf(character, parts); Store.editorDraftBuildId = null; onReady() },
+            onClick = { Store.editorDraft = variantOf(base(), parts); Store.editorDraftBuildId = null; onReady() },
             modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(25.dp),
             colors = ButtonDefaults.buttonColors(containerColor = EmberColors.Red),
         ) { Text("Review in the editor", fontWeight = FontWeight.SemiBold) }

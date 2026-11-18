@@ -82,6 +82,29 @@ fun favouriteCharacters(limit: Int): List<Character> =
         .toList().sortedByDescending { it.second }
         .mapNotNull { Store.character(it.first) }.filter { !it.archived }.take(limit)
 
+/**
+ * If her text names one of her own characters (or one member of a group, like "Bram Kettle"), that person's full
+ * sheet, so ideas "in the style of" them are built on who they really are.
+ */
+fun referencedSheet(text: String): String {
+    if (text.isBlank()) return ""
+    val t = text.lowercase()
+    fun named(name: String): Boolean {
+        val n = name.lowercase().substringBefore(',').trim()
+        if (n.length < 3) return false
+        val first = n.split(' ').first()
+        return t.contains(n) || (first.length >= 4 && Regex("\\b" + Regex.escape(first) + "\\b").containsMatchIn(t))
+    }
+    for (c in Store.characters) {
+        c.members.firstOrNull { named(it.name) }?.let { m ->
+            return "Name: ${m.name} (one of the group \"${c.name}\")\nPersonality:\n${m.about.take(4000)}\nBackground:\n${m.background.take(3000)}" +
+                (if (c.background.isNotBlank()) "\nTheir shared world:\n${c.background.take(1500)}" else "")
+        }
+    }
+    Store.characters.firstOrNull { named(it.name) }?.let { return CreativePrompts.card(it).take(7000) }
+    return ""
+}
+
 class IdeasViewModel : ViewModel() {
     var mode by mutableStateOf(IdeaMode.Tags)
     var tags by mutableStateOf(listOf<String>())
@@ -129,6 +152,7 @@ class IdeasViewModel : ViewModel() {
                     usedTags, notes, 6, avoid, gender,
                     favourites = CreativePrompts.favouritesBrief(favs),
                     vein = if (mode == IdeaMode.Vein) vein else "",
+                    reference = referencedSheet(listOf(notes, if (mode == IdeaMode.Vein) vein else "").joinToString(" ")),
                     liked = Store.liked, disliked = Store.disliked,
                 )
                 val text = Ai.complete(prompt, null, 0.9, preferBackup = Ai.creativeOnBackup)

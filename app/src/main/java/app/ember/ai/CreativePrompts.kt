@@ -21,6 +21,8 @@ object CreativePrompts {
         favourites: String = "",
         /** "In the vein of…": a character or trope she loves. */
         vein: String = "",
+        /** The full sheet of one of her own characters she named, so "in the style of Bram" means her Bram. */
+        reference: String = "",
         liked: List<String> = emptyList(),
         disliked: List<String> = emptyList(),
     ): List<ChatMsg> {
@@ -86,6 +88,11 @@ Output only the concepts, one per line, each starting with "- ".
                 "\n\nShe wants concepts in the vein of: ${vein.trim()}. Capture that character's personality and energy faithfully " +
                     "(their temperament, values and how they treat people) in original adult characters; never reuse names, worlds or plots from " +
                     "existing books, films, anime or shows."
+            )
+            if (reference.isNotBlank()) append(
+                "\n\nShe named one of her own characters as the model. Here is his full sheet. Every concept keeps his core personality, " +
+                    "temperament, voice and the way he treats her, and stays close to his type unless she asks otherwise; vary his situation, " +
+                    "story and setting. Never copy his name.\n$reference"
             )
             if (liked.isNotEmpty()) append("\n\nIdeas she liked (more like these, in spirit):\n" + liked.take(12).joinToString("\n") { "- $it" })
             if (disliked.isNotEmpty()) append("\n\nIdeas she disliked (avoid what these have in common):\n" + disliked.take(12).joinToString("\n") { "- $it" })
@@ -341,9 +348,19 @@ ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take
     }
 
     /** Short ideas for "New scenario" or "Make a variant", fitted to this character. One per line. */
-    fun suggestions(c: app.ember.data.Character, forVariant: Boolean, avoid: List<String>): List<ChatMsg> {
+    /** For variants: keep his type (a pirate stays a pirate), other types that suit him, or anything. */
+    enum class VariantType { Same, Other, Any }
+
+    fun suggestions(c: app.ember.data.Character, forVariant: Boolean, avoid: List<String>, type: VariantType = VariantType.Any): List<ChatMsg> {
         val group = if (c.isGroup) " This card is a GROUP of characters (poly / reverse harem): every idea involves the whole group, never just one of them." else ""
-        val ask0 = if (forVariant) {
+        val ask0 = if (forVariant && type == VariantType.Same) {
+            "Suggest 5 variants of this character that KEEP HIS TYPE: the same kind of man in the same kind of world and role (a pirate stays a pirate, " +
+                "a surgeon stays a surgeon), with the same core personality. Vary everything else: his situation, history, ship or workplace, " +
+                "rank, the dynamic with her, how they meet, a darker or softer edge. Each is what she'd type as 'what's different'."
+        } else if (forVariant && type == VariantType.Other) {
+            "Suggest 5 variants of this character in OTHER roles and worlds that suit his personality: the same core man (temperament, voice, " +
+                "how he loves) reimagined as a different type, each one a natural fit for who he is. Each is what she'd type as 'what's different'."
+        } else if (forVariant) {
             "Suggest 5 different variants of this character: the same core man, changed in one bold way each (his role, the era or world, " +
                 "the dynamic with her, a darker or softer version, a supernatural twist). Each is what she'd type as 'what's different'."
         } else {
@@ -363,7 +380,16 @@ ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take
         .filter { it.length in 8..220 }.take(5)
 
     /** "Make a variant": the same character reworked with her changes, as builder-style sections. */
-    fun variant(c: app.ember.data.Character, changes: String): List<ChatMsg> {
+    fun variant(c: app.ember.data.Character, changes: String, type: VariantType = VariantType.Any): List<ChatMsg> {
+        val keep = when (type) {
+            VariantType.Same -> " Keep his type, world and role (a pirate stays a pirate) and his core personality; change what she asks."
+            VariantType.Other -> " Keep his core personality, voice and how he loves; place him in the new role and world she describes."
+            VariantType.Any -> ""
+        }
+        return variant0(c, changes + keep)
+    }
+
+    private fun variant0(c: app.ember.data.Character, changes: String): List<ChatMsg> {
         val names = listOf("Name", "Short description", "Personality", "Background", "Opening message", "Example dialogue")
         val system = "$FRAME\n\n" + (if (c.isGroup) "This card is a GROUP of several characters: keep every member distinct in the variant. In Personality, first write a short " +
             "paragraph on how they are together, then give each member their own section starting with a heading line \"### Their name\". " else "") +
