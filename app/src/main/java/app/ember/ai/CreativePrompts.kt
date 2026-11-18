@@ -356,13 +356,16 @@ ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take
         val group = if (c.isGroup) " This card is a GROUP of characters (poly / reverse harem): every idea involves the whole group, never just one of them." else ""
         val fixed = " His personality is fixed and must not change at all: same temperament, humour, voice and the way he treats her. " +
             "He is a standalone character and the only love interest; no crew, group or other love interests."
+        val concept = " Each idea is a CHARACTER CONCEPT, like the one-line blurb of a romance novel: who he is in this version and the " +
+            "premise between him and her (for example: \"A gunner on a privateer who's sworn off the sea's women, until the governor's " +
+            "daughter stows away in his powder room.\"). Never a scene, a plot moment or something that happens in a story already under way."
         val ask0 = if (forVariant && type == VariantType.Same) {
-            "Suggest 5 new situations for this exact character that KEEP HIS TYPE: the same role, job and kind of world (if he's a pirate gunner, " +
-                "he is still a pirate gunner). Vary only his circumstances: where he is, what's at stake, how he and she meet, what pulls them together.$fixed " +
-                "Each is what she'd type as 'what's different'."
+            "Suggest 5 new versions of this exact character that KEEP HIS TYPE: the same role, job and kind of world (if he's a pirate gunner, " +
+                "he is still a pirate gunner), each with a different premise: a different ship or crew situation, his circumstances, " +
+                "who she is to him and how their story starts.$concept$fixed Each is what she'd type as 'what's different'."
         } else if (forVariant && type == VariantType.Other) {
-            "Suggest 5 alternate universes for this exact character: a different role, job and world in each, chosen because it suits who he is." +
-                "$fixed Each is what she'd type as 'what's different'."
+            "Suggest 5 alternate-universe versions of this exact character: a different role, job and world in each, chosen because it " +
+                "suits who he is, each with its own premise between him and her.$concept$fixed Each is what she'd type as 'what's different'."
         } else if (forVariant) {
             "Suggest 5 different variants of this character: the same core man, changed in one bold way each (his role, the era or world, " +
                 "the dynamic with her, a darker or softer version, a supernatural twist). Each is what she'd type as 'what's different'."
