@@ -97,8 +97,7 @@ fun referencedSheet(text: String): String {
     }
     for (c in Store.characters) {
         c.members.firstOrNull { named(it.name) }?.let { m ->
-            return "Name: ${m.name} (one of the group \"${c.name}\")\nPersonality:\n${m.about.take(4000)}\nBackground:\n${m.background.take(3000)}" +
-                (if (c.background.isNotBlank()) "\nTheir shared world:\n${c.background.take(1500)}" else "")
+            return "Name: ${m.name}\nPersonality:\n${m.about.take(4000)}\nBackground:\n${m.background.take(3000)}"
         }
     }
     Store.characters.firstOrNull { named(it.name) }?.let { return CreativePrompts.card(it).take(7000) }

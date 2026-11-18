@@ -90,9 +90,10 @@ Output only the concepts, one per line, each starting with "- ".
                     "existing books, films, anime or shows."
             )
             if (reference.isNotBlank()) append(
-                "\n\nShe named one of her own characters as the model. Here is his full sheet. Every concept keeps his core personality, " +
-                    "temperament, voice and the way he treats her, and stays close to his type unless she asks otherwise; vary his situation, " +
-                    "story and setting. Never copy his name.\n$reference"
+                "\n\nShe named one of her own characters as the model. Here is his full sheet. His personality is FIXED: every concept is this " +
+                    "exact man (same temperament, humour, voice, the way he treats her and how he loves), never cruder, ruder, colder or darker. " +
+                    "Each concept is about him alone as the only love interest, never a group. Stay close to his type unless she asks otherwise; " +
+                    "vary only his situation, story and setting.\n$reference"
             )
             if (liked.isNotEmpty()) append("\n\nIdeas she liked (more like these, in spirit):\n" + liked.take(12).joinToString("\n") { "- $it" })
             if (disliked.isNotEmpty()) append("\n\nIdeas she disliked (avoid what these have in common):\n" + disliked.take(12).joinToString("\n") { "- $it" })
@@ -353,13 +354,15 @@ ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take
 
     fun suggestions(c: app.ember.data.Character, forVariant: Boolean, avoid: List<String>, type: VariantType = VariantType.Any): List<ChatMsg> {
         val group = if (c.isGroup) " This card is a GROUP of characters (poly / reverse harem): every idea involves the whole group, never just one of them." else ""
+        val fixed = " His personality is fixed and must not change at all: same temperament, humour, voice and the way he treats her. " +
+            "He is a standalone character and the only love interest; no crew, group or other love interests."
         val ask0 = if (forVariant && type == VariantType.Same) {
-            "Suggest 5 variants of this character that KEEP HIS TYPE: the same kind of man in the same kind of world and role (a pirate stays a pirate, " +
-                "a surgeon stays a surgeon), with the same core personality. Vary everything else: his situation, history, ship or workplace, " +
-                "rank, the dynamic with her, how they meet, a darker or softer edge. Each is what she'd type as 'what's different'."
+            "Suggest 5 new situations for this exact character that KEEP HIS TYPE: the same role, job and kind of world (if he's a pirate gunner, " +
+                "he is still a pirate gunner). Vary only his circumstances: where he is, what's at stake, how he and she meet, what pulls them together.$fixed " +
+                "Each is what she'd type as 'what's different'."
         } else if (forVariant && type == VariantType.Other) {
-            "Suggest 5 variants of this character in OTHER roles and worlds that suit his personality: the same core man (temperament, voice, " +
-                "how he loves) reimagined as a different type, each one a natural fit for who he is. Each is what she'd type as 'what's different'."
+            "Suggest 5 alternate universes for this exact character: a different role, job and world in each, chosen because it suits who he is." +
+                "$fixed Each is what she'd type as 'what's different'."
         } else if (forVariant) {
             "Suggest 5 different variants of this character: the same core man, changed in one bold way each (his role, the era or world, " +
                 "the dynamic with her, a darker or softer version, a supernatural twist). Each is what she'd type as 'what's different'."
@@ -380,13 +383,26 @@ ${persona?.let { "\nHer character (persona) is ${it.name}: ${it.description.take
         .filter { it.length in 8..220 }.take(5)
 
     /** "Make a variant": the same character reworked with her changes, as builder-style sections. */
-    fun variant(c: app.ember.data.Character, changes: String, type: VariantType = VariantType.Any): List<ChatMsg> {
-        val keep = when (type) {
-            VariantType.Same -> " Keep his type, world and role (a pirate stays a pirate) and his core personality; change what she asks."
-            VariantType.Other -> " Keep his core personality, voice and how he loves; place him in the new role and world she describes."
-            VariantType.Any -> ""
-        }
-        return variant0(c, changes + keep)
+    fun variant(c: app.ember.data.Character, changes: String, type: VariantType = VariantType.Any, standalone: Boolean = false): List<ChatMsg> {
+        if (type == VariantType.Any) return variant0(c, changes)
+        // She picked him for exactly who he is: his personality is copied word for word by the app and never rewritten here.
+        // Only his situation is written: the new background, description, opening and example dialogue.
+        val names = listOf("Short description", "Background", "Opening message", "Example dialogue")
+        val system = "$FRAME\n\nShe loves this character exactly as he is and wants him in a new story. His personality is FIXED: it is kept " +
+            "word for word, and everything you write must fit it perfectly: the same temperament, values, humour, voice, the way he talks, " +
+            "the way he treats her and how he loves. Never make him cruder, ruder, colder, darker, softer or more dominant than his sheet. " +
+            (if (standalone) "He is now a STANDALONE character: the only love interest in his story. The other people from his old group " +
+                "(crewmates, captain, friends) do not exist in this version; never mention them or put him in a group. " else "") +
+            (if (type == VariantType.Same) "Keep his type: the same kind of man in the same kind of world and the same role or job (if he is a pirate " +
+                "and a gunner, he is still a pirate and a gunner). Change only his situation: where he is, his circumstances, how they meet, the stakes. "
+            else "Place him in the different role and world she describes, as the same man: his personality carries over unchanged, " +
+                "only his job, world and circumstances are new. ") +
+            "Write only these sections, each between markers on their own lines, exactly like this:\n[[Background]]\n...text...\n[[/Background]]\n" +
+            "Sections, in order: ${names.joinToString(", ")}.\n$SHEET_BACKGROUND\n(Write the background for his new situation; keep details " +
+            "from his old background that still fit, like his childhood and looks, unless the new world changes them.)\n" +
+            "Example dialogue: 4 to 6 short exchanges in his exact voice, set in the new situation.\nOpening message: $OPENING_RULES No other text."
+        val user = "His character sheet (personality fixed):\n${card(c)}\n\nThe new situation: ${changes.trim()}"
+        return listOf(ChatMsg("system", system), ChatMsg("user", user))
     }
 
     private fun variant0(c: app.ember.data.Character, changes: String): List<ChatMsg> {

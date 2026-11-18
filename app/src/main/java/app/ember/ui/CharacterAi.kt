@@ -262,7 +262,7 @@ fun VariantDialog(character: Character, onReady: () -> Unit, onDismiss: () -> Un
         noteLabel = "What's different",
         notePlaceholder = "e.g. he's her rival instead of her bodyguard, set in 1920s Paris",
         noteRequired = true,
-        prompt = { changes -> CreativePrompts.variant(base(), changes, type) },
+        prompt = { changes -> CreativePrompts.variant(base(), changes, type, standalone = memberId != null) },
         suggest = { avoid -> CreativePrompts.suggestions(base(), forVariant = true, avoid = avoid, type = type) },
         preferBackup = Ai.creativeOnBackup,
         showResult = false,
@@ -272,7 +272,10 @@ fun VariantDialog(character: Character, onReady: () -> Unit, onDismiss: () -> Un
                 Text("Start from", fontSize = 13.sp, color = EmberColors.TextSoft)
                 androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     TagChip("The whole group", on = memberId == null) { memberId = null }
-                    members.forEach { m -> TagChip(m.name.substringBefore(',').trim(), on = memberId == m.id) { memberId = m.id } }
+                    members.forEach { m -> TagChip(m.name.substringBefore(',').trim(), on = memberId == m.id) {
+                        memberId = m.id
+                        if (type == CreativePrompts.VariantType.Any) type = CreativePrompts.VariantType.Same
+                    } }
                 }
             }
             Text("Keep", fontSize = 13.sp, color = EmberColors.TextSoft)
@@ -283,8 +286,8 @@ fun VariantDialog(character: Character, onReady: () -> Unit, onDismiss: () -> Un
             }
             Text(
                 when (type) {
-                    CreativePrompts.VariantType.Same -> "$who stays the same kind of man in the same kind of world (a pirate stays a pirate); his story and situation change."
-                    CreativePrompts.VariantType.Other -> "$who keeps his personality and how he loves, in a different role and world that suits him."
+                    CreativePrompts.VariantType.Same -> "$who's personality is copied word for word. He stays the same kind of man in the same kind of world (a pirate stays a pirate); only his situation changes."
+                    CreativePrompts.VariantType.Other -> "$who's personality is copied word for word. Only his role, world and situation change."
                     CreativePrompts.VariantType.Any -> "Any change you describe."
                 },
                 fontSize = 12.5.sp, color = EmberColors.Dim,
@@ -295,7 +298,7 @@ fun VariantDialog(character: Character, onReady: () -> Unit, onDismiss: () -> Un
         },
     ) { result ->
         val parts = CreativePrompts.parseBuilder(result).filter { it.section != null }.associate { it.section!!.lowercase() to it.text }
-        Text("Sections ready: ${parts.size} of 6", fontSize = 13.sp, color = EmberColors.Muted)
+        Text("Sections ready: ${parts.size}", fontSize = 13.sp, color = EmberColors.Muted)
         Button(
             onClick = { Store.editorDraft = variantOf(base(), parts); Store.editorDraftBuildId = null; onReady() },
             modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(25.dp),
