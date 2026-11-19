@@ -27,7 +27,7 @@ object CreativePrompts {
         disliked: List<String> = emptyList(),
     ): List<ChatMsg> {
         val who = when (gender) {
-            "Man" -> "The character is a man."
+            "Man" -> "Each concept is about ONE man: never a group, never several men sharing her."
             "Group" -> "Each concept is a GROUP of men at the centre of the story (brothers, best friends, roommates, a crew, a team, a pack, " +
                 "a band, anything the tags suggest), usually all drawn to her, as in a poly or reverse harem story. Make what ties them together " +
                 "clear and hint at how the members differ. Vary the kind of group across concepts."
@@ -95,7 +95,11 @@ Output only the concepts, one per line, each starting with "- ".
                     "Each concept is about him alone as the only love interest, never a group. Stay close to his type unless she asks otherwise; " +
                     "vary only his situation, story and setting.\n$reference"
             )
-            if (liked.isNotEmpty()) append("\n\nIdeas she liked (more like these, in spirit):\n" + liked.take(12).joinToString("\n") { "- $it" })
+            if (liked.isNotEmpty()) append(
+                "\n\nIdeas she liked before, as a taste guide only (the feel, not the content: never copy their jobs, settings, " +
+                    "group make-up or kinks unless today's tags or notes ask for them):\n" + liked.take(8).joinToString("\n") { "- $it" }
+            )
+            append("\n\nToday's tags and notes come first: every concept must follow them, and they win over anything above.")
             if (disliked.isNotEmpty()) append("\n\nIdeas she disliked (avoid what these have in common):\n" + disliked.take(12).joinToString("\n") { "- $it" })
             if (avoid.isNotEmpty()) append("\nDon't repeat these earlier ideas:\n" + avoid.joinToString("\n") { "- $it" })
         }

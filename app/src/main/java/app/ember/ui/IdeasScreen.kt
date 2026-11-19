@@ -83,25 +83,31 @@ fun favouriteCharacters(limit: Int): List<Character> =
         .mapNotNull { Store.character(it.first) }.filter { !it.archived }.take(limit)
 
 /**
- * If her text names one of her own characters (or one member of a group, like "Bram Kettle"), that person's full
- * sheet, so ideas "in the style of" them are built on who they really are.
+ * One of her own characters she clearly asked ideas to be based on, as (display name, full sheet), or null.
+ * In "In the vein of…" naming them is enough; in the notes it has to be said ("like Bram", "in the style of
+ * Bram Kettle", "based on…"). Only full names count in notes, so an ordinary word is never mistaken for a character.
  */
-fun referencedSheet(text: String): String {
-    if (text.isBlank()) return ""
-    val t = text.lowercase()
-    fun named(name: String): Boolean {
+fun referencedCharacter(vein: String, notes: String): Pair<String, String>? {
+    val cue = Regex("\\b(like|in the style of|style of|inspired by|based on|similar to|in the vein of|version of|same as)\\s+", RegexOption.IGNORE_CASE)
+    fun mentions(text: String, name: String, needCue: Boolean): Boolean {
         val n = name.lowercase().substringBefore(',').trim()
-        if (n.length < 3) return false
-        val first = n.split(' ').first()
-        return t.contains(n) || (first.length >= 4 && Regex("\\b" + Regex.escape(first) + "\\b").containsMatchIn(t))
-    }
-    for (c in Store.characters) {
-        c.members.firstOrNull { named(it.name) }?.let { m ->
-            return "Name: ${m.name}\nPersonality:\n${m.about.take(4000)}\nBackground:\n${m.background.take(3000)}"
+        if (n.length < 3 || text.isBlank()) return false
+        val t = text.lowercase()
+        val full = Regex("\\b" + Regex.escape(n) + "\\b")
+        if (!needCue) {
+            val first = n.split(' ').first()
+            return full.containsMatchIn(t) || (first.length >= 4 && t.trim().startsWith(first))
         }
+        return cue.findAll(t).any { m -> t.substring(m.range.last + 1).let { rest -> rest.startsWith(n) } }
     }
-    Store.characters.firstOrNull { named(it.name) }?.let { return CreativePrompts.card(it).take(7000) }
-    return ""
+    fun find(text: String, needCue: Boolean): Pair<String, String>? {
+        for (c in Store.characters) c.members.firstOrNull { it.name.isNotBlank() && mentions(text, it.name, needCue) }?.let { m ->
+            return m.name.substringBefore(',').trim() to "Name: ${m.name}\nPersonality:\n${m.about.take(4000)}\nBackground:\n${m.background.take(3000)}"
+        }
+        Store.characters.firstOrNull { mentions(text, it.name, needCue) }?.let { return it.name to CreativePrompts.card(it).take(7000) }
+        return null
+    }
+    return find(vein, needCue = false) ?: find(notes, needCue = true)
 }
 
 class IdeasViewModel : ViewModel() {
@@ -151,7 +157,7 @@ class IdeasViewModel : ViewModel() {
                     usedTags, notes, 6, avoid, gender,
                     favourites = CreativePrompts.favouritesBrief(favs),
                     vein = if (mode == IdeaMode.Vein) vein else "",
-                    reference = referencedSheet(listOf(notes, if (mode == IdeaMode.Vein) vein else "").joinToString(" ")),
+                    reference = referencedCharacter(if (mode == IdeaMode.Vein) vein else "", notes)?.second.orEmpty(),
                     liked = Store.liked, disliked = Store.disliked,
                 )
                 val text = Ai.complete(prompt, null, 0.9, preferBackup = Ai.creativeOnBackup)
@@ -373,6 +379,9 @@ fun IdeasScreen(
                         "Anything else (optional)", vm.notes, { vm.notes = it }, minLines = 2, maxLines = 4,
                         placeholder = "e.g. built around pet play, set in a church, he's a BMX rider",
                     )
+                    referencedCharacter(if (vm.mode == IdeaMode.Vein) vm.vein else "", vm.notes)?.let { (who, _) ->
+                        Text("Based on your character: $who", fontSize = 12.5.sp, color = EmberColors.RedSoft)
+                    }
                     Button(
                         onClick = { vm.generate(more = false) }, enabled = !vm.busy,
                         modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(25.dp),
