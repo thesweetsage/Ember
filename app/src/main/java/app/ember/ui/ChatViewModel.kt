@@ -287,39 +287,26 @@ class ChatViewModel : ViewModel() {
             }
             try {
                 val (primary, fallback) = eps
-                val blocked = try {
+                // A reply with text is never replaced: you always get to read what was written.
+                // Only an empty reply (or one the provider blocked outright) goes to the backup model.
+                val empty = try {
                     streamInto(cid, primary, prompt, maxTokens, temp, limit, ::show)
-                    written.isBlank() || Refusal.looksLike(written) || Refusal.looksLikeLeak(written)
+                    written.isBlank()
                 } catch (e: ContentBlockedException) {
                     if (fallback == null) throw e
                     true
                 }
-                var used = primary
-                val leaked = written.isNotBlank() && Refusal.looksLikeLeak(written)
-                if (blocked && fallback != null) {
-                    show("")
+                if (empty && fallback != null) {
                     streamInto(cid, fallback, prompt, maxTokens, temp, limit, ::show)
-                    used = fallback
-                    info = if (leaked) "${primary.model.substringAfter('/')} wrote its own notes instead of a reply, so the backup model wrote this one."
-                    else "The main model refused, so the backup model wrote this reply."
-                } else if (blocked && leaked) {
-                    // No backup: one more try with the same model.
-                    show("")
-                    streamInto(cid, primary, prompt, maxTokens, temp, limit, ::show)
-                    if (Refusal.looksLikeLeak(written)) { show(""); error = "${primary.model.substringAfter('/')} keeps writing its notes instead of a reply. Try another model." }
-                } else if (blocked) {
-                    info = "This looks like a refusal. Add a backup model in Settings to retry these automatically."
-                }
-                // Well short (under 80%) of the length you chose: ask once more at the right length.
-                val got = wordCount(written)
-                if (base.isEmpty() && ch.replyWords > 0 && got in 1 until ch.replyWords * 8 / 10) {
-                    val again = PromptBuilder.forCharacter(
-                        ctx, history, ch.replyWords,
-                        (extra?.let { "$it\n" } ?: "") + "A first attempt came out at only $got words, far too short. " +
-                            "Write this reply at about ${ch.replyWords} words: the same events, with deeper body language, noticing and inner thoughts.",
-                    )
-                    show("")
-                    streamInto(cid, used, again, maxTokens, temp, limit, ::show)
+                    info = "The main model sent nothing back, so the backup model wrote this reply."
+                } else if (written.isNotBlank()) {
+                    val name = primary.model.substringAfter('/')
+                    when {
+                        Refusal.looksLikeLeak(written) -> info = "$name may have written its notes instead of a reply. Swipe or tap ↻ for another version."
+                        Refusal.looksLike(written) -> info = "This looks like a refusal. Tap ↻ for another version, or turn on Spicy to use the backup model."
+                        base.isEmpty() && ch.replyWords > 0 && wordCount(written) < ch.replyWords * 7 / 10 ->
+                            info = "This came out shorter than the ${ch.replyWords} words you chose. Tap → to continue it, or ↻ for another version."
+                    }
                 }
                 if (written.isBlank()) error = "The model sent back an empty reply. Try again."
             } catch (e: CancellationException) {
@@ -751,29 +738,19 @@ class ChatViewModel : ViewModel() {
             }
             try {
                 val (primary, fallback) = eps
-                val blocked = try {
+                // A draft with text is never replaced; only an empty one goes to the other model.
+                val empty = try {
                     streamInto(ch.id, primary, prompt, PromptBuilder.maxTokens(words), temperature(ch), wfmLimit, ::show)
-                    written.isBlank() || Refusal.looksLike(written) || Refusal.looksLikeLeak(written)
+                    written.isBlank()
                 } catch (e: ContentBlockedException) {
                     if (fallback == null) throw e
                     true
                 }
-                var used = primary
-                if (blocked && fallback != null) {
-                    show("")
+                if (empty && fallback != null) {
                     streamInto(ch.id, fallback, prompt, PromptBuilder.maxTokens(words), temperature(ch), wfmLimit, ::show)
-                    used = fallback
                     wfmDraftModels = wfmDraftModels.toMutableList().also { if (idx < it.size) it[idx] = fallback.model }
-                }
-                // Well short (under 80%) of the length you chose: rewrite once at the right length, same beats.
-                val got = wordCount(written)
-                if (words > 0 && got in 1 until words * 8 / 10) {
-                    val again = PromptBuilder.forUser(
-                        ctx, ch.messages, words, wfmNotes, draft = written,
-                        change = "it is only $got words; make it about $words words by deepening her body language, what she notices and her thoughts, keeping every beat and adding no new actions or lines",
-                    )
-                    show("")
-                    streamInto(ch.id, used, again, PromptBuilder.maxTokens(words), temperature(ch), wfmLimit, ::show)
+                } else if (words > 0 && wordCount(written) in 1 until words * 7 / 10) {
+                    wfmError = "This draft came out shorter than the $words words you chose. Tap ↻ for another draft, or ask for more in the change box."
                 }
                 if (rewrite) wfmChange = ""
             } catch (e: CancellationException) {
