@@ -304,7 +304,7 @@ class ChatViewModel : ViewModel() {
                     when {
                         Refusal.looksLikeLeak(written) -> info = "$name may have written its notes instead of a reply. Swipe or tap ↻ for another version."
                         Refusal.looksLike(written) -> info = "This looks like a refusal. Tap ↻ for another version, or turn on Spicy to use the backup model."
-                        base.isEmpty() && ch.replyWords > 0 && wordCount(written) < ch.replyWords * 7 / 10 ->
+                        base.isEmpty() && ch.replyWords > 0 && wordCount(written) < ch.replyWords * 85 / 100 ->
                             info = "This came out shorter than the ${ch.replyWords} words you chose. Tap → to continue it, or ↻ for another version."
                     }
                 }
@@ -700,6 +700,19 @@ class ChatViewModel : ViewModel() {
     }
 
     /** Writes a new draft from your notes, or a rewrite of the current draft when [rewrite] is true. */
+    /** The length the latest draft was asked to be, for the "Lengthen" button. */
+    var wfmTarget by mutableStateOf(0)
+        private set
+
+    /** Writes a longer version of the shown draft as a NEW draft; the short one stays, so you can swipe back. */
+    fun lengthenDraft() {
+        val current = wfmDrafts.getOrNull(wfmSel) ?: return
+        val target = wfmTarget.takeIf { it > 0 } ?: return
+        wfmChange = "it is only ${wordCount(current)} words; make it about $target words by deepening her body language, what she notices " +
+            "and her thoughts around the same beats, adding no new actions or lines"
+        draft(rewrite = true)
+    }
+
     fun draft(rewrite: Boolean) {
         if (wfmBusy || busy) return
         val ch = chat ?: return
@@ -716,6 +729,7 @@ class ChatViewModel : ViewModel() {
         // A length typed in the notes or the change box ("make it 700 words") counts as the length you chose.
         val words = (if (rewrite) requestedWords(wfmChange) else null) ?: requestedWords(wfmNotes) ?: wfmWords
         val wfmLimit = wordLimit(words, 1200)
+        wfmTarget = words
         val prompt = PromptBuilder.forUser(
             ctx, ch.messages, words, wfmNotes,
             draft = if (rewrite) current else null,
@@ -749,8 +763,6 @@ class ChatViewModel : ViewModel() {
                 if (empty && fallback != null) {
                     streamInto(ch.id, fallback, prompt, PromptBuilder.maxTokens(words), temperature(ch), wfmLimit, ::show)
                     wfmDraftModels = wfmDraftModels.toMutableList().also { if (idx < it.size) it[idx] = fallback.model }
-                } else if (words > 0 && wordCount(written) in 1 until words * 7 / 10) {
-                    wfmError = "This draft came out shorter than the $words words you chose. Tap ↻ for another draft, or ask for more in the change box."
                 }
                 if (rewrite) wfmChange = ""
             } catch (e: CancellationException) {

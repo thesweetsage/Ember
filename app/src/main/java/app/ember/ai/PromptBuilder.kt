@@ -211,7 +211,7 @@ object PromptBuilder {
                 if (group) "Length: fit the moment, usually 250 to 400 words (quiet moments can be shorter), up to about 600 for big scenes, never more. Not everyone present has to speak in every reply. "
                 else "Length: fit the moment, usually 200 to 300 words (quiet moments can be shorter), up to about 450 for big scenes, never more. "
             )
-            else append("Length: about $replyWords words, between ${replyWords * 85 / 100} and ${replyWords * 115 / 100}. Reach it with more of what they'd naturally say and do in this moment, body language and thoughts, not by jumping to new events. ")
+            else append("Length: about $replyWords words (roughly ${(replyWords / 55).coerceAtLeast(2)} paragraphs), between ${replyWords * 85 / 100} and ${replyWords * 115 / 100}; stopping well short of it is a mistake. Reach it with more of what they'd naturally say and do in this moment, body language and thoughts, not by jumping to new events. ")
             append(
                 (if (group) "Write only their parts" else "Write only $charName's part") +
                     " and end when it's naturally $userName's turn (a question that needs an answer, a move that needs a reaction); " +
@@ -279,7 +279,7 @@ object PromptBuilder {
             append(fill(NATURAL_VOICE))
             if (words <= 0 && notes.isBlank()) append("Length: about 80 to 150 words. ")
             else if (words <= 0) append("Length: whatever it takes to cover every beat in the notes, and no more. Never pad. ")
-            else append("Length: about $words words, between ${words * 85 / 100} and ${words * 115 / 100}. Reach it by deepening her body language, what she notices and her thoughts around the beats, never by adding new actions or lines. ")
+            else append("Length: about $words words (roughly ${(words / 55).coerceAtLeast(2)} paragraphs), between ${words * 85 / 100} and ${words * 115 / 100}; stopping well short of it is a mistake. Reach it by deepening her body language, what she notices and her thoughts around the beats, never by adding new actions or lines. ")
             append("Write only $userName's part and stop there; never write $charName's actions, words or reactions. ")
             append("Split it into short paragraphs separated by blank lines, never one block of text. End on a complete sentence.")
         })

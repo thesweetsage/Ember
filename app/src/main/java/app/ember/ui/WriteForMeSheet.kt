@@ -165,6 +165,12 @@ fun WriteForMeSheet(vm: ChatViewModel, personaName: String, onSent: () -> Unit) 
                     else Text(formatStory(draft), fontSize = 15.sp, lineHeight = 22.sp, color = EmberColors.Text)
                 }
 
+                // Came out short of the length you chose: one tap writes a longer version as a new draft.
+                if (!vm.wfmBusy && vm.wfmTarget > 0 && wordCount(draft) < vm.wfmTarget * 85 / 100) {
+                    OutlinedButton(
+                        onClick = { vm.lengthenDraft() }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp),
+                    ) { Text("Lengthen to ${vm.wfmTarget} words (keeps this one)", color = EmberColors.Text) }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextField(
                         value = vm.wfmChange, onValueChange = { vm.wfmChange = it },
