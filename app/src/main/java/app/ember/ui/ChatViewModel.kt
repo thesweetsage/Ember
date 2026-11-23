@@ -482,13 +482,18 @@ class ChatViewModel : ViewModel() {
                     direction = c.direction?.let { d -> d + (c.directionGuide?.let { " ($it)" } ?: "") },
                     mood = c.mood, focus = c.focus, note = c.note,
                 )
-                val r = LlmClient.complete(ep, prompt, null, 1.0)
+                val r = LlmClient.complete(ep, prompt, null, if (more) 1.15 else 1.0)
                 val got = r.text.lines().map { it.trim().replace(Regex("^(\\d+[.)]|[-*•])\\s*"), "").replace("**", "") }
                     .filter { "|" in it }
                     .map { it.substringBefore("|").trim() to it.substringAfter("|").trim() }
                     .filter { it.first.isNotBlank() && it.second.isNotBlank() }.take(3)
                 if (got.isEmpty()) whatNextError = "No ideas came back. Try again."
-                whatNext = if (more) whatNext + got else got
+                // Never show the same option twice, even if the model repeats itself.
+                fun key(t: String) = t.lowercase().filter { it.isLetterOrDigit() }
+                val seen = whatNext.map { key(it.first) }.toMutableSet()
+                val fresh = got.filter { seen.add(key(it.first)) }
+                if (more && fresh.isEmpty()) whatNextError = "It came up with the same ideas again. Try a different mood, direction or a few words of your own."
+                whatNext = if (more) whatNext + fresh else got
             } catch (e: Exception) {
                 whatNextError = e.message ?: "Couldn't get ideas."
             } finally {

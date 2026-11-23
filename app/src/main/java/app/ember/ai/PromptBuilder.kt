@@ -356,6 +356,10 @@ object PromptBuilder {
                 append("Make them clearly different from each other: for example one tender or emotional, one tense or dramatic, one bold or spicy, unless the moment suggests better. ")
             }
             append("Each must fit who the characters are and where the story is. Never decide what $userName does, says or feels. ")
+            if (avoid.isNotEmpty()) append(
+                "\nShe has already seen the options listed at the end of the message and wants NEW ones: different titles, different events, " +
+                    "different turns. Never repeat or reword any of them. "
+            )
             append("Reply with exactly 3 lines, each like this: Short title | One or two sentences on what happens and where it leads. No numbering, nothing else.")
         }
         val user = buildString {
@@ -364,7 +368,7 @@ object PromptBuilder {
             if (p.chat.sceneOn && p.chat.scene.isNotBlank()) append("\nWhere things stand:\n${fill(p.chat.scene)}\n")
             if (p.chat.direction.isNotBlank()) append("\nThe user's long-term direction for the story: ${fill(p.chat.direction)}\n")
             append("\nLatest messages:\n$transcript")
-            if (avoid.isNotEmpty()) append("\n\nDon't repeat these:\n" + avoid.joinToString("\n"))
+            if (avoid.isNotEmpty()) append("\n\nAlready offered (do NOT repeat or reword these):\n" + avoid.joinToString("\n") { "- $it" })
         }
         return listOf(ChatMsg("system", sys), ChatMsg("user", user))
     }
