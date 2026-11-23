@@ -349,9 +349,17 @@ object PromptBuilder {
                 mood?.let { append("- Mood: $it (${MOOD_MEANING[it] ?: it.lowercase()})\n") }
                 if (focus.isNotEmpty()) append("- Focus on: ${focus.joinToString(", ")}\n")
                 if (note.isNotBlank()) append("- Her thoughts: ${note.trim()}\n")
+                if (direction != null) append(
+                    "The direction is REQUIRED for all three options: every one of them must clearly be \"${direction.substringBefore(" (")}\" " +
+                        "as described, not a hint of it. For a time skip, each option starts after the jump (hours, days or longer later) and " +
+                        "says how much time has passed. For a next scene or somewhere new, each option starts in the new scene or place. "
+                )
                 append("Option 1 follows her choices and thoughts as closely as possible. Option 2 goes the same way with a different take. ")
                 if (mood != null) append("The mood is the point: options 1 and 2 MUST feel $mood from start to finish, whatever else is going on in the scene; bend the situation toward that mood rather than the other way round. ")
-                append("Option 3 is something else worth considering: a different mood or turn she may not have thought of. ")
+                append(
+                    if (direction != null) "Option 3 keeps the same direction but offers a different mood or turn she may not have thought of. "
+                    else "Option 3 is something else worth considering: a different mood or turn she may not have thought of. "
+                )
             } else {
                 append("Make them clearly different from each other: for example one tender or emotional, one tense or dramatic, one bold or spicy, unless the moment suggests better. ")
             }

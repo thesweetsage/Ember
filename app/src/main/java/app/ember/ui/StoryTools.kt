@@ -130,7 +130,7 @@ private data class Direction(val label: String, val guide: String, val chapter: 
 private fun directions(group: Boolean) = listOf(
     Direction("Stay in the scene", "Keep going in this moment; no jump in time or place.", false),
     Direction("Next scene", "Bring this scene to a natural close in a line or two, then jump to the next meaningful scene. Make the jump clear in the first line.", true),
-    Direction("Time skip", "Skip ahead hours, days or longer. Show in a sentence or two what happened in between, then land in a new moment.", true),
+    Direction("Time skip", "Jump ahead in time: at least several hours, often days or weeks, past the current scene. Open after the jump, say how much time has passed and what happened in between in a sentence or two, then land in a new moment.", true),
     Direction("Somewhere new", "Move the story to a new place that fits where things are heading, set through what the characters notice.", true),
     Direction("Something unexpected", "Something unexpected happens: an arrival, a call, news, a discovery, something going wrong. It must fit this world and raise the stakes.", false),
     Direction(if (group) "A new side of them" else "A new side of him",
