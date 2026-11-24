@@ -355,7 +355,11 @@ object PromptBuilder {
                         "says how much time has passed. For a next scene or somewhere new, each option starts in the new scene or place. "
                 )
                 append("Option 1 follows her choices and thoughts as closely as possible. Option 2 goes the same way with a different take. ")
-                if (mood != null) append("The mood is the point: options 1 and 2 MUST feel $mood from start to finish, whatever else is going on in the scene; bend the situation toward that mood rather than the other way round. ")
+                if (mood != null) append(
+                    "The mood is the point: options 1 and 2 MUST feel $mood from start to finish. Get there by steering what is already happening " +
+                        "between the people already in the scene toward that mood, never by adding new people, strangers or plotlines to make it fit. " +
+                        (if (mood == "Spicy" || mood == "Flirty") "The heat is only ever between $userName and ${if (group) "the members of $charName" else charName}, never with strangers or side characters. " else "")
+                )
                 append(
                     if (direction != null) "Option 3 keeps the same direction but offers a different mood or turn she may not have thought of. "
                     else "Option 3 is something else worth considering: a different mood or turn she may not have thought of. "
@@ -363,7 +367,7 @@ object PromptBuilder {
             } else {
                 append("Make them clearly different from each other: for example one tender or emotional, one tense or dramatic, one bold or spicy, unless the moment suggests better. ")
             }
-            append("Each must fit who the characters are and where the story is. Never decide what $userName does, says or feels. ")
+            append("Each must fit who the characters are and where the story is. Use only the people, places and facts already in the story; never invent new named people, jobs, deals or plotlines, and never mix up who is who (each person stays exactly who they are in the story). Never decide what $userName does, says or feels. ")
             if (avoid.isNotEmpty()) append(
                 "\nShe has already seen the options listed at the end of the message and wants NEW ones: different titles, different events, " +
                     "different turns. Never repeat or reword any of them. "

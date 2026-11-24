@@ -485,7 +485,7 @@ class ChatViewModel : ViewModel() {
                 val r = LlmClient.complete(ep, prompt, null, if (more) 1.15 else 1.0)
                 val got = r.text.lines().map { it.trim().replace(Regex("^(\\d+[.)]|[-*•])\\s*"), "").replace("**", "") }
                     .filter { "|" in it }
-                    .map { it.substringBefore("|").trim() to it.substringAfter("|").trim() }
+                    .map { val f = it.split("|"); f[0].trim() to f.getOrElse(1) { "" }.trim() }
                     .filter { it.first.isNotBlank() && it.second.isNotBlank() }.take(3)
                 if (got.isEmpty()) whatNextError = "No ideas came back. Try again."
                 // Never show the same option twice, even if the model repeats itself.
