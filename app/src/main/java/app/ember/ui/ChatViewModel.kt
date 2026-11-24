@@ -470,8 +470,8 @@ class ChatViewModel : ViewModel() {
         val c = whatNextChoice
         val ch = chat ?: return
         val ctx = context(ch) ?: return
-        val ep = if (Store.backupReady && Store.settings.creativeUseBackup) backupEndpoint()
-            else if (Store.hasApiKey) mainEndpoint() else { whatNextError = "Add your API key in Settings first."; return }
+        // The same model this chat writes its replies with (not the Ideas setting, which quietly sent this to the backup).
+        val ep = endpoints(ch)?.first ?: run { whatNextError = "Add your API key in Settings first."; return }
         val avoid = if (more) whatNext.map { "${it.first} | ${it.second}" } else emptyList()
         if (!more) whatNext = emptyList()
         whatNextBusy = true; whatNextError = null
