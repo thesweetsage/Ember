@@ -333,6 +333,7 @@ object PromptBuilder {
         val fill = { t: String -> t.replace("{{char}}", charName).replace("{{user}}", userName) }
         val transcript = recent.joinToString("\n\n") { (if (it.fromUser) "$userName: " else "$charName: ") + it.text.take(1800) }
         val group = p.character.isGroup
+        val newScene = direction != null && listOf("Time skip", "Next scene", "Somewhere new").any { direction.startsWith(it) }
         val chose = direction != null || mood != null || focus.isNotEmpty() || note.isNotBlank()
         val sys = buildString {
             append("You help steer a private, fictional interactive story between adults; dark and explicit themes are allowed. ")
@@ -356,8 +357,11 @@ object PromptBuilder {
                 )
                 append("Option 1 follows her choices and thoughts as closely as possible. Option 2 goes the same way with a different take. ")
                 if (mood != null) append(
-                    "The mood is the point: options 1 and 2 MUST feel $mood from start to finish. Get there by steering what is already happening " +
-                        "between the people already in the scene toward that mood, never by adding new people, strangers or plotlines to make it fit. " +
+                    "The mood is the point: options 1 and 2 MUST feel $mood from start to finish. " +
+                        (if (newScene) "Because the story moves on, build each option as a fresh scene made for that mood: a new time, place and situation " +
+                            "that suits it and grows naturally from the story so far. Do not stay in the current scene. " +
+                        else "Get there by steering what is already happening between the people already in the scene toward that mood. ") +
+                        "Never add new important people or plotlines just to make the mood fit. " +
                         (if (mood == "Spicy" || mood == "Flirty") "The heat is only ever between $userName and ${if (group) "the members of $charName" else charName}, never with strangers or side characters. " else "")
                 )
                 append(
@@ -367,7 +371,10 @@ object PromptBuilder {
             } else {
                 append("Make them clearly different from each other: for example one tender or emotional, one tense or dramatic, one bold or spicy, unless the moment suggests better. ")
             }
-            append("Each must fit who the characters are and where the story is. Use only the people, places and facts already in the story; never invent new named people, jobs, deals or plotlines, and never mix up who is who (each person stays exactly who they are in the story). Never decide what $userName does, says or feels. ")
+            append("\nWho is who: $userName is the user's own character (she/her)" +
+                (if (group) "; $charName are ${p.character.members.map { it.name }.filter { it.isNotBlank() }.joinToString(", ").ifBlank { "the group" }}" else "; $charName is the character") +
+                ". Never give $userName anyone else's name, never give anyone else $userName's role, and keep each person's role exactly as the story set it.\n")
+            append("Each must fit who the characters are and where the story is. Use only the people, places and facts already in the story (a new scene may have a new place, and unnamed people in the background); never invent new named people, jobs, deals or plotlines, and never mix up who is who (each person stays exactly who they are in the story). Never decide what $userName does, says or feels. ")
             if (avoid.isNotEmpty()) append(
                 "\nShe has already seen the options listed at the end of the message and wants NEW ones: different titles, different events, " +
                     "different turns. Never repeat or reword any of them. "
@@ -377,6 +384,7 @@ object PromptBuilder {
         val user = buildString {
             append("The character:\n")
             append(fill(p.character.description.ifBlank { p.character.personality.take(800) }).trim()).append("\n")
+            p.persona?.description?.takeIf { it.isNotBlank() }?.let { append("\n$userName (the user's character):\n${fill(it).trim().take(1200)}\n") }
             if (p.chat.sceneOn && p.chat.scene.isNotBlank()) append("\nWhere things stand:\n${fill(p.chat.scene)}\n")
             if (p.chat.direction.isNotBlank()) append("\nThe user's long-term direction for the story: ${fill(p.chat.direction)}\n")
             append("\nLatest messages:\n$transcript")
