@@ -359,7 +359,7 @@ object PromptBuilder {
                 if (mood != null) append(
                     "The mood is the point: options 1 and 2 MUST feel $mood from start to finish. " +
                         (if (newScene) "Because the story moves on, build each option as a fresh scene made for that mood: a new time, place and situation " +
-                            "that suits it and grows naturally from the story so far. Do not stay in the current scene. " +
+                            "that suits it and grows naturally from the story so far. Do not stay in the current scene. "
                         else "Get there by steering what is already happening between the people already in the scene toward that mood. ") +
                         "Never add new important people or plotlines just to make the mood fit. " +
                         (if (mood == "Spicy" || mood == "Flirty") "The heat is only ever between $userName and ${if (group) "the members of $charName" else charName}, never with strangers or side characters. " else "")
