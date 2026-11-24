@@ -478,7 +478,7 @@ class ChatViewModel : ViewModel() {
         app.ember.work.Generation.launchQuiet(UsageTag(characterId)) {
             try {
                 val prompt = PromptBuilder.forWhatNext(
-                    ctx, ch.messages.takeLast(8), avoid,
+                    ctx, ch.messages.takeLast(14), avoid,
                     direction = c.direction?.let { d -> d + (c.directionGuide?.let { " ($it)" } ?: "") },
                     mood = c.mood, focus = c.focus, note = c.note,
                 )

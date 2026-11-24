@@ -313,6 +313,8 @@ object PromptBuilder {
             ),
             ChatMsg(
                 "user",
+                (if (p.chat.pins.isNotEmpty()) "Facts that are always true (the user's notes; never contradict them):\n" +
+                    p.chat.pins.joinToString("\n") { "- " + it.text.trim().replace("{{char}}", charName).replace("{{user}}", userName) } + "\n\n" else "") +
                 "Old card:\n${current.ifBlank { "(none yet)" }}\nOld meters: $oldMeters\n" +
                     "Timeline so far: ${if (timeline.isEmpty()) "(empty)" else timeline.joinToString("; ")}\n\nLatest messages:\n$transcript",
             ),
@@ -331,7 +333,7 @@ object PromptBuilder {
         val charName = p.character.name.ifBlank { "the character" }
         val userName = p.persona?.name?.ifBlank { null } ?: "the user"
         val fill = { t: String -> t.replace("{{char}}", charName).replace("{{user}}", userName) }
-        val transcript = recent.joinToString("\n\n") { (if (it.fromUser) "$userName: " else "$charName: ") + it.text.take(1800) }
+        val transcript = recent.joinToString("\n\n") { (if (it.fromUser) "$userName: " else "$charName: ") + it.text.take(3000) }
         val group = p.character.isGroup
         val newScene = direction != null && listOf("Time skip", "Next scene", "Somewhere new").any { direction.startsWith(it) }
         val chose = direction != null || mood != null || focus.isNotEmpty() || note.isNotBlank()
@@ -374,6 +376,8 @@ object PromptBuilder {
             append("\nWho is who: $userName is the user's own character (she/her)" +
                 (if (group) "; $charName are ${p.character.members.map { it.name }.filter { it.isNotBlank() }.joinToString(", ").ifBlank { "the group" }}" else "; $charName is the character") +
                 ". Never give $userName anyone else's name, never give anyone else $userName's role, and keep each person's role exactly as the story set it.\n")
+            append("Read the facts to remember, the story so far and the latest messages carefully before writing: every option must agree with them " +
+                "(where they live, who they are to each other, what just happened). ")
             append("Each must fit who the characters are and where the story is. Use only the people, places and facts already in the story (a new scene may have a new place, and unnamed people in the background); never invent new named people, jobs, deals or plotlines, and never mix up who is who (each person stays exactly who they are in the story). Never decide what $userName does, says or feels. ")
             if (avoid.isNotEmpty()) append(
                 "\nShe has already seen the options listed at the end of the message and wants NEW ones: different titles, different events, " +
@@ -382,12 +386,14 @@ object PromptBuilder {
             append("Reply with exactly 3 lines, each like this: Short title | One or two sentences on what happens and where it leads. No numbering, nothing else.")
         }
         val user = buildString {
-            append("The character:\n")
-            append(fill(p.character.description.ifBlank { p.character.personality.take(800) }).trim()).append("\n")
-            p.persona?.description?.takeIf { it.isNotBlank() }?.let { append("\n$userName (the user's character):\n${fill(it).trim().take(1200)}\n") }
-            if (p.chat.sceneOn && p.chat.scene.isNotBlank()) append("\nWhere things stand:\n${fill(p.chat.scene)}\n")
-            if (p.chat.direction.isNotBlank()) append("\nThe user's long-term direction for the story: ${fill(p.chat.direction)}\n")
-            append("\nLatest messages:\n$transcript")
+            // The same picture the replies get: full character sheet (every member), her persona, her notes, the story so far.
+            characterCard(p.character, "The character${if (group) "s" else ""}: $charName", fill)
+            p.persona?.let { ps ->
+                append("\n# $userName (the user's own character)\n")
+                if (ps.description.isNotBlank()) append(fill(ps.description.trim())).append("\n")
+            }
+            storySections(p.chat, fill)
+            append("\n# Latest messages\n$transcript")
             if (avoid.isNotEmpty()) append("\n\nAlready offered (do NOT repeat or reword these):\n" + avoid.joinToString("\n") { "- $it" })
         }
         return listOf(ChatMsg("system", sys), ChatMsg("user", user))
