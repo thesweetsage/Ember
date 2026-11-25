@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.ember.data.isGroup
 import app.ember.ai.Ai
 import app.ember.ai.CreativePrompts
 import app.ember.data.Character
