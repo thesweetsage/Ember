@@ -30,65 +30,53 @@ object CreativePrompts {
             "Man" -> "Each concept is about ONE man: never a group, never several men sharing her."
             "Group" -> "Each concept is a GROUP of men at the centre of the story (brothers, best friends, roommates, a crew, a team, a pack, " +
                 "a band, anything the tags suggest), usually all drawn to her, as in a poly or reverse harem story. Make what ties them together " +
-                "clear and hint at how the members differ. Vary the kind of group across concepts."
+                "clear and hint at how the members differ, and you meet them for the first time. Vary the kind of group across concepts."
             "Woman" -> "The character is a woman."
             else -> "The character can be a man or a woman; choose what suits each concept, or follow the tags."
         }
-        // Heat only when she asks for it: kink tags, or spice in her notes. Otherwise the concept is built on personality and romance.
+        // Attraction and tension always; explicit kink only when she asks (kink tags, or spice in her notes).
         val kinkAsked = tags.any { Tags.category(it) == "Kinks" } ||
             Regex("kink|spic|smut|sex|nsfw|explicit|dom\\b|sub\\b|bdsm|dark romance", RegexOption.IGNORE_CASE).containsMatchIn(notes + " " + vein)
         val heat = if (kinkAsked) """
-- The character is a romantic and sexual lead: attractive, magnetic and capable, someone the reader wants.
-- EVERY concept is built around the kink or spice she asked for: it is the heart of the dynamic, and the job or setting gives it a natural reason to exist.
+- The kink or spice she asked for is the heart of every concept: it shapes who he is and the pull between you from the first meeting.
 """.trim() else """
-- She hasn't asked for anything sexual this time, so sex and kink are NOT the basis of any concept. Build each one on personality, the emotional hook and the relationship dynamic: who he is, why he's lovable, what draws them together. Romantic tension and attraction are fine; no kinks, no sexual roles, no punishment or ownership dynamics, nothing explicit.
+- Attraction, chemistry and tension are always welcome. No explicit kink or sexual roles this time: she hasn't asked for them.
 - Keep the personality she describes. A gentle, kind or soft character stays gentle, kind and soft; never make him darker, more dominant or more possessive than she asked.
 """.trim()
         val examples = if (kinkAsked) """
-- A private dog trainer on a remote estate who treats the one person he's chosen exactly like his best-behaved pet: collar, praise, rules and all.
-- A bodyguard hired to keep you safe who sets strict rules, and makes you pay for every one you break.
-- A priest struggling with feelings he has sworn never to act on.
+- You're the photographer hired for a private shoot at a country estate, and the man who owns it gives instructions the way other people breathe. He decides where you stand, when you rest and what you eat, and he praises you quietly every time you do as you're told. By the second day you realise the rules have stopped being about the photos.
+- You meet him at a masquerade on a friend's dare, a stranger in a black mask who asks for one dance and then simply doesn't let you leave his side. He's patient, very sure of himself and a little frightening, and he lets you set every limit before he finds out exactly where your edges are.
 """.trim() else """
-- A scientist wintering at a remote Arctic research base, snowed in with you until spring.
-- An A&E surgeon who barely sleeps, who keeps finding reasons to check on you long after your stitches are done.
-- A paranormal investigator who comes along on dangerous ghost hunts as your protection, and won't let you out of his sight.
-- A BMX freestyle rider who lives with the fear of the next trick going wrong, and needs you there every time he drops in.
+- You miss the last ferry off a Greek island, and the man who offers you the spare room of his rented villa won't stop apologising for the mess he hasn't made. He's openly, almost embarrassingly smitten from the first evening: he cooks for you, helps you over rocks you could climb alone, and kisses your knuckles when he says goodnight. Back home he runs a company that buys other companies, but out here he only seems to care whether you've eaten.
+- Your train breaks down in the middle of nowhere in a snowstorm, and the stranger across the aisle gives you his coat without a word. He's quiet and a little gruff with everyone else, and completely soft with you, warming your hands between his and making sure you're never the one who has to go and ask the conductor anything. Twelve hours later you know his whole life, and he's already planning how to see you again.
 """.trim()
-        // Jobs: his personality never decides his job, and each concept gets a different ordinary field so ideas don't repeat.
-        val jobSet = tags.any { Tags.category(it) == "Occupation" } ||
-            Regex("\\b(job|works? as|career|occupation)\\b", RegexOption.IGNORE_CASE).containsMatchIn(notes)
-        val fields = JOB_FIELDS.shuffled().take(count)
-        val jobRule = if (jobSet) "- Use the job she asked for." else """
-- His personality never decides his job: a sweet, soft or adoring man works an ordinary modern job like anyone else. Give the concepts these fields, one each, in any order: ${fields.joinToString("; ")}.
-- No twee or cottagecore jobs (baker, beekeeper, bookbinder, bookseller, florist, potter, candle maker, librarian, carpenter, farmer and the like) unless her tags or notes ask for one.
-""".trim()
-        val meetRule = if (Regex("married|husband|wife|already together|established|living together|exes?\\b|ex-|best friends?|friends to|roommates?|second chance|engaged", RegexOption.IGNORE_CASE).containsMatchIn(notes + " " + tags.joinToString(" ")))
+        val meetRule = if (Regex("married|husband|wife|already together|established|living together|exes?\\b|ex-|best friends?|friends to|roommates?|second chance|engaged|childhood", RegexOption.IGNORE_CASE).containsMatchIn(notes + " " + tags.joinToString(" ")))
             "- Follow the relationship she asked for in her tags or notes."
-        else "- Every concept is a FIRST MEETING: they are strangers (or barely know each other) when the story starts, and the hook is how they meet. Never already together, married, living together or a stay-at-home partner."
+        else "- Every concept is a FIRST MEETING: you are strangers when the story starts, and the concept shows where and how you meet. Never already together, married or living together."
         val system = """
 You invent character concepts for a private, fictional romance roleplay app for adults. All characters are adults aged 18 or over; dark and explicit themes are allowed when she asks for them.
 
-Write $count concepts for the CHARACTER ONLY. $who
-Think of the one-line blurb of a bestselling romance novel: the reader instantly sees who this character is, why he's appealing and where the story's pull comes from.
+Write $count concepts. $who
+Each concept is a short paragraph of 3 to 4 sentences that gives equal weight to two things: who he is (his personality, what he's like with you, why he's appealing) and the first meeting (where and how you meet, and the pull between you from that moment).
 
 Rules:
 - The character is a romantic lead: appealing and memorable. Never pathetic or absurd.
 $heat
-$jobRule
 $meetRule
-- One simple, clear hook: a job, a setting or a situation, plus the dynamic. Grounded and easy to start roleplaying from the first scene. No convoluted plots, random quirky details, petty crimes, riddles or mysteries for their own sake.
-- Personality tags apply to every concept. Setting, occupation and trope tags must clearly show up.
-- Treat the user's notes as a requirement, not a suggestion. If a note is a short word or abbreviation, read it as the theme it most likely means.
-- Variety comes from different jobs, settings and situations, not from weirdness.
+- His job only comes up when it fits: sometimes it's the reason you meet, sometimes it's a passing mention, and sometimes it isn't mentioned at all. A concept is never just "a man with this job".
+- Vary the concepts on every count: where you meet (a holiday, a concert, a wedding, an airport, a bar, your work, a party, a stranded journey and so on), how you meet (a collision, a mix-up, a set-up, a rescue, a rivalry, being stuck together), his type within what she asked for, and the dynamic (slow burn, grumpy and sunshine, enemies to lovers, instant obsession and so on). No two concepts share a setting or a dynamic.
+- Mostly modern, real-world settings; now and then one can be fantasy, historical or paranormal, unless her tags set the world.
+- Her tags and notes are a strong guide: every concept must fit them, and each can add its own flavour on top. If a note is a short word or abbreviation, read it as the theme it most likely means.
+- Grounded and easy to start roleplaying from the first scene. No convoluted plots, random quirky details, petty crimes, riddles or mysteries for their own sake.
 - Every character is a grown adult (usually late twenties to thirties). If she's inspired by a younger character from a book, anime or show, take only the personality and reimagine him as an adult in an adult life; never school settings.
 - Never involve children, child-related jobs or settings, or anything youthful.
-- The user plays her own character and decides everything about her. Never describe the user's character; if needed, call her "you" in a few words.
-- No names, no detailed world-building. One or two sentences each.
+- The user plays her own character and decides everything about her. Write to her as "you" and never describe her looks, job or personality.
+- No names and no detailed world-building.
 
-Examples of the style (do not reuse these):
+Examples of the style (do not reuse their settings or details):
 $examples
 
-Output only the concepts, one per line, each starting with "- ".
+Output only the concepts, each as a single line starting with "- " (no line breaks inside a concept).
 """.trim()
         val user = buildString {
             append(if (tags.isEmpty()) "No tags chosen; surprise me." else "Tags: ${Tags.describe(tags)}")
@@ -118,19 +106,6 @@ Output only the concepts, one per line, each starting with "- ".
         }
         return listOf(ChatMsg("system", system), ChatMsg("user", user))
     }
-
-    /** Ordinary jobs across many fields; a few are picked at random for each batch of ideas. */
-    private val JOB_FIELDS = listOf(
-        "surgeon or doctor", "nurse or paramedic", "firefighter", "police detective", "lawyer", "architect", "software engineer",
-        "startup founder", "investment banker", "chef in a busy restaurant", "bartender", "hotel manager", "pilot", "airline cabin crew",
-        "professional footballer or rugby player", "personal trainer or boxing coach", "musician or producer", "photographer",
-        "film or TV actor", "journalist", "university lecturer", "museum curator", "vet", "mechanic", "electrician or builder",
-        "ship's officer or sailor", "soldier or ex-military", "bodyguard or security", "tattoo artist", "fashion designer",
-        "estate agent", "marketing or ad executive", "politician or political aide", "racing driver", "wildlife ranger",
-        "air traffic controller", "pharmacist", "physiotherapist", "dentist", "graphic designer or game developer",
-        "accountant", "diplomat", "hospital administrator", "car salesman", "event planner", "sommelier or wine maker",
-        "translator", "lifeguard or surf instructor", "ski instructor", "news anchor", "record label executive", "climbing instructor",
-    )
 
     fun parseIdeas(text: String): List<String> =
         text.lines().map { it.trim() }

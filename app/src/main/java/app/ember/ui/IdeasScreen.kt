@@ -165,7 +165,7 @@ class IdeasViewModel : ViewModel() {
                     reference = reference()?.second.orEmpty(),
                     liked = Store.liked, disliked = Store.disliked,
                 )
-                val text = Ai.complete(prompt, null, 1.0, preferBackup = Ai.creativeOnBackup)
+                val text = Ai.complete(prompt, null, 0.9, preferBackup = Ai.creativeOnBackup)
                 val parsed = CreativePrompts.parseIdeas(text)
                 if (parsed.isEmpty()) error = "No ideas came back. Try again."
                 results = if (more) results + parsed else parsed
