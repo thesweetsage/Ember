@@ -89,8 +89,8 @@ fun favouriteCharacters(limit: Int): List<Character> =
  */
 fun referencedCharacter(vein: String, notes: String): Pair<String, String>? {
     val cue = Regex("\\b(like|in the style of|style of|inspired by|based on|similar to|in the vein of|version of|same as)\\s+", RegexOption.IGNORE_CASE)
-    fun mentions(text: String, name: String, needCue: Boolean): Boolean {
-        val n = name.lowercase().substringBefore(',').trim()
+    fun mentions(text: String, name: String, needCue: Boolean, whole: Boolean = false): Boolean {
+        val n = (if (whole) name.lowercase() else name.lowercase().substringBefore(',')).trim()
         if (n.length < 3 || text.isBlank()) return false
         val t = text.lowercase()
         val full = Regex("\\b" + Regex.escape(n) + "\\b")
@@ -98,13 +98,13 @@ fun referencedCharacter(vein: String, notes: String): Pair<String, String>? {
             val first = n.split(' ').first()
             return full.containsMatchIn(t) || (first.length >= 4 && t.trim().startsWith(first))
         }
-        return cue.findAll(t).any { m -> t.substring(m.range.last + 1).let { rest -> rest.startsWith(n) } }
+        return cue.findAll(t).any { m -> t.substring(m.range.last + 1).let { rest -> Regex("^" + Regex.escape(n) + "\\b").containsMatchIn(rest) } }
     }
     fun find(text: String, needCue: Boolean): Pair<String, String>? {
         for (c in Store.characters) c.members.firstOrNull { it.name.isNotBlank() && mentions(text, it.name, needCue) }?.let { m ->
             return m.name.substringBefore(',').trim() to "Name: ${m.name}\nPersonality:\n${m.about.take(4000)}\nBackground:\n${m.background.take(3000)}"
         }
-        Store.characters.firstOrNull { mentions(text, it.name, needCue) }?.let { return it.name to CreativePrompts.card(it).take(7000) }
+        Store.characters.firstOrNull { mentions(text, it.name, needCue, whole = it.isGroup) }?.let { return it.name to CreativePrompts.card(it).take(7000) }
         return null
     }
     return find(vein, needCue = false) ?: find(notes, needCue = true)
@@ -115,6 +115,10 @@ class IdeasViewModel : ViewModel() {
     var tags by mutableStateOf(listOf<String>())
     var notes by mutableStateOf("")
     var vein by mutableStateOf("")
+    /** A character she tapped "Don't use" on; ignored until the notes no longer point at it. */
+    var ignoredRef by mutableStateOf<String?>(null)
+    fun reference(): Pair<String, String>? =
+        referencedCharacter(if (mode == IdeaMode.Vein) vein else "", notes)?.takeIf { it.first != ignoredRef }
     /** "Man", "Woman" or "Any". */
     var gender by mutableStateOf("Man")
     var results by mutableStateOf(listOf<String>())
@@ -157,7 +161,7 @@ class IdeasViewModel : ViewModel() {
                     usedTags, notes, 6, avoid, gender,
                     favourites = CreativePrompts.favouritesBrief(favs),
                     vein = if (mode == IdeaMode.Vein) vein else "",
-                    reference = referencedCharacter(if (mode == IdeaMode.Vein) vein else "", notes)?.second.orEmpty(),
+                    reference = reference()?.second.orEmpty(),
                     liked = Store.liked, disliked = Store.disliked,
                 )
                 val text = Ai.complete(prompt, null, 0.9, preferBackup = Ai.creativeOnBackup)
@@ -379,8 +383,11 @@ fun IdeasScreen(
                         "Anything else (optional)", vm.notes, { vm.notes = it }, minLines = 2, maxLines = 4,
                         placeholder = "e.g. built around pet play, set in a church, he's a BMX rider",
                     )
-                    referencedCharacter(if (vm.mode == IdeaMode.Vein) vm.vein else "", vm.notes)?.let { (who, _) ->
-                        Text("Based on your character: $who", fontSize = 12.5.sp, color = EmberColors.RedSoft)
+                    vm.reference()?.let { (who, _) ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Based on your character: $who", fontSize = 12.5.sp, color = EmberColors.RedSoft, modifier = Modifier.weight(1f))
+                            TextButton(onClick = { vm.ignoredRef = who }) { Text("Don't use", fontSize = 12.5.sp) }
+                        }
                     }
                     Button(
                         onClick = { vm.generate(more = false) }, enabled = !vm.busy,
