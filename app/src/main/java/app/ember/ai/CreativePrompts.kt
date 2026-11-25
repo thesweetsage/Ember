@@ -50,10 +50,21 @@ object CreativePrompts {
 - A priest struggling with feelings he has sworn never to act on.
 """.trim() else """
 - A scientist wintering at a remote Arctic research base, snowed in with you until spring.
-- A tattooed florist everyone crosses the street to avoid, who remembers your favourite flowers after one visit.
+- An A&E surgeon who barely sleeps, who keeps finding reasons to check on you long after your stitches are done.
 - A paranormal investigator who comes along on dangerous ghost hunts as your protection, and won't let you out of his sight.
 - A BMX freestyle rider who lives with the fear of the next trick going wrong, and needs you there every time he drops in.
 """.trim()
+        // Jobs: his personality never decides his job, and each concept gets a different ordinary field so ideas don't repeat.
+        val jobSet = tags.any { Tags.category(it) == "Occupation" } ||
+            Regex("\\b(job|works? as|career|occupation)\\b", RegexOption.IGNORE_CASE).containsMatchIn(notes)
+        val fields = JOB_FIELDS.shuffled().take(count)
+        val jobRule = if (jobSet) "- Use the job she asked for." else """
+- His personality never decides his job: a sweet, soft or adoring man works an ordinary modern job like anyone else. Give the concepts these fields, one each, in any order: ${fields.joinToString("; ")}.
+- No twee or cottagecore jobs (baker, beekeeper, bookbinder, bookseller, florist, potter, candle maker, librarian, carpenter, farmer and the like) unless her tags or notes ask for one.
+""".trim()
+        val meetRule = if (Regex("married|husband|wife|already together|established|living together|exes?\\b|ex-|best friends?|friends to|roommates?|second chance|engaged", RegexOption.IGNORE_CASE).containsMatchIn(notes + " " + tags.joinToString(" ")))
+            "- Follow the relationship she asked for in her tags or notes."
+        else "- Every concept is a FIRST MEETING: they are strangers (or barely know each other) when the story starts, and the hook is how they meet. Never already together, married, living together or a stay-at-home partner."
         val system = """
 You invent character concepts for a private, fictional romance roleplay app for adults. All characters are adults aged 18 or over; dark and explicit themes are allowed when she asks for them.
 
@@ -63,6 +74,8 @@ Think of the one-line blurb of a bestselling romance novel: the reader instantly
 Rules:
 - The character is a romantic lead: appealing and memorable. Never pathetic or absurd.
 $heat
+$jobRule
+$meetRule
 - One simple, clear hook: a job, a setting or a situation, plus the dynamic. Grounded and easy to start roleplaying from the first scene. No convoluted plots, random quirky details, petty crimes, riddles or mysteries for their own sake.
 - Personality tags apply to every concept. Setting, occupation and trope tags must clearly show up.
 - Treat the user's notes as a requirement, not a suggestion. If a note is a short word or abbreviation, read it as the theme it most likely means.
@@ -105,6 +118,19 @@ Output only the concepts, one per line, each starting with "- ".
         }
         return listOf(ChatMsg("system", system), ChatMsg("user", user))
     }
+
+    /** Ordinary jobs across many fields; a few are picked at random for each batch of ideas. */
+    private val JOB_FIELDS = listOf(
+        "surgeon or doctor", "nurse or paramedic", "firefighter", "police detective", "lawyer", "architect", "software engineer",
+        "startup founder", "investment banker", "chef in a busy restaurant", "bartender", "hotel manager", "pilot", "airline cabin crew",
+        "professional footballer or rugby player", "personal trainer or boxing coach", "musician or producer", "photographer",
+        "film or TV actor", "journalist", "university lecturer", "museum curator", "vet", "mechanic", "electrician or builder",
+        "ship's officer or sailor", "soldier or ex-military", "bodyguard or security", "tattoo artist", "fashion designer",
+        "estate agent", "marketing or ad executive", "politician or political aide", "racing driver", "wildlife ranger",
+        "air traffic controller", "pharmacist", "physiotherapist", "dentist", "graphic designer or game developer",
+        "accountant", "diplomat", "hospital administrator", "car salesman", "event planner", "sommelier or wine maker",
+        "translator", "lifeguard or surf instructor", "ski instructor", "news anchor", "record label executive", "climbing instructor",
+    )
 
     fun parseIdeas(text: String): List<String> =
         text.lines().map { it.trim() }
