@@ -74,6 +74,8 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
     var useBackup by rememberSaveable { mutableStateOf(base.useBackup) }
     var pickPersona by remember { mutableStateOf(false) }
     var example by rememberSaveable { mutableStateOf(base.example) }
+    var always by rememberSaveable { mutableStateOf(base.always) }
+    var fillingAlways by remember { mutableStateOf(false) }
     var replyWords by rememberSaveable { mutableStateOf(base.replyWords.toString()) }
     var avatar by rememberSaveable { mutableStateOf(base.avatar) }
     var chatBg by rememberSaveable { mutableStateOf(base.chatBg) }
@@ -86,7 +88,7 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
     var improving by remember { mutableStateOf<Triple<String, String, (String) -> Unit>?>(null) }
     fun current() = base.copy(
         name = name, description = description, personality = personality, background = background,
-        openings = openings, example = example, tags = tags, group = groupOn, members = members,
+        openings = openings, example = example, always = always, tags = tags, group = groupOn, members = members,
     )
 
     val pickAvatar = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -102,13 +104,17 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
         val words = replyWords.toIntOrNull()?.let { if (it <= 0) 0 else it.coerceIn(30, 2000) } ?: 0
         val c = base.copy(
             name = name.trim(), description = description, personality = personality,
-            background = background, openings = openings.ifEmpty { listOf("") }, example = example,
+            background = background, openings = openings.ifEmpty { listOf("") }, example = example, always = always,
             avatar = avatar, chatBg = chatBg, replyWords = words,
             tags = tags, personaId = personaId, useBackup = useBackup,
             group = groupOn, members = members.filter { !it.isEmpty },
             tint = if (avatar != base.avatar || chatBg != base.chatBg || base.tint == null) Store.computeTint(chatBg ?: avatar) else base.tint,
         )
         Store.saveCharacter(c)
+        // Always box follows Personality: refill whenever the personality changed, or if it's still empty.
+        val personalityChanged = c.personality.trim() != base.personality.trim() ||
+            c.members.map { it.about.trim() } != base.members.map { it.about.trim() }
+        if ((personalityChanged && c.always.trim() == base.always.trim()) || c.always.isBlank()) app.ember.ai.AlwaysFill.refresh(c.id)
         if (draft != null) Store.editorDraftBuildId?.let { Store.deleteBuild(it) }
         Store.editorDraft = null
         Store.editorDraftBuildId = null
@@ -205,6 +211,26 @@ fun EditCharacterScreen(characterId: String, onBack: () -> Unit, onCreated: (Str
             EmberField("Short description", description, { description = it },
                 placeholder = "One or two lines, shown at the top of the chat.", minLines = 2, maxLines = 4,
                 onImprove = { improving = Triple("Short description", description) { v: String -> description = v } })
+            EmberField("Always", always, { always = it },
+                placeholder = if (groupOn) "What they do in every reply, e.g. Jace calls her sweetheart and never lets go of her hand"
+                    else "What he does in every reply, e.g. clingy, always touching and kissing her, pet names: my sweet baby, my gorgeous thing",
+                minLines = 2, maxLines = 5)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Filled from Personality automatically. Repeated before every reply, ahead of Ember's pacing rules.",
+                    fontSize = 12.sp, color = EmberColors.Dim, modifier = Modifier.weight(1f))
+                TextButton(
+                    enabled = !fillingAlways && (personality.isNotBlank() || members.any { it.about.isNotBlank() }),
+                    onClick = {
+                        fillingAlways = true
+                        val snapshot = current()
+                        app.ember.work.Generation.launchQuiet(kotlin.coroutines.EmptyCoroutineContext) {
+                            val got = app.ember.ai.AlwaysFill.generate(snapshot)
+                            if (got != null) always = got
+                            fillingAlways = false
+                        }
+                    },
+                ) { Text(if (fillingAlways) "Filling…" else "Refill", fontSize = 13.sp) }
+            }
             if (groupOn) {
                 members.forEachIndexed { i, m ->
                     Column(

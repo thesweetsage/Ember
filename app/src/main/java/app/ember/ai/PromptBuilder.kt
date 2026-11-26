@@ -195,6 +195,14 @@ object PromptBuilder {
                 append("Stay true to who $charName is: ").append(fill(it.take(900))).append(if (it.length > 900) "… " else " ")
             }
             val who = if (group) "they" else charName
+            p.character.always.trim().takeIf { it.isNotEmpty() }?.let {
+                append("\n\nALWAYS, in every reply, whatever the moment (from the user, and it outranks every pacing, voice and length rule below): ")
+                append(fill(it)).append("\n")
+            }
+            append("\n${if (group) "Each character's" else "$charName's"} own personality always wins over the pacing and voice rules below: those rules shape how $who talk${if (group) "" else "s"}, ")
+            append("never how much of the personality shows. A clingy, affectionate or over-the-top character stays that way in every reply, even in quiet moments. ")
+            append("If the sheet lists pet names, use them often (several in a reply when it fits) and rotate through the whole list, never sticking to one; ")
+            append("pet names and signature habits are part of who $who ${if (group) "are" else "is"}, not catchphrases or repetition.\n")
             // Read the moment first, in a short hidden note, the way good roleplay presets do. The app strips it out.
             append("\n\nBefore the reply, read the moment and decide how $who would really respond to it. Write that decision first, ")
             append("inside <beat></beat> tags, in under 35 words: what $userName just did or said, what $who feels and wants right now, ")

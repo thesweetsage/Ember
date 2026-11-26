@@ -13,6 +13,8 @@ data class Character(
     /** First entry is the main opening; the rest are alternates you can swipe between. */
     val openings: List<String> = listOf(""),
     val example: String = "",
+    /** "Always": habits and ways of speaking that show up in every reply (pet names, clinginess). Repeated before each reply; outranks pacing rules. */
+    val always: String = "",
     val avatar: String? = null,
     val chatBg: String? = null,
     val replyWords: Int = 300,

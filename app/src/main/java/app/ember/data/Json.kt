@@ -24,7 +24,7 @@ object Json {
     fun character(c: Character): JSONObject = JSONObject()
         .put("id", c.id).put("name", c.name).put("description", c.description)
         .put("personality", c.personality).put("background", c.background)
-        .put("openings", JSONArray(c.openings)).put("example", c.example)
+        .put("openings", JSONArray(c.openings)).put("example", c.example).put("always", c.always)
         .put("avatar", nul(c.avatar)).put("chatBg", nul(c.chatBg))
         .put("replyWords", c.replyWords).put("personaId", nul(c.personaId)).put("useBackup", c.useBackup)
         .put("tags", JSONArray(c.tags)).put("tint", nul(c.tint))
@@ -36,7 +36,7 @@ object Json {
         return Character(
             id = o.str("id"), name = o.str("name"), description = o.str("description"),
             personality = o.str("personality"), background = o.str("background"),
-            openings = openings, example = o.str("example"),
+            openings = openings, example = o.str("example"), always = o.str("always"),
             avatar = o.strOrNull("avatar"), chatBg = o.strOrNull("chatBg"),
             replyWords = o.optInt("replyWords", 300), personaId = o.strOrNull("personaId"),
             useBackup = o.optBoolean("useBackup", false),

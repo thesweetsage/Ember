@@ -73,6 +73,7 @@ class ChatViewModel : ViewModel() {
         characterId = id
         val c = Store.character(id) ?: return
         if (Store.activeChat(id) == null) Store.newChat(c)
+        app.ember.ai.AlwaysFill.fillIfMissing(c)
         if (wfmWords < 0) wfmWords = Store.settings.writeForMeWords
     }
 
